@@ -34,7 +34,7 @@ def main():
   print('Loaded embedding matrix: %s' % str(embeddings.shape))
 
   while True:
-    cui = raw_input('enter CUI (or \'exit\' to stop): ')
+    cui = input('enter CUI (or \'exit\' to stop): ')
     if cui == "exit":
       exit()
     if cui in cui2id:

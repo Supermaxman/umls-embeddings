@@ -1,7 +1,7 @@
 import tensorflow as tf
 import numpy as np
 
-from Discriminator import BaseModel
+from .Discriminator import BaseModel
 from ..emb import Smoothing
 from ..data import DataGenerator
 

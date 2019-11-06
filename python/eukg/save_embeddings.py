@@ -2,8 +2,8 @@ import tensorflow as tf
 import os
 import numpy as np
 
-import Config
-from train import init_model
+from . import Config
+from .train import init_model
 
 
 def main():

@@ -140,7 +140,7 @@ def calculate_scores(subj, rel, obj, replace_subject, concept_ids, session, mode
   objects = np.full(batch_size, obj, dtype=np.int32)
   scores = {}
 
-  for b in xrange(num_batches):
+  for b in range(num_batches):
     concepts = concept_ids[b*batch_size:(b+1)*batch_size]
     feed_dict = {model.pos_subj: subjects,
                  model.relations: relations,
@@ -301,7 +301,7 @@ def calculate_scores_sn(subj, rel, obj, replace_subject, concept_ids, session, m
   objects = np.full(batch_size, obj, dtype=np.int32)
   scores = {}
 
-  for b in xrange(num_batches):
+  for b in range(num_batches):
     concepts = concept_ids[b*batch_size:(b+1)*batch_size]
     feed_dict = {model.smoothing_placeholders['sn_pos_subj']: subjects,
                  model.smoothing_placeholders['sn_relations']: relations,

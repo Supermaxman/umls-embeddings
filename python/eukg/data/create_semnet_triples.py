@@ -6,7 +6,7 @@ from tqdm import tqdm
 from collections import defaultdict
 import numpy as np
 
-from create_test_set import split
+from .create_test_set import split
 
 
 def process_mapping(umls_dir, data_dir):
@@ -42,18 +42,19 @@ def process_mapping(umls_dir, data_dir):
   print('%% under 2k: %.4f' % (float(len([l for l in s2c_lens if l < 2000])) / len(s2c_lens)))
 
   # json.dump(name2id, open('/home/rmm120030/working/umls-mke/data/name2id.json', 'w+'))
-  json.dump(cui2semtypes, open(os.path.join(data_dir, 'semnet', 'cui2semtpyes.json'), 'w+'))
-  json.dump(semtype2cuis, open(os.path.join(data_dir, 'semnet', 'semtype2cuis.json'), 'w+'))
-
+  json.dump(cui2semtypes, open(os.path.join(data_dir, 'semnet', 'cui2semtpyes.json'), 'w+'), indent=2)
+  json.dump(semtype2cuis, open(os.path.join(data_dir, 'semnet', 'semtype2cuis.json'), 'w+'), indent=2)
 
 def semnet_triples(umls_dir, data_dir):
   print('Creating semantic network triples...')
   name2id = json.load(open(os.path.join(data_dir, 'name2id.json')))
-
+  if not os.path.exists(os.path.join(data_dir, 'semnet')):
+    os.mkdir(os.path.join(data_dir, 'semnet'))
   total_relations = 0
   new_relations = 0
   tui2id = {}
   # relations which have a metathesaurus analog are mapped to the MT embedding
+  # TODO add this type to umls lib for safer reading.
   with open(os.path.join(umls_dir, 'NET', 'SRDEF')) as f:
     reader = csv.reader(f, delimiter='|')
     for row in reader:
@@ -74,8 +75,10 @@ def semnet_triples(umls_dir, data_dir):
 
   print('Created %d of %d new relations' % (new_relations, total_relations))
   print('%d total embeddings' % len(name2id))
-  json.dump(name2id, open(os.path.join(data_dir, 'name2id.json'), 'w+'))
-  json.dump(tui2id, open(os.path.join(data_dir, 'semnet', 'tui2id.json'), 'w+'))
+  with open(os.path.join(data_dir, 'name2id.json'), 'w+') as f:
+    json.dump(name2id, f, indent=2)
+  with open(os.path.join(data_dir, 'semnet', 'tui2id.json'), 'w+') as f:
+    json.dump(tui2id, f, indent=2)
 
   subj, rel, obj = [], [], []
   with open(os.path.join(umls_dir, 'NET', 'SRSTRE1'), 'r') as f:

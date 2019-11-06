@@ -15,7 +15,8 @@ def split(subj, rel, obj, data_dir, graph_name='metathesaurus', num_test=100000)
   test_idx = perm[:num_test]
   train_idx = perm[num_test:]
   print('created train/test splits (%d/%d)' % (len(train_idx), len(test_idx)))
-
+  if not os.path.exists(os.path.join(data_dir, graph_name)):
+    os.mkdir(os.path.join(data_dir, graph_name))
   np.savez_compressed(os.path.join(data_dir, graph_name, 'train.npz'),
                       subj=subj[train_idx],
                       rel=rel[train_idx],

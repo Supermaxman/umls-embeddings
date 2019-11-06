@@ -1,13 +1,12 @@
 import numpy as np
 import random
 import math
-from itertools import izip
 from collections import defaultdict
 from tqdm import tqdm
 import os
-import ujson
+import json
 
-import data_util
+from . import data_util
 
 
 class DataGenerator:
@@ -63,7 +62,7 @@ class DataGenerator:
     nsubj, nobj = self.sampler.sample(subj, rel, obj)
     num_batches = int(math.floor(float(len(idxs)) / batch_size))
     print('\n\ngenerating %d batches' % num_batches)
-    for b in xrange(num_batches):
+    for b in range(num_batches):
       idx = idxs[b * batch_size: (b + 1) * batch_size]
       yield rel[idx], subj[idx], obj[idx], nsubj[idx], nobj[idx]
 
@@ -73,7 +72,7 @@ class DataGenerator:
     subj, rel, obj = self.data['subj'], self.data['rel'], self.data['obj']
     num_batches = int(math.floor(float(len(idxs)) / batch_size))
     print('\n\ngenerating %d batches in generation mode' % num_batches)
-    for b in xrange(num_batches):
+    for b in range(num_batches):
       idx = idxs[b * batch_size: (b + 1) * batch_size]
       sampl_subj, sampl_obj = self.sampler.sample_for_generator(subj[idx], rel[idx], obj[idx],
                                                                 self.config.num_generator_samples)
@@ -153,7 +152,7 @@ class NegativeSampler:
     #   print('loading negative sampler maps from %s' % cachedir)
     #   self.sr2o = load_dict(os.path.join(cachedir, 'sr2o'))
     #   self.or2s = load_dict(os.path.join(cachedir, 'or2s'))
-    #   self.concepts = ujson.load(open(os.path.join(cachedir, 'concepts.json')))
+    #   self.concepts = json.load(open(os.path.join(cachedir, 'concepts.json')))
     #   print('done! Took %.2f seconds' % (time.time() - start))
     # else:
     self.sr2o = defaultdict(set)
@@ -171,7 +170,7 @@ class NegativeSampler:
       # os.makedirs(cachedir)
       # save_dict(self.sr2o, os.path.join(cachedir, 'sr2o'))
       # save_dict(self.or2s, os.path.join(cachedir, 'or2s'))
-      # ujson.dump(self.concepts, open(os.path.join(cachedir, 'concepts.json'), 'w+'))
+      # json.dump(self.concepts, open(os.path.join(cachedir, 'concepts.json'), 'w+'))
       # print('done!')
 
   def _neg_sample(self, s_, r_, o_, replace_s):
@@ -196,7 +195,7 @@ class NegativeSampler:
   def _sample_k(self, subj, rel, obj, k):
     neg_subj = []
     neg_obj = []
-    for i in xrange(k):
+    for i in range(k):
       ns, no = self._neg_sample(subj, rel, obj, random.random() > 0.5)
       neg_subj.append(ns)
       neg_obj.append(no)
@@ -233,7 +232,7 @@ def get_next_k_idxs(all_idxs, k, offset):
 
 def wrap_generators(mt_gen, sn_gen, is_training):
   if is_training:
-    for mt_batch, sn_batch in izip(mt_gen(True), sn_gen(True)):
+    for mt_batch, sn_batch in zip(mt_gen(True), sn_gen(True)):
       yield mt_batch + sn_batch
   else:
     for b in mt_gen(True):
@@ -246,11 +245,11 @@ def save_dict(d, savepath):
     keys.append(list(k))
     values.append(list(v))
 
-  ujson.dump(keys, open(savepath + '_keys.json', 'w+'))
-  ujson.dump(values, open(savepath + '_values.json', 'w+'))
+  json.dump(keys, open(savepath + '_keys.json', 'w+'))
+  json.dump(values, open(savepath + '_values.json', 'w+'))
 
 
 def load_dict(savepath):
-  keys = ujson.load(open(savepath + '_keys.json'))
-  values = ujson.load(open(savepath + '_values.json'))
-  return {tuple(k): set(v) for k, v in izip(keys, values)}
+  keys = json.load(open(savepath + '_keys.json'))
+  values = json.load(open(savepath + '_values.json'))
+  return {tuple(k): set(v) for k, v in zip(keys, values)}

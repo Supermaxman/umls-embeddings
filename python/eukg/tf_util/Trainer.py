@@ -50,7 +50,7 @@ def train(config, session, model, saver,
 
     def bounded_train_data_provider():
       global it
-      for b in xrange(max_batches_per_epoch):
+      for b in range(max_batches_per_epoch):
         try:
           yield it.next()
         except StopIteration:
@@ -60,7 +60,7 @@ def train(config, session, model, saver,
     train_data_provider = bounded_train_data_provider
 
   # train
-  for ep in xrange(config['num_epochs']):
+  for ep in range(config['num_epochs']):
     print('\nBegin training epoch %d' % ep)
     global_step = train_epoch(config, session, model, train_summary_writer, train_post_step, global_step,
                               train_data_provider, saver)

@@ -4,13 +4,57 @@ import csv
 import json
 from tqdm import tqdm
 import argparse
+from collections import defaultdict
 
-from create_test_set import split
+import hedgedog.nlp.wordpiece_tokenization as hgt
+
+from .create_test_set import split
+from . import umls_reader
+from . import umls
 
 
-def metathesaurus_triples(rrf_file, output_dir, valid_relations):
+def pref_atom_filter(x):
+  # filter out non-english atoms
+  if x.lat not in {'ENG'}:
+    return False
+  # TODO determine best way to filter atoms out
+  # Ignore atoms with supress flag
+  if x.suppress in {'O'}:
+    return False
+  # Ignore non-ts preferred atoms
+  if x.ts not in {'P'}:
+    return False
+  # Ignore non-stt preferred atoms
+  if x.stt not in {'PF'}:
+    return False
+  # Ignore non-ispref atoms
+  if x.ispref not in {'Y'}:
+    return False
+  return True
+
+
+def tokenize_concept(cui, umls_atoms, umls_defs, umls_contexts, tokenize):
+  # TODO do this in a different way.
+  assert len(umls_atoms) > 0, f'No atom found for concept {cui}!'
+  primary_atom = umls_atoms[0]
+  tokens, token_ids = tokenize(primary_atom.string)
+  return token_ids
+
+
+def tokenize_rel(umls_rela, umls_rel_defs, tokenize):
+  rela_text = ' '.join(umls_rela.strip().split('_'))
+  _, token_ids = tokenize(rela_text)
+  return token_ids
+
+
+def metathesaurus_triples(umls_dir, output_dir, valid_relations, vocab_file):
   triples = set()
   conc2id = {}
+  rrf_file = os.path.join(umls_dir, 'META', 'MRREL.RRF')
+  conso_file = os.path.join(umls_dir, 'META', 'MRCONSO.RRF')
+
+  vocab = hgt.load_vocab(vocab_file)
+  tokenizer = hgt.WordpieceTokenizer(vocab)
 
   def add_concept(conc):
     if conc in conc2id:
@@ -20,74 +64,167 @@ def metathesaurus_triples(rrf_file, output_dir, valid_relations):
       conc2id[conc] = cid
     return cid
 
-  with open(rrf_file, 'r') as f:
-    reader = csv.reader(f, delimiter='|')
-    for row in tqdm(reader, desc="reading", total=37207861):
-      if row[7] in valid_relations:
-        sid = add_concept(row[0])
-        rid = add_concept(row[7])
-        oid = add_concept(row[4])
-        triples.add((sid, rid, oid))
+  def tokenize(text):
+    tokens = []
+    token_ids = []
+    # TODO simple whitespace tokenize, can do something more complicated later
+    w_tokens = text.strip().lower().split()
+    tokens.append('[CLS]')
+    token_ids.append(vocab['[CLS]'])
+    for w_t in w_tokens:
+      wpt_tokens = tokenizer.tokenize(w_t)
+      for wpt_t in wpt_tokens:
+        tokens.append(wpt_t)
+        token_ids.append(vocab[wpt_t])
 
+    tokens.append('[SEP]')
+    token_ids.append(vocab['[SEP]'])
+    return tokens, token_ids
+
+  def umls_rel_filter(x):
+    # remove recursive relations
+    # if x.cui2 == x.cui1:
+    #   return False
+    # if x.rel not in keep_rels:
+    #   return False
+    if x.rela not in valid_relations:
+      return False
+    # looking for unique relas
+    return True
+
+  umls_defs = defaultdict(list)
+  umls_contexts = defaultdict(list)
+  rel_defs = defaultdict(list)
+  token_ids = {}
+
+  rel_iter = umls_reader.read_umls(
+    rrf_file,
+    umls.UmlsRelation,
+    umls_filter=umls_rel_filter
+  )
+  rel_count = 0
+  # used for iterator estimate
+  total_matching_rel_count = 11391463
+  # prev values = 37207861 # TODO check with Ramon about these numbers & why so many rels skipped.
+  for rel in tqdm(rel_iter, desc="reading", total=total_matching_rel_count):
+    # TODO make sure this is the direction we want these relations to go
+    # TODO saw cui2 rela cui1 in documentation
+    # TODO make sure we only want named relations (rela is not empty)
+    # TODO consider flipping this to cui2 rela cui1 as per documentation.
+    sid = add_concept(rel.cui1)
+    rid = add_concept(rel.rela)
+    if rid not in token_ids:
+      token_ids[rid] = tokenize_rel(rel.rela, rel_defs, tokenize)
+    oid = add_concept(rel.cui2)
+    triples.add((sid, rid, oid))
+    rel_count += 1
+  print(f'Matching rel count: {rel_count}')
+
+  # TODO read in atoms other than only preferred.
+  languages = {'ENG'}
+  suppresses = {'O'}
+  tses = {'P'}
+  pfes = {'PF'}
+  isprefs = {'Y'}
+
+  def umls_atom_filter(x):
+    # filter out non-english atoms
+    # TODO allow other language atoms?
+    if x.lat not in languages:
+      return False
+    # TODO determine best way to filter atoms out
+    # Ignore atoms with suppress flag
+    # if x.suppress in suppresses:
+    #   return False
+    # Ignore non-ts preferred atoms
+    if x.ts not in tses:
+      return False
+    # Ignore non-stt preferred atoms
+    if x.stt not in pfes:
+      return False
+    # Ignore non-ispref atoms
+    if x.ispref not in isprefs:
+      return False
+    # ignore atoms for concepts of which there are no relations.
+    if x.cui not in conc2id:
+      return False
+    return True
+
+  print(f'Reading umls atoms...')
+  atom_count = 0
+  atom_iter = umls_reader.read_umls(
+      conso_file,
+      umls.UmlsAtom,
+      umls_filter=umls_atom_filter
+  )
+  total_matching_atom_count = 1563246
+  for atom in tqdm(atom_iter, desc="reading", total=total_matching_atom_count):
+    _, t_ids = tokenize(atom.string)
+    cid = conc2id[atom.cui]
+    # TODO make sure priority atom is first.
+    if cid not in token_ids:
+      token_ids[cid] = t_ids
+    atom_count += 1
+
+  print(f'Read {atom_count} atoms.')
+
+  token_lengths_dict = {x: len(y) for x, y in token_ids.items()}
+  token_lengths = np.zeros(len(token_lengths_dict), dtype=np.int32)
+  for cid, c_len in token_lengths_dict.items():
+    token_lengths[cid] = c_len
+  del token_lengths_dict
+  min_token_count = np.min(token_lengths)
+  max_token_count = np.max(token_lengths)
+  avg_token_count = np.mean(token_lengths)
+  percentile_token_count = np.percentile(token_lengths, 95)
+  # 2
+  print(f'Min token counts: {min_token_count}')
+  # 828
+  print(f'Max token counts: {max_token_count}')
+  # 9.9
+  print(f'Avg token counts: {avg_token_count}')
+  #
+  print(f'95 Percentile token counts: {percentile_token_count}')
+  pad_count = int(np.ceil(percentile_token_count))
+  # p_tokens = {}
+  print('Padding tokens...')
+  token_id_dict = token_ids
+  token_ids = np.zeros([len(token_id_dict), pad_count], dtype=np.int32)
+  for cid, t_ids in token_id_dict.items():
+    if len(t_ids) > pad_count:
+      token_ids[cid] = t_ids[:pad_count]
+    elif len(t_ids) < pad_count:
+      token_ids[cid] = t_ids + [0] * (pad_count - len(t_ids))
+    else:
+      token_ids[cid] = t_ids
+  del token_id_dict
   subjs, rels, objs = zip(*triples)
   snp = np.asarray(subjs, dtype=np.int32)
   rnp = np.asarray(rels, dtype=np.int32)
   onp = np.asarray(objs, dtype=np.int32)
 
-  id2conc = {v: k for k, v in conc2id.iteritems()}
+  id2conc = {v: k for k, v in conc2id.items()}
   concepts = [id2conc[i] for i in np.unique(np.concatenate((subjs, objs)))]
   relations = [id2conc[i] for i in set(rels)]
 
-  print("Saving %d unique triples to %s. %d concepts spanning %d relations" % (rnp.shape[0], output_dir, len(concepts),
-                                                                               len(relations)))
-
+  print(f"Saving {rnp.shape[0]} unique triples to {output_dir}.")
+  print(f"{len(concepts)} concepts spanning {len(relations)} relations")
   split(snp, rnp, onp, output_dir)
+  print('Saving dicts...')
+  with open(os.path.join(output_dir, 'name2id.json'), 'w+') as f:
+    json.dump(conc2id, f, indent=2)
+  with open(os.path.join(output_dir, 'concept_vocab.json'), 'w+') as f:
+    json.dump(concepts, f, indent=2)
+  with open(os.path.join(output_dir, 'relation_vocab.json'), 'w+') as f:
+    json.dump(relations, f, indent=2)
 
-  json.dump(conc2id, open(os.path.join(output_dir, 'name2id.json'), 'w+'))
-  json.dump(concepts, open(os.path.join(output_dir, 'concept_vocab.json'), 'w+'))
-  json.dump(relations, open(os.path.join(output_dir, 'relation_vocab.json'), 'w+'))
-
-
-def metathesaurus_triples_trimmed(rrf_file, output_dir, valid_concepts, valid_relations, important_concepts=None):
-  triples = set()
-  conc2id = {}
-
-  def add_concept(conc):
-    if conc in conc2id:
-      cid = conc2id[conc]
-    else:
-      cid = len(conc2id)
-      conc2id[conc] = cid
-    return cid
-
-  with open(rrf_file, 'r') as f:
-    reader = csv.reader(f, delimiter='|')
-    for row in tqdm(reader, desc="reading", total=37207861):
-      if (row[0] in valid_concepts and row[4] in valid_concepts and row[7] in valid_relations) or \
-           (important_concepts is not None and row[7] != '' and (row[0] in important_concepts or row[4] in important_concepts)):
-        sid = add_concept(row[0])
-        rid = add_concept(row[7])
-        oid = add_concept(row[4])
-        triples.add((sid, rid, oid))
-
-  subjs, rels, objs = zip(*triples)
-  snp = np.asarray(subjs, dtype=np.int32)
-  rnp = np.asarray(rels, dtype=np.int32)
-  onp = np.asarray(objs, dtype=np.int32)
-
-  id2conc = {v: k for k, v in conc2id.iteritems()}
-  concepts = [id2conc[i] for i in np.unique(np.concatenate((subjs, objs)))]
-  relations = [id2conc[i] for i in rels]
-
-  print("Saving %d unique triples to %s" % (rnp.shape[0], output_dir))
-
-  np.savez_compressed(os.path.join(output_dir, 'triples'),
-                      subj=snp,
-                      rel=rnp,
-                      obj=onp)
-  json.dump(conc2id, open(os.path.join(output_dir, 'name2id.json'), 'w+'))
-  json.dump(concepts, open(os.path.join(concepts, 'concept_vocab.json'), 'w+'))
-  json.dump(relations, open(os.path.join(relations, 'relation_vocab.json'), 'w+'))
+  print('Saving tokens...')
+  np.savez_compressed(
+    os.path.join(output_dir, 'id2tokens.npz'),
+    token_ids=token_ids,
+    token_lengths=token_lengths
+  )
+  print('Done!')
 
 
 def main():
@@ -101,7 +238,9 @@ def main():
 
   valid_relations = set([rel.strip() for rel in open(args.valid_relations)])
 
-  metathesaurus_triples(os.path.join(args.umls_dir, 'META', 'MRCONSO.RRF'), args.output, valid_relations)
+  vocab_file = '/shared/hltdir4/disk1/team/data/models/bert/uncased_L-24_H-1024_A-16/vocab.txt'
+  # Previously MRCONSO.RRF, changed to MRREL.RRF
+  metathesaurus_triples(args.umls_dir, args.output, valid_relations, vocab_file)
 
 
 if __name__ == "__main__":

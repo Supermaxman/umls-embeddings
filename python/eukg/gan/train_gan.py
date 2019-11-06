@@ -4,13 +4,12 @@ import math
 import random
 from tqdm import tqdm
 import numpy as np
-from itertools import izip
 
 from .. import Config
 from ..data import data_util, DataGenerator
 from ..emb import EmbeddingModel
-from Generator import GanGenerator
-import Discriminator
+from .Generator import GanGenerator
+from . import Discriminator
 
 
 # noinspection PyUnboundLocalVariable
@@ -97,7 +96,7 @@ def train():
     # config_map['val_idx'] = val_idx
 
     global_step = 0
-    for ep in xrange(config.num_epochs):
+    for ep in range(config.num_epochs):
       print('----------------------------')
       print('Begin Train Epoch %d' % ep)
       if use_semnet:
@@ -239,7 +238,7 @@ def train_epoch_sn(sess, discriminator, generator, sn_generator, config, data_ge
   console_update_interval = config.progress_update_interval
   idx_np = np.arange(config.num_generator_samples)
   sn_idx_np = np.arange(10)
-  for b, (mt_batch, sn_batch) in enumerate(izip(data_generator.generate_mt_gen_mode(True),
+  for b, (mt_batch, sn_batch) in enumerate(zip(data_generator.generate_mt_gen_mode(True),
                                                 data_generator.generate_sn_gen_mode(True))):
     verbose_batch = b > 0 and b % console_update_interval == 0
 

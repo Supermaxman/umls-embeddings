@@ -29,7 +29,7 @@ def load_metathesaurus_data(data_dir, val_proportion):
 
   cui2id = json.load(open(os.path.join(data_dir, 'name2id.json')))
   npz = np.load(os.path.join(data_dir, 'metathesaurus', 'train.npz'))
-  data = dict(npz.iteritems())
+  data = dict(npz.items())
   npz.close()
 
   perm = np.random.permutation(np.arange(len(data['rel'])))
@@ -43,7 +43,7 @@ def load_metathesaurus_data(data_dir, val_proportion):
 def load_semantic_network_data(data_dir, data_map):
   type2cuis = json.load(open(os.path.join(data_dir, 'semnet', 'semtype2cuis.json')))
   npz = np.load(os.path.join(data_dir, 'semnet', 'triples.npz'))
-  for key, val in npz.iteritems():
+  for key, val in npz.items():
     data_map['sn_' + key] = val
   npz.close()
 
@@ -52,7 +52,7 @@ def load_semantic_network_data(data_dir, data_map):
 
 def load_metathesaurus_test_data(data_dir):
   npz = np.load(os.path.join(data_dir, 'metathesaurus', 'test.npz'))
-  data = dict(npz.iteritems())
+  data = dict(npz.items())
   npz.close()
 
   return data
@@ -88,8 +88,8 @@ class NegativeSampler:
     self.concepts = list(concepts)
 
     # os.makedirs(cachedir)
-    # json.dump({k: list(v) for k, v in self.sr2o.iteritems()}, open(os.path.join(cachedir, 'sr2o.json'), 'w+'))
-    # json.dump({k: list(v) for k, v in self.or2s.iteritems()}, open(os.path.join(cachedir, 'or2s.json'), 'w+'))
+    # json.dump({k: list(v) for k, v in self.sr2o.items()}, open(os.path.join(cachedir, 'sr2o.json'), 'w+'))
+    # json.dump({k: list(v) for k, v in self.or2s.items()}, open(os.path.join(cachedir, 'or2s.json'), 'w+'))
     # json.dump(self.concepts, open(os.path.join(cachedir, 'concepts.json'), 'w+'))
 
   def _neg_sample(self, s_, r_, o_, replace_s):
@@ -114,7 +114,7 @@ class NegativeSampler:
   def _sample_k(self, subj, rel, obj, k):
     neg_subj = []
     neg_obj = []
-    for i in xrange(k):
+    for i in range(k):
       ns, no = self._neg_sample(subj, rel, obj, random.random > 0.5)
       neg_subj.append(ns)
       neg_obj.append(no)

@@ -3,12 +3,12 @@ import tensorflow as tf
 import numpy as np
 import math
 
-from tf_util import Trainer, ModelSaver
+from .tf_util import Trainer, ModelSaver
 
-from emb import EmbeddingModel
-from gan import Generator, train_gan, Discriminator
-import Config
-from data import data_util, DataGenerator
+from .emb import EmbeddingModel
+from .gan import Generator, train_gan, Discriminator
+from . import Config
+from .data import data_util, DataGenerator
 
 
 def train():

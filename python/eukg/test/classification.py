@@ -185,7 +185,6 @@ def evaluate_sn():
     print(metrics.classification_report(labels, predictions))
 
 
-
 if __name__ == "__main__":
   if config.eval_mode == 'sn':
     evaluate_sn()
