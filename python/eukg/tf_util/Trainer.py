@@ -3,8 +3,8 @@ import os
 from tqdm import tqdm
 import time
 
-from Trainable import Trainable
-from ModelSaver import ModelSaver, Policy
+from .Trainable import Trainable
+from .ModelSaver import ModelSaver, Policy
 
 
 def train(config, session, model, saver,

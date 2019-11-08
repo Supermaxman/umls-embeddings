@@ -49,7 +49,10 @@ def train():
   if not config_map['no_semantic_network']:
     config_map['type2cuis'] = type2cuis
 
-  with tf.Graph().as_default(), tf.Session() as session:
+  s_config = tf.ConfigProto()
+  s_config.gpu_options.allow_growth = True
+
+  with tf.Graph().as_default(), tf.Session(config=s_config) as session:
     # init model
     with tf.variable_scope(config.run_name):
       model = init_model(config, data_generator)

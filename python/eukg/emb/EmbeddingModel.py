@@ -225,3 +225,94 @@ class DistMult(TransE):
     for p in parameters:
       reg_term += tf.reduce_sum(tf.norm(self.embedding_lookup(p)))
     return reg_term
+
+# TODO
+class ACETransD(BaseModel):
+  def __init__(self, config, embeddings_dict=None):
+    BaseModel.__init__(self, config)
+    with tf.device("/%s:0" % self.embedding_device):
+      if embeddings_dict is None:
+        print('Initializing embeddings.')
+        self.embeddings = tf.get_variable("embeddings",
+                                          shape=[self.vocab_size, self.embedding_size],  # 364373
+                                          dtype=tf.float32,
+                                          initializer=layers.xavier_initializer())
+      else:
+        print('Loading embeddings.')
+        self.embeddings = tf.Variable(embeddings_dict['embs'], name="embeddings")
+    with tf.device("/%s:%d" % (self.embedding_device, 0 if self.embedding_device == 'cpu' else 0)):
+      if embeddings_dict is None or 'p_embs' not in embeddings_dict:
+        print('Initializing projection embeddings.')
+        if config.p_init == 'zeros':
+          p_init = tf.initializers.zeros()
+        elif config.p_init == 'xavier':
+          p_init = layers.xavier_initializer()
+        elif config.p_init == 'uniform':
+          p_init = tf.initializers.random_uniform(minval=-0.1, maxval=0.1, dtype=tf.float32)
+        else:
+          raise Exception('unrecognized p initializer: %s' % config.p_init)
+
+        # projection embeddings initialized to zeros
+        self.p_embeddings = tf.get_variable("p_embeddings",
+                                            shape=[self.vocab_size, self.embedding_size],
+                                            dtype=tf.float32,
+                                            initializer=p_init)
+      else:
+        print('Loading projection embeddings.')
+        self.p_embeddings = tf.Variable(embeddings_dict['p_embs'], name="p_embeddings")
+
+  def energy(self, head, rel, tail, norm_ord='euclidean'):
+    """
+        Computes the TransD energy of a relation triple
+        :param head: head concept embedding ids [batch_size]
+        :param rel: relation embedding ids [batch_size]
+        :param tail: tail concept embedding ids [batch_size]
+        :param norm_ord: norm order ['euclidean', 'fro', 'inf', 1, 2, 3, etc.]
+        :return: [batch_size] vector of energies
+        """
+    # x & x_proj both [batch_size, embedding_size]
+    h, h_proj = self.embedding_lookup(head)
+    r, r_proj = self.embedding_lookup(rel)
+    t, t_proj = self.embedding_lookup(tail)
+
+    # [batch_size]
+    return tf.norm(self.project(h, h_proj, r_proj) + r - self.project(t, t_proj, r_proj),
+                   ord=norm_ord,
+                   axis=1,
+                   keepdims=False,
+                   name="energy")
+
+  # noinspection PyMethodMayBeStatic
+  def project(self, c, c_proj, r_proj):
+    """
+    Computes the projected concept embedding for relation r according to TransD:
+      (c_proj^T*c)*r_proj + c
+    :param c: concept embeddings [batch_size, embedding_size]
+    :param c_proj: concept projection embeddings [batch_size, embedding_size]
+    :param r_proj: relation projection embeddings [batch_size, embedding_size]
+    :return: projected concept embedding [batch_size, embedding_size]
+    """
+    return c + tf.reduce_sum(c * c_proj, axis=-1, keepdims=True) * r_proj
+
+  def embedding_lookup(self, ids):
+    with tf.device("/%s:0" % self.embedding_device):
+      params1 = tf.nn.embedding_lookup(self.embeddings, ids)
+    with tf.device("/%s:%d" % (self.embedding_device, 1 if self.embedding_device == 'cpu' else 0)):
+      params2 = tf.nn.embedding_lookup(self.p_embeddings, ids)
+    return params1, params2
+
+  def normalize_parameters(self):
+    """
+    Normalizes the vectors of embeddings corresponding to the passed ids
+    :return: the normalization op
+    """
+    with tf.device("/%s:0" % self.embedding_device):
+      params1 = tf.nn.embedding_lookup(self.embeddings, self.ids_to_update)
+    with tf.device("/%s:%d" % (self.embedding_device, 1 if self.embedding_device == 'cpu' else 0)):
+      params2 = tf.nn.embedding_lookup(self.p_embeddings, self.ids_to_update)
+
+    n1 = self.normalize(params1, self.embeddings, self.ids_to_update)
+    n2 = self.normalize(params2, self.p_embeddings, self.ids_to_update)
+    self.norm_op = n1, n2
+
+    return self.norm_op
