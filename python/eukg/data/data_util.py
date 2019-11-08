@@ -40,6 +40,12 @@ def load_metathesaurus_data(data_dir, val_proportion):
   return cui2id, data, train_idx, val_idx
 
 
+def load_metathesaurus_token_data(data_dir):
+  npz = np.load(os.path.join(data_dir, 'id2tokens.npz'))
+  data = dict(npz.items())
+  npz.close()
+  return data
+
 def load_semantic_network_data(data_dir, data_map):
   type2cuis = json.load(open(os.path.join(data_dir, 'semnet', 'semtype2cuis.json')))
   npz = np.load(os.path.join(data_dir, 'semnet', 'triples.npz'))

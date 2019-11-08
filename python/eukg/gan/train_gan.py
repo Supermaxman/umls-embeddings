@@ -10,6 +10,7 @@ from ..data import data_util, DataGenerator
 from ..emb import EmbeddingModel
 from .Generator import GanGenerator
 from . import Discriminator
+from ..emb import AceModel
 
 
 # noinspection PyUnboundLocalVariable
@@ -42,17 +43,24 @@ def train():
   data_generator = DataGenerator.DataGenerator(data, train_idx, val_idx, config, type2cuis)
 
   with tf.Graph().as_default(), tf.Session() as session:
-    # init models
+    if config.ace_model:
+      t_data = data_util.load_metathesaurus_token_data(config.data_dir)
+      ace_model = AceModel.ACEModel(config, t_data)
+    else:
+      ace_model = None
     with tf.variable_scope(config.dis_run_name):
-      discriminator = init_model(config, 'disc')
+      discriminator = init_model(config, 'disc', ace_model)
     with tf.variable_scope(config.gen_run_name):
       config.no_semantic_network = True
       config.learning_rate = 1e-1
-      generator = init_model(config, 'gen')
+      generator = init_model(config, 'gen', ace_model)
     if use_semnet:
       with tf.variable_scope(config.sn_gen_run_name):
         config.no_semantic_network = False
-        sn_generator = init_model(config, 'sn_gen')
+        sn_generator = init_model(config, 'sn_gen', ace_model)
+
+    # init models
+    ace_model.init_from_checkpoint(config.encoder_checkpoint)
 
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()
@@ -115,23 +123,36 @@ def train():
       validation_epoch(session, discriminator, config, data_generator, val_summary_writer, global_step)
 
 
-def init_model(config, mode):
+def init_model(config, mode, ace_model=None):
   print('Initializing %s model...' % mode)
 
   if mode == 'disc':
-    if config.model == 'transe':
-      em = EmbeddingModel.TransE(config)
-    elif config.model == 'transd':
-      # config.embedding_size = config.embedding_size / 2
-      em = EmbeddingModel.TransD(config)
-      # config.embedding_size = config.embedding_size * 2
+    if not config.ace_model:
+      if config.model == 'transe':
+        em = EmbeddingModel.TransE(config)
+      elif config.model == 'transd':
+        # TODO ask if these embeddings should be reduced here.
+        # config.embedding_size = config.embedding_size / 2
+        em = EmbeddingModel.TransD(config)
+        # config.embedding_size = config.embedding_size * 2
+      else:
+        raise ValueError('Unrecognized model type: %s' % config.model)
     else:
-      raise ValueError('Unrecognized model type: %s' % config.model)
+      if config.model == 'transd':
+        em = EmbeddingModel.TransDACE(config, ace_model)
+      else:
+        raise ValueError('Unrecognized model type: %s' % config.model)
+
     model = Discriminator.BaseModel(config, em)
   elif mode == 'gen':
-    em = EmbeddingModel.DistMult(config)
+    if not config.ace_model:
+      em = EmbeddingModel.DistMult(config)
+    else:
+      em = EmbeddingModel.DistMultACE(config, ace_model)
     model = GanGenerator(config, em)
   elif mode == 'sn_gen':
+    if config.ace_model:
+      raise ValueError('Unrecognized ace model type')
     em = EmbeddingModel.DistMult(config)
     model = GanGenerator(config, em)
   else:

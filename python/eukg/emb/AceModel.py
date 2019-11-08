@@ -1,0 +1,141 @@
+
+import tensorflow as tf
+from bert import modeling
+
+
+class ACEModel(object):
+  def __init__(self, config, tokens_dict):
+    self.embedding_size = config.embedding_size
+    self.embedding_device = config.embedding_device
+    self.vocab_size = config.vocab_size
+    self.bert_config = modeling.BertConfig.from_json_file(config.bert_config)
+    self.bert_rnn_layers = config.encoder_rnn_layers
+    self.bert_rnn_size = config.encoder_rnn_size
+    self.train_bert = config.train_bert
+    with tf.variable_scope('ace_encoder') as scope:
+      self.scope = scope
+    with tf.variable_scope('bert', reuse=tf.AUTO_REUSE) as bert_scope:
+      self.bert_scope = bert_scope
+
+    print('Loading tokens.')
+    with tf.variable_scope(self.scope):
+      self.token_ids = tf.Variable(tokens_dict['token_ids'], name="token_ids")
+      self.token_lengths = tf.Variable(tokens_dict['token_lengths'], name='token_lengths')
+
+  def tokens_to_embeddings(self, token_ids, token_lengths, emb_type):
+    # TODO determine proper reuse of bert, prob keep same weights for both concepts & relations
+    with tf.variable_scope(self.bert_scope) as scope:
+      input_mask = tf.sequence_mask(
+          token_lengths,
+          maxlen=tf.shape(token_ids)[1],
+          dtype=tf.int32
+      )
+      bert_model = modeling.BertModel(
+        config=self.bert_config,
+        is_training=False, # TODO determine if we want to use dropout during training
+        input_ids=token_ids,
+        input_mask=input_mask,
+        scope=scope
+      )
+      encoder_seq_out = bert_model.get_sequence_output()
+      # If we do not want to train BERT at all and leave it frozen then stop gradients at output.
+      if not self.train_bert:
+        encoder_seq_out = tf.stop_gradient(encoder_seq_out)
+
+    with tf.variable_scope(self.scope):
+      # TODO determine proper reuse of rnn layer (reuse between concepts, maybe new for rels?)
+      with tf.variable_scope(f'rnn_{emb_type}_encoder', reuse=tf.AUTO_REUSE) as scope:
+        encoder_out = rnn_encoder(
+          encoder_seq_out,
+          token_lengths,
+          nrof_layers=self.bert_rnn_layers,
+          nrof_units=self.bert_rnn_size,
+          reuse=tf.AUTO_REUSE
+        )
+      # TODO determine proper reuse of final linear layer (reuse between concepts, maybe new for rels?)
+      with tf.variable_scope(f'encoder_{emb_type}_proj', reuse=tf.AUTO_REUSE) as scope:
+        l_embeddings = tf.layers.dense(
+          inputs=encoder_out,
+          units=self.embedding_size,
+          activation=None,
+          name='embeddings'
+        )
+        l_embeddings_proj = tf.layers.dense(
+          inputs=encoder_out,
+          units=self.embedding_size,
+          activation=None,
+          name='embeddings_proj'
+        )
+        return l_embeddings, l_embeddings_proj
+
+  def embedding_lookup(self, ids, emb_type):
+    """
+    returns embedding vectors or tuple of embedding vectors for the passed ids
+    :param ids: ids of embedding vectors in an embedding matrix
+    :param emb_type: type of id embedding (concept, rel).
+    :return: embedding vectors or tuple of embedding vectors for the passed ids
+    """
+    assert emb_type is not None
+    token_ids = tf.nn.embedding_lookup(self.token_ids, ids)
+    token_lengths = tf.nn.embedding_lookup(self.token_lengths, ids)
+    return self.tokens_to_embeddings(token_ids, token_lengths, emb_type)
+
+  def init_from_checkpoint(self, init_checkpoint):
+    t_vars = tf.trainable_variables()
+    (assignment_map, initialized_variable_names) = modeling.get_assignment_map_from_checkpoint(
+      t_vars,
+      init_checkpoint
+    )
+    tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
+
+    for trainable_var in t_vars:
+      init_string = ""
+      if trainable_var.name in initialized_variable_names:
+        init_string = '*INIT_FROM_CKPT*'
+      print(f'{trainable_var.name}: {trainable_var.get_shape()} {init_string}')
+
+
+def rnn_encoder(input_embs, input_lengths, nrof_layers, nrof_units, reuse=tf.AUTO_REUSE):
+  seq_output_indices = input_lengths - 1
+  with tf.variable_scope('forward', reuse=reuse) as scope:
+    rnn_forward = tf.contrib.cudnn_rnn.CudnnGRU(
+      num_layers=nrof_layers,
+      num_units=nrof_units
+    )
+    input_embs_seq_major = tf.transpose(input_embs, [1, 0, 2])
+    encoder_forward_seq_major, _ = rnn_forward(input_embs_seq_major, scope=scope)
+    encoder_forward = tf.transpose(encoder_forward_seq_major, [1, 0, 2])
+    encoder_forward = extract_last_seq_axis(encoder_forward, seq_output_indices)
+
+  with tf.variable_scope('backward', reuse=reuse) as scope:
+    rnn_backward = tf.contrib.cudnn_rnn.CudnnGRU(
+      num_layers=nrof_layers,
+      num_units=nrof_units
+    )
+    input_embs_rev = tf.reverse_sequence(
+      input_embs,
+      input_lengths,
+      seq_axis=1,
+      batch_axis=0)
+    input_embs_seq_major_rev = tf.transpose(input_embs_rev, [1, 0, 2])
+    encoder_backward_seq_major_rev, _ = rnn_backward(input_embs_seq_major_rev, scope=scope)
+    encoder_backward = tf.transpose(encoder_backward_seq_major_rev, [1, 0, 2])
+    encoder_backward = extract_last_seq_axis(encoder_backward, seq_output_indices)
+
+  encoder_out = tf.concat([encoder_forward, encoder_backward], axis=1)
+  return encoder_out
+
+
+def extract_last_seq_axis(data, ind):
+    """
+    Get specified elements along the first axis of tensor.
+    :param data: Tensorflow tensor that will be subsetted.
+    :param ind: Indices to take (one for each element along axis 0 of data).
+    :return: Subsetted tensor.
+    """
+
+    batch_range = tf.cast(tf.range(tf.shape(data)[0]), tf.int64)
+    indices = tf.stack([batch_range, tf.cast(ind, tf.int64)], axis=1)
+    res = tf.gather_nd(data, indices)
+
+    return res

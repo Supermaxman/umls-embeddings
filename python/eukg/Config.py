@@ -61,4 +61,23 @@ tf.flags.DEFINE_string("energy_activation", 'sigmoid',
                        "Energy activation function [None, tanh, relu, sigmoid]")
 
 
+tf.flags.DEFINE_bool("ace_model", False, "Train Atom Concept Embedding model where embeddings are a learned function"
+                                        "of the atoms and relation tokens.")
+
+tf.flags.DEFINE_string("encoder_checkpoint",
+                       '/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_model.ckpt',
+                       "Checkpoint path for embedding encoder network. Start with bert pre-trained.")
+
+
+tf.flags.DEFINE_string("bert_config", '/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_config.json',
+                       "Config path for pre-trained bert model.")
+tf.flags.DEFINE_string("bert_vocab", '/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_vocab.txt',
+                       "Vocab path for pre-trained bert model.")
+
+tf.flags.DEFINE_integer("encoder_rnn_layers", 1, "Number of layers of encoder rnn.")
+tf.flags.DEFINE_integer("encoder_rnn_size", 64, "Size of encoder rnn.")
+
+tf.flags.DEFINE_bool("train_bert", True, "Jointly train bert encoder.")
+
+
 flags = tf.flags.FLAGS

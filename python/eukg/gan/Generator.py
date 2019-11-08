@@ -51,8 +51,8 @@ class Generator(BaseModel):
     # regularization for distmult
     if self.model == "distmult":
       reg = self.regulatization_parameter * self.embedding_model.regularization([self.pos_subj, self.pos_obj,
-                                                                                 self.neg_subj, self.neg_obj,
-                                                                                 self.relations])
+                                                                                 self.neg_subj, self.neg_obj],
+                                                                                 [self.relations])
       summary += [tf.summary.scalar('reg', reg),
                   tf.summary.scalar('log_prob', self.loss)]
       self.loss += reg

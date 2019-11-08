@@ -25,10 +25,11 @@ class BaseModel:
     """
     raise NotImplementedError("subclass should implement")
 
-  def embedding_lookup(self, ids):
+  def embedding_lookup(self, ids, emb_type=None):
     """
     returns embedding vectors or tuple of embedding vectors for the passed ids
     :param ids: ids of embedding vectors in an embedding matrix
+    :param emb_type: embedding type of ids
     :return: embedding vectors or tuple of embedding vectors for the passed ids
     """
     raise NotImplementedError("subclass should implement")
@@ -78,7 +79,7 @@ class TransE(BaseModel):
                    keepdims=False,
                    name='energy')
 
-  def embedding_lookup(self, ids):
+  def embedding_lookup(self, ids, emb_type=None):
     with tf.device("/%s:0" % self.embedding_device):
       return tf.nn.embedding_lookup(self.embeddings, ids)
 
@@ -159,7 +160,7 @@ class TransD(BaseModel):
     """
     return c + tf.reduce_sum(c * c_proj, axis=-1, keepdims=True) * r_proj
 
-  def embedding_lookup(self, ids):
+  def embedding_lookup(self, ids, emb_type=None):
     with tf.device("/%s:0" % self.embedding_device):
       params1 = tf.nn.embedding_lookup(self.embeddings, ids)
     with tf.device("/%s:%d" % (self.embedding_device, 1 if self.embedding_device == 'cpu' else 0)):
@@ -220,46 +221,17 @@ class DistMult(TransE):
   def normalize_parameters(self):
     return tf.no_op()
 
-  def regularization(self, parameters):
+  def regularization(self, c_parameters, r_parameters):
     reg_term = 0
-    for p in parameters:
+    for p in c_parameters + r_parameters:
       reg_term += tf.reduce_sum(tf.norm(self.embedding_lookup(p)))
     return reg_term
 
-# TODO
-class ACETransD(BaseModel):
-  def __init__(self, config, embeddings_dict=None):
-    BaseModel.__init__(self, config)
-    with tf.device("/%s:0" % self.embedding_device):
-      if embeddings_dict is None:
-        print('Initializing embeddings.')
-        self.embeddings = tf.get_variable("embeddings",
-                                          shape=[self.vocab_size, self.embedding_size],  # 364373
-                                          dtype=tf.float32,
-                                          initializer=layers.xavier_initializer())
-      else:
-        print('Loading embeddings.')
-        self.embeddings = tf.Variable(embeddings_dict['embs'], name="embeddings")
-    with tf.device("/%s:%d" % (self.embedding_device, 0 if self.embedding_device == 'cpu' else 0)):
-      if embeddings_dict is None or 'p_embs' not in embeddings_dict:
-        print('Initializing projection embeddings.')
-        if config.p_init == 'zeros':
-          p_init = tf.initializers.zeros()
-        elif config.p_init == 'xavier':
-          p_init = layers.xavier_initializer()
-        elif config.p_init == 'uniform':
-          p_init = tf.initializers.random_uniform(minval=-0.1, maxval=0.1, dtype=tf.float32)
-        else:
-          raise Exception('unrecognized p initializer: %s' % config.p_init)
 
-        # projection embeddings initialized to zeros
-        self.p_embeddings = tf.get_variable("p_embeddings",
-                                            shape=[self.vocab_size, self.embedding_size],
-                                            dtype=tf.float32,
-                                            initializer=p_init)
-      else:
-        print('Loading projection embeddings.')
-        self.p_embeddings = tf.Variable(embeddings_dict['p_embs'], name="p_embeddings")
+class TransDACE(BaseModel):
+  def __init__(self, config, ace_model):
+    BaseModel.__init__(self, config)
+    self.ace_model = ace_model
 
   def energy(self, head, rel, tail, norm_ord='euclidean'):
     """
@@ -271,9 +243,9 @@ class ACETransD(BaseModel):
         :return: [batch_size] vector of energies
         """
     # x & x_proj both [batch_size, embedding_size]
-    h, h_proj = self.embedding_lookup(head)
-    r, r_proj = self.embedding_lookup(rel)
-    t, t_proj = self.embedding_lookup(tail)
+    h, h_proj = self.embedding_lookup(head, 'concept')
+    r, r_proj = self.embedding_lookup(rel, 'rel')
+    t, t_proj = self.embedding_lookup(tail, 'concept')
 
     # [batch_size]
     return tf.norm(self.project(h, h_proj, r_proj) + r - self.project(t, t_proj, r_proj),
@@ -294,25 +266,58 @@ class ACETransD(BaseModel):
     """
     return c + tf.reduce_sum(c * c_proj, axis=-1, keepdims=True) * r_proj
 
-  def embedding_lookup(self, ids):
-    with tf.device("/%s:0" % self.embedding_device):
-      params1 = tf.nn.embedding_lookup(self.embeddings, ids)
-    with tf.device("/%s:%d" % (self.embedding_device, 1 if self.embedding_device == 'cpu' else 0)):
-      params2 = tf.nn.embedding_lookup(self.p_embeddings, ids)
+  def embedding_lookup(self, ids, emb_type=None):
+    assert emb_type is not None
+    params1, params2 = self.ace_model.embedding_lookup(ids, emb_type)
+
+    # TODO determine if this is good enough for normalization.
+    params1 = tf.nn.l2_normalize(params1, axis=-1)
+    params2 = tf.nn.l2_normalize(params2, axis=-1)
+
     return params1, params2
 
   def normalize_parameters(self):
-    """
-    Normalizes the vectors of embeddings corresponding to the passed ids
-    :return: the normalization op
-    """
-    with tf.device("/%s:0" % self.embedding_device):
-      params1 = tf.nn.embedding_lookup(self.embeddings, self.ids_to_update)
-    with tf.device("/%s:%d" % (self.embedding_device, 1 if self.embedding_device == 'cpu' else 0)):
-      params2 = tf.nn.embedding_lookup(self.p_embeddings, self.ids_to_update)
-
-    n1 = self.normalize(params1, self.embeddings, self.ids_to_update)
-    n2 = self.normalize(params2, self.p_embeddings, self.ids_to_update)
-    self.norm_op = n1, n2
-
+    self.norm_op = tf.no_op()
     return self.norm_op
+
+
+class DistMultACE(BaseModel):
+  def __init__(self, config, ace_model):
+    BaseModel.__init__(self, config)
+    self.ace_model = ace_model
+    if config.energy_activation == 'relu':
+      self.energy_activation = tf.nn.relu
+    elif config.energy_activation == 'tanh':
+      self.energy_activation = tf.nn.tanh
+    elif config.energy_activation == 'sigmoid':
+      self.energy_activation = tf.nn.sigmoid
+    elif config.energy_activation is None:
+      self.energy_activation = lambda x: x
+    else:
+      raise Exception('Unrecognized activation: %s' % config.energy_activation)
+
+  def energy(self, head, rel, tail, norm_ord='euclidean'):
+    h = self.embedding_lookup(head, 'concept')
+    r = self.embedding_lookup(rel, 'rel')
+    t = self.embedding_lookup(tail, 'concept')
+
+    return self.energy_activation(tf.reduce_sum(h * r * t,
+                                                axis=-1,
+                                                keepdims=False))
+
+  def normalize_parameters(self):
+    return tf.no_op()
+
+  def regularization(self, c_parameters, r_parameters):
+    reg_term = 0
+    for p in c_parameters:
+      reg_term += tf.reduce_sum(tf.norm(self.embedding_lookup(p, 'concept')))
+    for p in r_parameters:
+      reg_term += tf.reduce_sum(tf.norm(self.embedding_lookup(p, 'rel')))
+    return reg_term
+
+  def embedding_lookup(self, ids, emb_type=None):
+    assert emb_type is not None
+    params1, _ = self.ace_model.embedding_lookup(ids, emb_type)
+    return params1
+

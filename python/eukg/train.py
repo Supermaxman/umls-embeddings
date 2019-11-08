@@ -9,6 +9,7 @@ from .emb import EmbeddingModel
 from .gan import Generator, train_gan, Discriminator
 from . import Config
 from .data import data_util, DataGenerator
+from .emb import AceModel
 
 
 def train():
@@ -53,10 +54,18 @@ def train():
   s_config.gpu_options.allow_growth = True
 
   with tf.Graph().as_default(), tf.Session(config=s_config) as session:
-    # init model
+    if config.ace_model:
+      t_data = data_util.load_metathesaurus_token_data(config.data_dir)
+      ace_model = AceModel.ACEModel(config, t_data)
+    else:
+      ace_model = None
+
     with tf.variable_scope(config.run_name):
-      model = init_model(config, data_generator)
+      model = init_model(config, data_generator, ace_model)
       # session.run(model.train_init_op)
+
+    # init models
+    ace_model.init_from_checkpoint(config.encoder_checkpoint)
 
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()
@@ -98,19 +107,28 @@ def train():
                   max_batches_per_epoch=config_map['max_batches_per_epoch'])
 
 
-def init_model(config, data_generator):
+def init_model(config, data_generator, ace_model=None):
   print('Initializing %s embedding model in %s mode...' % (config.model, config.mode))
   npz = np.load(config.embedding_file) if config.load_embeddings else None
 
-  if config.model == 'transe':
-    em = EmbeddingModel.TransE(config, embeddings_dict=npz)
-  elif config.model == 'transd':
-    config.embedding_size = config.embedding_size / 2
-    em = EmbeddingModel.TransD(config, embeddings_dict=npz)
-  elif config.model == 'distmult':
-    em = EmbeddingModel.DistMult(config, embeddings_dict=npz)
+  if not config.ace_model:
+    if config.model == 'transe':
+      em = EmbeddingModel.TransE(config, embeddings_dict=npz)
+    elif config.model == 'transd':
+      config.embedding_size = config.embedding_size / 2
+      em = EmbeddingModel.TransD(config, embeddings_dict=npz)
+    elif config.model == 'distmult':
+      em = EmbeddingModel.DistMult(config, embeddings_dict=npz)
+    else:
+      raise ValueError('Unrecognized model type: %s' % config.model)
   else:
-    raise ValueError('Unrecognized model type: %s' % config.model)
+    if config.model == 'transd':
+      config.embedding_size = config.embedding_size / 2
+      em = EmbeddingModel.TransDACE(config, ace_model)
+    elif config.model == 'distmult':
+      em = EmbeddingModel.DistMultACE(config, ace_model)
+    else:
+      raise ValueError('Unrecognized model type: %s' % config.model)
 
   if config.mode == 'disc':
     model = Discriminator.BaseModel(config, em, data_generator)
