@@ -52,21 +52,7 @@ class ACEModel(object):
           nrof_units=self.bert_rnn_size,
           reuse=tf.AUTO_REUSE
         )
-      # TODO determine proper reuse of final linear layer (reuse between concepts, maybe new for rels?)
-      with tf.variable_scope(f'encoder_{emb_type}_proj', reuse=tf.AUTO_REUSE) as scope:
-        l_embeddings = tf.layers.dense(
-          inputs=encoder_out,
-          units=self.embedding_size,
-          activation=None,
-          name='embeddings'
-        )
-        l_embeddings_proj = tf.layers.dense(
-          inputs=encoder_out,
-          units=self.embedding_size,
-          activation=None,
-          name='embeddings_proj'
-        )
-        return l_embeddings, l_embeddings_proj
+      return encoder_out
 
   def embedding_lookup(self, ids, emb_type):
     """
@@ -122,7 +108,7 @@ def rnn_encoder(input_embs, input_lengths, nrof_layers, nrof_units, reuse=tf.AUT
     encoder_backward = tf.transpose(encoder_backward_seq_major_rev, [1, 0, 2])
     encoder_backward = extract_last_seq_axis(encoder_backward, seq_output_indices)
 
-  encoder_out = tf.concat([encoder_forward, encoder_backward], axis=1)
+  encoder_out = tf.concat([encoder_forward, encoder_backward], axis=1, name='encoder_out')
   return encoder_out
 
 

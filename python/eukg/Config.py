@@ -36,6 +36,7 @@ tf.flags.DEFINE_string("gen_run_name", "dm-gen", "Run name for the generator mod
 tf.flags.DEFINE_string("sn_gen_run_name", "dm-sn-gen", "Run name for the semnet generator model")
 
 # model params
+# TODO consider alternatives, like higher gamma
 tf.flags.DEFINE_float("learning_rate", 1e-5, "Starting learning rate")
 tf.flags.DEFINE_float("decay_rate", 0.96, "LR decay rate")
 tf.flags.DEFINE_float("momentum", 0.9, "Momentum")
@@ -78,6 +79,7 @@ tf.flags.DEFINE_integer("encoder_rnn_layers", 1, "Number of layers of encoder rn
 tf.flags.DEFINE_integer("encoder_rnn_size", 64, "Size of encoder rnn.")
 
 tf.flags.DEFINE_bool("train_bert", True, "Jointly train bert encoder.")
+tf.flags.DEFINE_integer("seed", 1337, "Random seed.")
 
 
 flags = tf.flags.FLAGS

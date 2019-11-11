@@ -62,6 +62,7 @@ class DataGenerator:
     nsubj, nobj = self.sampler.sample(subj, rel, obj)
     num_batches = int(math.floor(float(len(idxs)) / batch_size))
     print('\n\ngenerating %d batches' % num_batches)
+    # TODO queueing data generator
     for b in range(num_batches):
       idx = idxs[b * batch_size: (b + 1) * batch_size]
       yield rel[idx], subj[idx], obj[idx], nsubj[idx], nobj[idx]
@@ -72,6 +73,7 @@ class DataGenerator:
     subj, rel, obj = self.data['subj'], self.data['rel'], self.data['obj']
     num_batches = int(math.floor(float(len(idxs)) / batch_size))
     print('\n\ngenerating %d batches in generation mode' % num_batches)
+    # TODO queueing data generator
     for b in range(num_batches):
       idx = idxs[b * batch_size: (b + 1) * batch_size]
       sampl_subj, sampl_obj = self.sampler.sample_for_generator(subj[idx], rel[idx], obj[idx],
@@ -217,6 +219,11 @@ class NegativeSampler:
       return [c for c in self.concepts if c not in self.or2s[(obj, rel)]]
     else:
       return [c for c in self.concepts if c not in self.sr2o[(subj, rel)]]
+
+
+# TODO create normal and lazy data generators for word piece token info, etc.
+class AceDataGenerator:
+  pass
 
 
 def get_next_k_idxs(all_idxs, k, offset):

@@ -232,6 +232,8 @@ class TransDACE(BaseModel):
   def __init__(self, config, ace_model):
     BaseModel.__init__(self, config)
     self.ace_model = ace_model
+    with tf.variable_scope('embeddings') as e_scope:
+      self.embedding_scope = e_scope
 
   def energy(self, head, rel, tail, norm_ord='euclidean'):
     """
@@ -268,13 +270,27 @@ class TransDACE(BaseModel):
 
   def embedding_lookup(self, ids, emb_type=None):
     assert emb_type is not None
-    params1, params2 = self.ace_model.embedding_lookup(ids, emb_type)
 
-    # TODO determine if this is good enough for normalization.
-    params1 = tf.nn.l2_normalize(params1, axis=-1)
-    params2 = tf.nn.l2_normalize(params2, axis=-1)
+    encoder_out = self.ace_model.embedding_lookup(ids, emb_type)
+    with tf.variable_scope(self.embedding_scope):
+      with tf.variable_scope(f'{emb_type}_embeddings', reuse=tf.AUTO_REUSE):
+        embeddings = tf.layers.dense(
+          inputs=encoder_out,
+          units=self.embedding_size,
+          activation=None,
+          name='embeddings'
+        )
+        embeddings_proj = tf.layers.dense(
+          inputs=encoder_out,
+          units=self.embedding_size,
+          activation=None,
+          name='embeddings_proj'
+        )
 
-    return params1, params2
+    embeddings = tf.nn.l2_normalize(embeddings, axis=-1)
+    embeddings_proj = tf.nn.l2_normalize(embeddings_proj, axis=-1)
+
+    return embeddings, embeddings_proj
 
   def normalize_parameters(self):
     self.norm_op = tf.no_op()
@@ -295,6 +311,8 @@ class DistMultACE(BaseModel):
       self.energy_activation = lambda x: x
     else:
       raise Exception('Unrecognized activation: %s' % config.energy_activation)
+    with tf.variable_scope('embeddings') as e_scope:
+      self.embedding_scope = e_scope
 
   def energy(self, head, rel, tail, norm_ord='euclidean'):
     h = self.embedding_lookup(head, 'concept')
@@ -318,6 +336,14 @@ class DistMultACE(BaseModel):
 
   def embedding_lookup(self, ids, emb_type=None):
     assert emb_type is not None
-    params1, _ = self.ace_model.embedding_lookup(ids, emb_type)
-    return params1
+    encoder_out = self.ace_model.embedding_lookup(ids, emb_type)
+    with tf.variable_scope(self.embedding_scope):
+      with tf.variable_scope(f'{emb_type}_embeddings', reuse=tf.AUTO_REUSE):
+        embeddings = tf.layers.dense(
+          inputs=encoder_out,
+          units=self.embedding_size,
+          activation=None,
+          name='embeddings'
+        )
+    return embeddings
 

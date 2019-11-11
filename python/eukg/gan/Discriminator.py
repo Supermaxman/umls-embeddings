@@ -24,7 +24,7 @@ class BaseModel(Trainable):
     # class variable declarations
     self.batch_size = config.batch_size
     # self.embedding_size = config.embedding_size
-    self.vocab_size = config.vocab_size
+    # self.vocab_size = config.vocab_size
     self.gamma = config.gamma
     self.embedding_device = config.embedding_device
     self.max_concepts_per_type = config.max_concepts_per_type

@@ -52,11 +52,11 @@ def train(config, session, model, saver,
       global it
       for b in range(max_batches_per_epoch):
         try:
-          yield it.next()
+          yield next(it)
         except StopIteration:
           print('WARNING: reached the end of training data. Looping over it again.')
           it = iter(model.data_provider(config, True))
-          yield it.next()
+          yield next(it)
     train_data_provider = bounded_train_data_provider
 
   # train

@@ -5,6 +5,7 @@ import json
 from tqdm import tqdm
 import argparse
 from collections import defaultdict
+import random
 
 import hedgedog.nlp.wordpiece_tokenization as hgt
 
@@ -48,6 +49,10 @@ def tokenize_rel(umls_rela, umls_rel_defs, tokenize):
 
 
 def metathesaurus_triples(umls_dir, output_dir, valid_relations, vocab_file):
+  # TODO completely restructure way this data is generated.
+  # TODO first generate triples, then
+  # TODO create file structure with kept atoms, definitions, contexts, etc.
+  # TODO and create dataset loader, can be queued.
   triples = set()
   conc2id = {}
   rrf_file = os.path.join(umls_dir, 'META', 'MRREL.RRF')
@@ -183,7 +188,7 @@ def metathesaurus_triples(umls_dir, output_dir, valid_relations, vocab_file):
   print(f'Max token counts: {max_token_count}')
   # 9.9
   print(f'Avg token counts: {avg_token_count}')
-  #
+  # 31
   print(f'95 Percentile token counts: {percentile_token_count}')
   pad_count = int(np.ceil(percentile_token_count))
   # p_tokens = {}
@@ -233,8 +238,13 @@ def main():
   parser.add_argument('--output', default='data', help='the compressed numpy file to be created')
   parser.add_argument('--valid_relations', default='data/valid_rels.txt',
                       help='plaintext list of relations we want to extract triples for, one per line.')
+  parser.add_argument('--seed', default=1337,
+                      help='Random seed.')
 
   args = parser.parse_args()
+  seed = args.seed
+  random.seed(seed)
+  np.random.seed(seed)
 
   valid_relations = set([rel.strip() for rel in open(args.valid_relations)])
 

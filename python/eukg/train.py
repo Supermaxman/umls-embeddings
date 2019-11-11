@@ -11,9 +11,15 @@ from . import Config
 from .data import data_util, DataGenerator
 from .emb import AceModel
 
+import random
+import numpy as np
+
 
 def train():
   config = Config.flags
+  seed = config.seed
+  random.seed(seed)
+  np.random.seed(seed)
 
   if config.mode == 'gan':
     train_gan.train()
@@ -54,6 +60,7 @@ def train():
   s_config.gpu_options.allow_growth = True
 
   with tf.Graph().as_default(), tf.Session(config=s_config) as session:
+    tf.set_random_seed(seed)
     if config.ace_model:
       t_data = data_util.load_metathesaurus_token_data(config.data_dir)
       ace_model = AceModel.ACEModel(config, t_data)
@@ -65,7 +72,8 @@ def train():
       # session.run(model.train_init_op)
 
     # init models
-    ace_model.init_from_checkpoint(config.encoder_checkpoint)
+    if config.ace_model:
+      ace_model.init_from_checkpoint(config.encoder_checkpoint)
 
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()

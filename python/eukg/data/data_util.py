@@ -5,7 +5,6 @@ import sys
 import math
 import os
 import json
-import random
 
 
 def negative_sampling_from_file(np_file):
@@ -25,8 +24,6 @@ def negative_sampling_from_file(np_file):
 
 
 def load_metathesaurus_data(data_dir, val_proportion):
-  random.seed(1337)
-
   cui2id = json.load(open(os.path.join(data_dir, 'name2id.json')))
   npz = np.load(os.path.join(data_dir, 'metathesaurus', 'train.npz'))
   data = dict(npz.items())
