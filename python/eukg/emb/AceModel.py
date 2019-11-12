@@ -19,8 +19,9 @@ class ACEModel(object):
 
     print('Loading tokens.')
     with tf.variable_scope(self.scope):
-      self.token_ids = tf.Variable(tokens_dict['token_ids'], name="token_ids")
-      self.token_lengths = tf.Variable(tokens_dict['token_lengths'], name='token_lengths')
+      with tf.device("/%s:0" % self.embedding_device):
+        self.token_ids = tf.Variable(tokens_dict['token_ids'], name="token_ids", dtype=tf.int64)
+        self.token_lengths = tf.Variable(tokens_dict['token_lengths'], name='token_lengths', dtype=tf.int64)
 
   def tokens_to_embeddings(self, token_ids, token_lengths, emb_type):
     # TODO determine proper reuse of bert, prob keep same weights for both concepts & relations

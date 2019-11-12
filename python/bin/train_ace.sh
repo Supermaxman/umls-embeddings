@@ -23,7 +23,8 @@ python -m python.eukg.train \
 --max_batches_per_epoch=50000 \
 --num_epochs=10 \
 --val_batch_size=32 \
---encoder_checkpoint=/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_model.ckpt
+--encoder_checkpoint=/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_model.ckpt \
+--load=True
 
 # pre-train generator
 python -m python.eukg.train \
