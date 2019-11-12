@@ -40,7 +40,7 @@ def train():
 
   # load data
   cui2id, data, train_idx, val_idx = data_util.load_metathesaurus_data(config.data_dir, config.val_proportion)
-  config.val_progress_update_interval = int(math.floor(float(len(val_idx)) / config.batch_size))
+  config.val_progress_update_interval = int(math.floor(float(len(val_idx)) / config.val_batch_size))
   config.batches_per_epoch = int(math.floor(float(len(train_idx)) / config.batch_size))
   if not config.no_semantic_network:
     type2cuis = data_util.load_semantic_network_data(config.data_dir, data)

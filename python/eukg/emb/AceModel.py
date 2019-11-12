@@ -62,8 +62,10 @@ class ACEModel(object):
     :return: embedding vectors or tuple of embedding vectors for the passed ids
     """
     assert emb_type is not None
-    token_ids = tf.nn.embedding_lookup(self.token_ids, ids)
-    token_lengths = tf.nn.embedding_lookup(self.token_lengths, ids)
+    token_ids = tf.gather(self.token_ids, ids)
+    # token_ids = tf.nn.embedding_lookup(self.token_ids, ids)
+    token_lengths = tf.gather(self.token_lengths, ids)
+    # token_lengths = tf.nn.embedding_lookup(self.token_lengths, ids)
     return self.tokens_to_embeddings(token_ids, token_lengths, emb_type)
 
   def init_from_checkpoint(self, init_checkpoint):

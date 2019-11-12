@@ -57,7 +57,7 @@ class DataGenerator:
 
   def generate_mt(self, is_training):
     idxs = self.train_idx if is_training else self.val_idx
-    batch_size = self.config.batch_size
+    batch_size = self.config.batch_size if is_training else self.config.val_batch_size
     subj, rel, obj = self.data['subj'], self.data['rel'], self.data['obj']
     nsubj, nobj = self.sampler.sample(subj, rel, obj)
     num_batches = int(math.floor(float(len(idxs)) / batch_size))
@@ -69,7 +69,7 @@ class DataGenerator:
 
   def generate_mt_gen_mode(self, is_training):
     idxs = self.train_idx if is_training else self.val_idx
-    batch_size = self.config.batch_size
+    batch_size = self.config.batch_size if is_training else self.config.val_batch_size
     subj, rel, obj = self.data['subj'], self.data['rel'], self.data['obj']
     num_batches = int(math.floor(float(len(idxs)) / batch_size))
     print('\n\ngenerating %d batches in generation mode' % num_batches)
@@ -142,7 +142,7 @@ class DataGenerator:
     return int(math.floor(float(len(self.train_idx)) / self.config.batch_size))
 
   def num_val_batches(self):
-    return int(math.floor(float(len(self.val_idx)) / self.config.batch_size))
+    return int(math.floor(float(len(self.val_idx)) / self.config.val_batch_size))
 
 
 class NegativeSampler:

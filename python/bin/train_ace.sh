@@ -3,14 +3,15 @@
 # pre-train discriminator
 # epochs take much longer, so only one full epoch of pre-training
 # one epoch of pre-training will be 100 epochs of 10000 batches
-#batch_size=8
-#learning_rate=1e-6
-#max_batches_per_epoch=10000
+#batch_size=16
+#learning_rate=1e-5
+#max_batches_per_epoch=5000
 #num_epochs=100
+#val_batch_size=512
 python -m python.eukg.train \
 --mode=disc \
 --model=transd \
---run_name=transd-disc-ace-3 \
+--run_name=transd-disc-ace-4 \
 --batch_size=16 \
 --learning_rate=1e-5 \
 --no_semantic_network \
@@ -19,8 +20,9 @@ python -m python.eukg.train \
 --summaries_dir=/shared/hltdir4/disk1/max/logs \
 --ace_model \
 --train_bert=False \
---max_batches_per_epoch=5000 \
---num_epochs=100 \
+--max_batches_per_epoch=50000 \
+--num_epochs=10 \
+--val_batch_size=32 \
 --encoder_checkpoint=/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_model.ckpt
 
 # pre-train generator
@@ -36,8 +38,9 @@ python -m python.eukg.train \
 --summaries_dir=/shared/hltdir4/disk1/max/logs \
 --ace_model \
 --train_bert=False \
---max_batches_per_epoch=10000 \
+--max_batches_per_epoch=1000 \
 --num_epochs=100 \
+--val_batch_size=512 \
 --encoder_checkpoint=/users/max/data/models/umls-embeddings/#TODO
 
 # train full GAN
