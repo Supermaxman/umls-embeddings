@@ -11,7 +11,7 @@
 python -m python.eukg.train \
 --mode=disc \
 --model=transd \
---run_name=transd-disc-ace-4 \
+--run_name=transd-disc-ace-7 \
 --batch_size=16 \
 --learning_rate=1e-5 \
 --no_semantic_network \
@@ -21,10 +21,10 @@ python -m python.eukg.train \
 --ace_model \
 --train_bert=False \
 --max_batches_per_epoch=50000 \
---num_epochs=10 \
+--num_epochs=100 \
 --val_batch_size=32 \
 --encoder_checkpoint=/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_model.ckpt \
---load=True
+--load=False
 
 # pre-train generator
 python -m python.eukg.train \

@@ -1,5 +1,6 @@
 
 import tensorflow as tf
+import numpy as np
 from bert import modeling
 
 
@@ -19,9 +20,16 @@ class ACEModel(object):
 
     print('Loading tokens.')
     with tf.variable_scope(self.scope):
-      with tf.device("/%s:0" % self.embedding_device):
-        self.token_ids = tf.Variable(tokens_dict['token_ids'], name="token_ids", dtype=tf.int64)
-        self.token_lengths = tf.Variable(tokens_dict['token_lengths'], name='token_lengths', dtype=tf.int64)
+      self.token_ids = tf.constant(
+        tokens_dict['token_ids'],
+        dtype=tf.int32
+      )
+      max_token_length = tokens_dict['token_ids'].shape[1]
+      truncated_lengths = np.clip(tokens_dict['token_lengths'], 1, max_token_length)
+      self.token_lengths = tf.constant(
+        truncated_lengths,
+        dtype=tf.int32
+      )
 
   def tokens_to_embeddings(self, token_ids, token_lengths, emb_type):
     # TODO determine proper reuse of bert, prob keep same weights for both concepts & relations
@@ -64,9 +72,7 @@ class ACEModel(object):
     """
     assert emb_type is not None
     token_ids = tf.gather(self.token_ids, ids)
-    # token_ids = tf.nn.embedding_lookup(self.token_ids, ids)
     token_lengths = tf.gather(self.token_lengths, ids)
-    # token_lengths = tf.nn.embedding_lookup(self.token_lengths, ids)
     return self.tokens_to_embeddings(token_ids, token_lengths, emb_type)
 
   def init_from_checkpoint(self, init_checkpoint):

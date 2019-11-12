@@ -82,5 +82,7 @@ tf.flags.DEFINE_integer("encoder_rnn_size", 64, "Size of encoder rnn.")
 tf.flags.DEFINE_bool("train_bert", True, "Jointly train bert encoder.")
 tf.flags.DEFINE_integer("seed", 1337, "Random seed.")
 
+tf.flags.DEFINE_bool("gpu_memory_growth", False, "Allow gpu memory growth.")
+
 
 flags = tf.flags.FLAGS

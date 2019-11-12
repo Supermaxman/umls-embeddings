@@ -56,10 +56,13 @@ def train():
   if not config_map['no_semantic_network']:
     config_map['type2cuis'] = type2cuis
 
-  s_config = tf.ConfigProto()
-  s_config.gpu_options.allow_growth = True
+  if config.gpu_memory_growth:
+    gpu_config = tf.ConfigProto()
+    gpu_config.gpu_options.allow_growth = True
+  else:
+    gpu_config = None
 
-  with tf.Graph().as_default(), tf.Session(config=s_config) as session:
+  with tf.Graph().as_default(), tf.Session(config=gpu_config) as session:
     tf.set_random_seed(seed)
     if config.ace_model:
       t_data = data_util.load_metathesaurus_token_data(config.data_dir)
