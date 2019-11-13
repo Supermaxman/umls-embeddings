@@ -222,10 +222,14 @@ class DistMult(TransE):
     return tf.no_op()
 
   def regularization(self, c_parameters, r_parameters):
-    reg_term = 0
+    reg_term = 0.0
+    reg_count = 0
     all_params = c_parameters + r_parameters
     for p in all_params:
-      reg_term += tf.reduce_sum(tf.norm(self.embedding_lookup(p), axis=-1))
+      reg_norm = tf.norm(self.embedding_lookup(p), axis=-1)
+      reg_term += tf.reduce_sum(reg_norm)
+      reg_count += tf.size(reg_norm)
+    reg_term = reg_term / tf.cast(reg_count, tf.float32)
     return reg_term
 
 
@@ -329,10 +333,17 @@ class DistMultACE(BaseModel):
 
   def regularization(self, c_parameters, r_parameters):
     reg_term = 0
+    reg_count = 0
     for p in c_parameters:
-      reg_term += tf.reduce_sum(tf.norm(self.embedding_lookup(p, 'concept'), axis=-1))
+      reg_norm = tf.norm(self.embedding_lookup(p, 'concept'), axis=-1)
+      reg_term += tf.reduce_sum(reg_norm)
+      reg_count += tf.size(reg_norm)
     for p in r_parameters:
-      reg_term += tf.reduce_sum(tf.norm(self.embedding_lookup(p, 'rel'), axis=-1))
+      reg_norm = tf.norm(self.embedding_lookup(p, 'rel'), axis=-1)
+      reg_term += tf.reduce_sum(reg_norm)
+      reg_count += tf.size(reg_norm)
+
+    reg_term = reg_term / tf.cast(reg_count, tf.float32)
     return reg_term
 
   def embedding_lookup(self, ids, emb_type=None):
