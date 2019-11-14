@@ -28,19 +28,27 @@ class Generator(BaseModel):
 
   def build(self):
     summary = []
+    # TODO run once to get embeddings for everything first in stack for efficiency.
+    e_neg_subj = self.embedding_model.embedding_lookup(self.neg_subj, 'concept')
+    e_neg_obj = self.embedding_model.embedding_lookup(self.neg_obj, 'concept')
+    e_pos_subj = self.embedding_model.embedding_lookup(self.pos_subj, 'concept')
+    e_pos_obj = self.embedding_model.embedding_lookup(self.pos_obj, 'concept')
+
+    e_rels = self.embedding_model.embedding_lookup(self.relations, 'rel')
+
     # [batch_size, num_samples]
     with tf.variable_scope("energy"):
-      self.sampl_energies = self.embedding_model.energy(
-        self.neg_subj,
-        tf.expand_dims(self.relations, axis=1),
-        self.neg_obj
+      self.sampl_energies = self.embedding_model.energy_from_embeddings(
+        e_neg_subj,
+        tf.expand_dims(e_rels, axis=1),
+        e_neg_obj
       )
     # [batch_size]
     with tf.variable_scope("energy", reuse=True):
-      self.true_energies = self.embedding_model.energy(
-        self.pos_subj,
-        self.relations,
-        self.pos_obj
+      self.true_energies = self.embedding_model.energy_from_embeddings(
+        e_pos_subj,
+        e_rels,
+        e_pos_obj
       )
 
     # backprop
@@ -56,9 +64,11 @@ class Generator(BaseModel):
 
     # regularization for distmult
     if self.model == "distmult":
-      reg = self.regulatization_parameter * self.embedding_model.regularization([self.pos_subj, self.pos_obj,
-                                                                                 self.neg_subj, self.neg_obj],
-                                                                                 [self.relations])
+      # TODO use already computed embeddings here
+      reg = self.regulatization_parameter * self.embedding_model.regularization(
+        [e_pos_subj, e_pos_obj, e_neg_subj, e_neg_obj],
+        [e_rels]
+      )
       summary += [tf.summary.scalar('reg', reg),
                   tf.summary.scalar('log_prob', self.loss)]
       self.loss += reg

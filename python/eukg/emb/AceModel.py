@@ -30,8 +30,14 @@ class ACEModel(object):
         truncated_lengths,
         dtype=tf.int32
       )
+    self.tensor_cache = {}
 
   def tokens_to_embeddings(self, token_ids, token_lengths, emb_type):
+    # dynamic token id sizing so we don't waste compute
+    max_length = tf.reduce_max(token_lengths)
+    token_ids = token_ids[:, :max_length]
+
+
     # TODO determine proper reuse of bert, prob keep same weights for both concepts & relations
     with tf.variable_scope(self.bert_scope) as scope:
       input_mask = tf.sequence_mask(
@@ -71,9 +77,14 @@ class ACEModel(object):
     :return: embedding vectors or tuple of embedding vectors for the passed ids
     """
     assert emb_type is not None
-    token_ids = tf.gather(self.token_ids, ids)
-    token_lengths = tf.gather(self.token_lengths, ids)
-    return self.tokens_to_embeddings(token_ids, token_lengths, emb_type)
+
+    # TODO relations with expand dims breaks this cache
+    if ids.name not in self.tensor_cache:
+      token_ids = tf.nn.embedding_lookup(self.token_ids, ids)
+      token_lengths = tf.nn.embedding_lookup(self.token_lengths, ids)
+      t_embs = self.tokens_to_embeddings(token_ids, token_lengths, emb_type)
+      self.tensor_cache[ids.name] = t_embs
+    return self.tensor_cache[ids.name]
 
   def init_from_checkpoint(self, init_checkpoint):
     t_vars = tf.trainable_variables()

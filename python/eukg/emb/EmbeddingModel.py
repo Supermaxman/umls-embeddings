@@ -25,6 +25,9 @@ class BaseModel:
     """
     raise NotImplementedError("subclass should implement")
 
+  def energy_from_embeddings(self, head, rel, tail, norm_ord='euclidean'):
+    raise NotImplementedError("subclass should implement")
+
   def embedding_lookup(self, ids, emb_type=None):
     """
     returns embedding vectors or tuple of embedding vectors for the passed ids
@@ -73,11 +76,14 @@ class TransE(BaseModel):
     r = self.embedding_lookup(rel)
     t = self.embedding_lookup(tail)
 
-    return tf.norm(h + r - t,
-                   ord=norm_ord,
-                   axis=-1,
-                   keepdims=False,
-                   name='energy')
+    return self.energy_from_embeddings(h, r, t, norm_ord)
+
+  def energy_from_embeddings(self, head, rel, tail, norm_ord='euclidean'):
+    return tf.norm(head + rel - tail,
+            ord=norm_ord,
+            axis=-1,
+            keepdims=False,
+            name='energy')
 
   def embedding_lookup(self, ids, emb_type=None):
     with tf.device("/%s:0" % self.embedding_device):
@@ -137,16 +143,23 @@ class TransD(BaseModel):
         :return: [batch_size] vector of energies
         """
     # x & x_proj both [batch_size, embedding_size]
-    h, h_proj = self.embedding_lookup(head)
-    r, r_proj = self.embedding_lookup(rel)
-    t, t_proj = self.embedding_lookup(tail)
+    h = self.embedding_lookup(head)
+    r = self.embedding_lookup(rel)
+    t = self.embedding_lookup(tail)
 
     # [batch_size]
+    return self.energy_from_embeddings(h, r, t, norm_ord)
+
+  def energy_from_embeddings(self, head, rel, tail, norm_ord='euclidean'):
+    (h, h_proj) = head
+    (r, r_proj) = rel
+    (t, t_proj) = tail
+
     return tf.norm(self.project(h, h_proj, r_proj) + r - self.project(t, t_proj, r_proj),
-                   ord=norm_ord,
-                   axis=1,
-                   keepdims=False,
-                   name="energy")
+            ord=norm_ord,
+            axis=1,
+            keepdims=False,
+            name="energy")
 
   # noinspection PyMethodMayBeStatic
   def project(self, c, c_proj, r_proj):
@@ -214,8 +227,13 @@ class DistMult(TransE):
     r = self.embedding_lookup(rel)
     t = self.embedding_lookup(tail)
 
-    pre_activation = tf.reduce_sum(h * r * t, axis=-1)
+    return self.energy_from_embeddings(h, r, t, norm_ord)
+
+  def energy_from_embeddings(self, head, rel, tail, norm_ord='euclidean'):
+
+    pre_activation = tf.reduce_sum(head * rel * tail, axis=-1)
     post_activation = self.energy_activation(pre_activation)
+
     return post_activation
 
   def normalize_parameters(self):
@@ -226,7 +244,7 @@ class DistMult(TransE):
     reg_count = 0
     all_params = c_parameters + r_parameters
     for p in all_params:
-      reg_norm = tf.norm(self.embedding_lookup(p), axis=-1)
+      reg_norm = tf.norm(p, axis=-1)
       reg_term += tf.reduce_sum(reg_norm)
       reg_count += tf.size(reg_norm)
     reg_term = reg_term / tf.cast(reg_count, tf.float32)
@@ -250,11 +268,18 @@ class TransDACE(BaseModel):
         :return: [batch_size] vector of energies
         """
     # x & x_proj both [batch_size, embedding_size]
-    h, h_proj = self.embedding_lookup(head, 'concept')
-    r, r_proj = self.embedding_lookup(rel, 'rel')
-    t, t_proj = self.embedding_lookup(tail, 'concept')
+    h = self.embedding_lookup(head, 'concept')
+    r = self.embedding_lookup(rel, 'rel')
+    t = self.embedding_lookup(tail, 'concept')
 
     # [batch_size]
+    return self.energy_from_embeddings(h, r, t, norm_ord)
+
+  def energy_from_embeddings(self, head, rel, tail, norm_ord='euclidean'):
+    h, h_proj = head
+    r, r_proj = rel
+    t, t_proj = tail
+
     return tf.norm(self.project(h, h_proj, r_proj) + r - self.project(t, t_proj, r_proj),
                    ord=norm_ord,
                    axis=1,
@@ -344,9 +369,15 @@ class DistMultACE(BaseModel):
     r = self.embedding_lookup(rel, 'rel')
     t = self.embedding_lookup(tail, 'concept')
 
-    return self.energy_activation(tf.reduce_sum(h * r * t,
-                                                axis=-1,
-                                                keepdims=False))
+    return self.energy_from_embeddings(h, r, t, norm_ord)
+
+  def energy_from_embeddings(self, head, rel, tail, norm_ord='euclidean'):
+
+    pre_activation = tf.reduce_sum(head * rel * tail, axis=-1)
+    post_activation = self.energy_activation(pre_activation)
+
+    return post_activation
+
 
   def normalize_parameters(self):
     return tf.no_op()
@@ -355,11 +386,11 @@ class DistMultACE(BaseModel):
     reg_term = 0
     reg_count = 0
     for p in c_parameters:
-      reg_norm = tf.norm(self.embedding_lookup(p, 'concept'), axis=-1)
+      reg_norm = tf.norm(p, axis=-1)
       reg_term += tf.reduce_sum(reg_norm)
       reg_count += tf.size(reg_norm)
     for p in r_parameters:
-      reg_norm = tf.norm(self.embedding_lookup(p, 'rel'), axis=-1)
+      reg_norm = tf.norm(p, axis=-1)
       reg_term += tf.reduce_sum(reg_norm)
       reg_count += tf.size(reg_norm)
 

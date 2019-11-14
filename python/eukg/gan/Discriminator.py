@@ -80,9 +80,27 @@ class BaseModel(Trainable):
   def build(self):
     # energies
     with tf.variable_scope("energy"):
-      self.pos_energy = self.embedding_model.energy(self.pos_subj, self.relations, self.pos_obj, self.energy_norm)
-    with tf.variable_scope("energy", reuse=True):
-      self.neg_energy = self.embedding_model.energy(self.neg_subj, self.relations, self.neg_obj, self.energy_norm)
+      # TODO run once to get embeddings for everything first in stack for efficiency.
+      e_pos_subj = self.embedding_model.embedding_lookup(self.pos_subj, 'concept')
+      e_pos_obj = self.embedding_model.embedding_lookup(self.pos_obj, 'concept')
+      e_neg_subj = self.embedding_model.embedding_lookup(self.neg_subj, 'concept')
+      e_neg_obj = self.embedding_model.embedding_lookup(self.neg_obj, 'concept')
+
+      e_rels = self.embedding_model.embedding_lookup(self.relations, 'rel')
+      self.pos_energy = self.embedding_model.energy_from_embeddings(
+        e_pos_subj,
+        e_rels,
+        e_pos_obj,
+        norm_ord=self.energy_norm
+      )
+
+      self.neg_energy = self.embedding_model.energy_from_embeddings(
+        e_neg_subj,
+        e_rels,
+        e_neg_obj,
+        norm_ord=self.energy_norm
+      )
+
     self.predictions = tf.argmax(tf.stack([self.pos_energy, self.neg_energy], axis=1), axis=1, output_type=tf.int32)
     self.reward = tf.reduce_mean(self.neg_energy, name='reward')
 
@@ -90,9 +108,10 @@ class BaseModel(Trainable):
     self.loss = tf.reduce_mean(tf.nn.relu(self.gamma - self.neg_energy + self.pos_energy), name='loss')
 
     if self.model == 'distmult':
-      reg = self.regulatization_parameter * self.embedding_model.regularization([self.pos_subj, self.pos_obj,
-                                                                                 self.neg_subj, self.neg_obj,
-                                                                                 self.relations])
+      reg = self.regulatization_parameter * self.embedding_model.regularization(
+        [e_pos_subj, e_pos_obj, e_neg_subj, e_neg_obj],
+        [e_rels]
+      )
       tf.summary.scalar('reg', reg)
       tf.summary.scalar('margin_loss', self.loss)
       self.loss += reg

@@ -62,13 +62,22 @@ class DataGenerator:
     idxs = self.train_idx if is_training else self.val_idx
     batch_size = self.config.batch_size if is_training else self.config.val_batch_size
     subj, rel, obj = self.data['subj'], self.data['rel'], self.data['obj']
-    nsubj, nobj = self.sampler.sample(subj, rel, obj)
+    # nsubj, nobj = self.sampler.sample(subj, rel, obj)
     num_batches = int(math.floor(float(len(idxs)) / batch_size))
     print('\n\ngenerating %d batches' % num_batches)
     # TODO queueing data generator
     for b in range(num_batches):
       idx = idxs[b * batch_size: (b + 1) * batch_size]
-      yield rel[idx], subj[idx], obj[idx], nsubj[idx], nobj[idx]
+      yield self.create_mt_batch(
+        subj[idx],
+        rel[idx],
+        obj[idx]
+      )
+
+  def create_mt_batch(self, subj, rel, obj):
+    # TODO do sampling here
+    nsubj, nobj = self.sampler.sample(subj, rel, obj)
+    yield rel, subj, obj, nsubj, nobj
 
   def generate_mt_gen_mode(self, is_training):
     idxs = self.train_idx if is_training else self.val_idx
@@ -79,14 +88,20 @@ class DataGenerator:
     # TODO queueing data generator
     for b in range(num_batches):
       idx = idxs[b * batch_size: (b + 1) * batch_size]
-      # TODO in parallel run this sampler
-      sampl_subj, sampl_obj = self.sampler.sample_for_generator(
+      yield self.create_mt_gen_mode_batch(
         subj[idx],
         rel[idx],
-        obj[idx],
-        self.config.num_generator_samples
+        obj[idx]
       )
-      yield rel[idx], subj[idx], obj[idx], sampl_subj, sampl_obj
+
+  def create_mt_gen_mode_batch(self, subj, rel, obj):
+    sampl_subj, sampl_obj = self.sampler.sample_for_generator(
+      subj,
+      rel,
+      obj,
+      self.config.num_generator_samples
+    )
+    yield rel, subj, obj, sampl_subj, sampl_obj
 
   def generate_sn(self, is_training):
     print('\n\ngenerating SN data')
@@ -194,8 +209,9 @@ class NegativeSampler:
   def sample(self, subj, rel, obj):
     neg_subj = []
     neg_obj = []
-    print("\n")
-    for s, r, o in tqdm(zip(subj, rel, obj), desc='negative sampling', total=len(subj)):
+    # print("\n")
+    # for s, r, o in tqdm(zip(subj, rel, obj), desc='negative sampling', total=len(subj)):
+    for s, r, o in zip(subj, rel, obj):
       ns, no = self._neg_sample(s, r, o, random.random() > 0.5)
       neg_subj.append(ns)
       neg_obj.append(no)
@@ -235,42 +251,92 @@ class AceDataGenerator:
 
 
 class QueuedDataWorker(threading.Thread):
-  def __init__(self, q, gen, *args, **kwargs):
+  def __init__(self, w_id, q_in, q_out, b_func, *args, **kwargs):
     super().__init__(*args, **kwargs)
-    self.q = q
-    self.gen = gen
+    self.w_id = w_id
+    self.q_in = q_in
+    self.q_out = q_out
+    self.b_func = b_func
 
   def run(self):
-    for batch in self.gen:
-      self.q.put(batch)
-    self.q.put(False)
+    in_batch = True
+    while in_batch:
+      b = self.q_in.get()
+      if b == 'end':
+        in_batch = False
+      else:
+        print(f'[{self.w_id}]:[{b}]:S')
+        batch = self.b_func(b)
+        print(f'[{self.w_id}]:[{b}]:F')
+        self.q_out.put(batch)
+      self.q_in.task_done()
+    self.q_out.put('end')
 
 
 class QueuedDataGenerator(DataGenerator):
-  def __init__(self, data, train_idx, val_idx, config, type2cuis=None, test_mode=False, nrof_queued_batches=10):
+  def __init__(self, data, train_idx, val_idx, config, type2cuis=None, test_mode=False,
+               nrof_queued_batches=10,
+               nrof_queued_workers=4):
     super().__init__(data, train_idx, val_idx, config, type2cuis, test_mode)
     self.nrof_queued_batches = nrof_queued_batches
+    self.nrof_queued_workers = nrof_queued_workers
     self.mt_gen = queue.Queue()
 
   def generate_mt(self, is_training):
-    gen = super().generate_mt(is_training)
-    return self.queued_generate(gen)
+    idxs = self.train_idx if is_training else self.val_idx
+    batch_size = self.config.batch_size if is_training else self.config.val_batch_size
+    subj, rel, obj = self.data['subj'], self.data['rel'], self.data['obj']
+    # nsubj, nobj = self.sampler.sample(subj, rel, obj)
+    num_batches = int(math.floor(float(len(idxs)) / batch_size))
+    print('\n\ngenerating %d batches' % num_batches)
+    def b_func(b):
+      idx = idxs[b * batch_size: (b + 1) * batch_size]
+      batch = self.create_mt_batch(
+        subj[idx],
+        rel[idx],
+        obj[idx]
+      )
+      return batch
+    return self.queued_generate(b_func, num_batches)
 
   def generate_mt_gen_mode(self, is_training):
-    gen = super().generate_mt_gen_mode(is_training)
-    return self.queued_generate(gen)
+    idxs = self.train_idx if is_training else self.val_idx
+    batch_size = self.config.batch_size if is_training else self.config.val_batch_size
+    subj, rel, obj = self.data['subj'], self.data['rel'], self.data['obj']
+    num_batches = int(math.floor(float(len(idxs)) / batch_size))
+    print('\n\ngenerating %d batches in generation mode' % num_batches)
+    def b_func(b):
+      idx = idxs[b * batch_size: (b + 1) * batch_size]
+      batch = self.create_mt_gen_mode_batch(
+        subj[idx],
+        rel[idx],
+        obj[idx]
+      )
+      return batch
+    return self.queued_generate(b_func, num_batches)
 
-  def queued_generate(self, gen):
-    q = queue.Queue(maxsize=self.nrof_queued_batches)
-    QueuedDataWorker(q, gen).start()
+  def queued_generate(self, b_func, num_batches):
+    q_in = queue.Queue()
+    for i in range(num_batches):
+      q_in.put(i)
+    q_in.put('end')
+
+    q_out = queue.Queue(maxsize=self.nrof_queued_batches)
+    nrof_workers = self.nrof_queued_workers
+    for w_id in range(nrof_workers):
+      QueuedDataWorker(w_id, q_in, q_out, b_func).start()
     in_batch = True
+    b = 0
     while in_batch:
-      batch = q.get()
-      q.task_done()
-      if not batch:
+      print(f'[P]:[{b}]:S')
+      batch = q_out.get()
+      q_out.task_done()
+      if batch == 'end':
         in_batch = False
       else:
         yield batch
+        print(f'[P]:[{b}]:F')
+        b += 1
 
 
 def get_next_k_idxs(all_idxs, k, offset):
