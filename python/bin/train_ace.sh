@@ -29,7 +29,7 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=gen \
 --model=distmult \
---run_name=dm-gen-ace-11 \
+--run_name=dm-gen-ace-12 \
 --no_semantic_network \
 --learning_rate=1e-5 \
 --batch_size=16 \
