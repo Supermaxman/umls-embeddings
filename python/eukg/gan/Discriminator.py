@@ -80,13 +80,29 @@ class BaseModel(Trainable):
   def build(self):
     # energies
     with tf.variable_scope("energy"):
-      # TODO run once to get embeddings for everything first in stack for efficiency.
-      e_pos_subj = self.embedding_model.embedding_lookup(self.pos_subj, 'concept')
-      e_pos_obj = self.embedding_model.embedding_lookup(self.pos_obj, 'concept')
-      e_neg_subj = self.embedding_model.embedding_lookup(self.neg_subj, 'concept')
-      e_neg_obj = self.embedding_model.embedding_lookup(self.neg_obj, 'concept')
+      neg_shape = tf.shape(self.neg_subj)
+      bsize = neg_shape[0]
+
+      # run once to get embeddings for everything first in stack for efficiency.
+      # e_pos_subj = self.embedding_model.embedding_lookup(self.pos_subj, 'concept')
+      # e_pos_obj = self.embedding_model.embedding_lookup(self.pos_obj, 'concept')
+      # e_neg_subj = self.embedding_model.embedding_lookup(self.neg_subj, 'concept')
+      # e_neg_obj = self.embedding_model.embedding_lookup(self.neg_obj, 'concept')
+
+      # run once to get embeddings for everything first in stack for efficiency.
+      concepts = tf.concat([self.neg_subj, self.neg_obj, self.pos_subj, self.pos_obj], axis=0)
+      e_concepts = self.embedding_model.embedding_lookup(concepts, 'concept')
+      # bsize
+      e_neg_subj = e_concepts[:bsize]
+      # bsize
+      e_neg_obj = e_concepts[bsize:2 * bsize]
+      # bsize
+      e_pos_subj = e_concepts[2 * bsize:3 * bsize]
+      # bsize
+      e_pos_obj = e_concepts[3 * bsize:]
 
       e_rels = self.embedding_model.embedding_lookup(self.relations, 'rel')
+
       self.pos_energy = self.embedding_model.energy_from_embeddings(
         e_pos_subj,
         e_rels,

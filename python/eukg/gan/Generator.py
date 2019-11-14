@@ -28,7 +28,7 @@ class Generator(BaseModel):
 
   def build(self):
     summary = []
-    # TODO run once to get embeddings for everything first in stack for efficiency.
+    # run once to get embeddings for everything first in stack for efficiency.
     # e_neg_subj = self.embedding_model.embedding_lookup(self.neg_subj, 'concept')
     # e_neg_obj = self.embedding_model.embedding_lookup(self.neg_obj, 'concept')
     # e_pos_subj = self.embedding_model.embedding_lookup(self.pos_subj, 'concept')
