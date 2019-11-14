@@ -29,10 +29,29 @@ class Generator(BaseModel):
   def build(self):
     summary = []
     # TODO run once to get embeddings for everything first in stack for efficiency.
-    e_neg_subj = self.embedding_model.embedding_lookup(self.neg_subj, 'concept')
-    e_neg_obj = self.embedding_model.embedding_lookup(self.neg_obj, 'concept')
-    e_pos_subj = self.embedding_model.embedding_lookup(self.pos_subj, 'concept')
-    e_pos_obj = self.embedding_model.embedding_lookup(self.pos_obj, 'concept')
+    # e_neg_subj = self.embedding_model.embedding_lookup(self.neg_subj, 'concept')
+    # e_neg_obj = self.embedding_model.embedding_lookup(self.neg_obj, 'concept')
+    # e_pos_subj = self.embedding_model.embedding_lookup(self.pos_subj, 'concept')
+    # e_pos_obj = self.embedding_model.embedding_lookup(self.pos_obj, 'concept')
+    neg_shape = tf.shape(self.neg_subj)
+    bsize, nsamples = neg_shape[0], neg_shape[1]
+    total_neg_size = bsize * nsamples
+    # [bsize * num_samples]
+    neg_subj_flat = tf.reshape(self.neg_subj, [total_neg_size])
+    # [bsize * num_samples]
+    neg_obj_flat = tf.reshape(self.neg_obj, [total_neg_size])
+
+    # [bsize * num_samples + bsize * num_samples + b_size + b_size]
+    concepts = tf.concat([neg_subj_flat, neg_obj_flat, self.pos_subj, self.pos_obj], axis=0)
+    e_concepts = self.embedding_model.embedding_lookup(concepts, 'concept')
+    # first bsize * num_samples
+    e_neg_subj = e_concepts[:total_neg_size]
+    # second bsize * num_samples
+    e_neg_obj = e_concepts[total_neg_size:2 * total_neg_size]
+    # bsize
+    e_pos_subj = e_concepts[2*total_neg_size:2*total_neg_size + bsize]
+    # bsize
+    e_pos_obj = e_concepts[2*total_neg_size + bsize:]
 
     e_rels = self.embedding_model.embedding_lookup(self.relations, 'rel')
 

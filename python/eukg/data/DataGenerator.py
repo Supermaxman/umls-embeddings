@@ -267,6 +267,7 @@ class QueuedDataWorker(threading.Thread):
         batch = self.b_func(b)
         self.q_out.put(batch)
       self.q_in.task_done()
+    self.q_out.put('end')
 
 
 class QueuedDataGenerator(DataGenerator):
@@ -326,7 +327,7 @@ class QueuedDataGenerator(DataGenerator):
 
     in_batch = True
     b = 0
-    while not q_in.empty():
+    while in_batch:
       batch = q_out.get()
       q_out.task_done()
       if batch == 'end':

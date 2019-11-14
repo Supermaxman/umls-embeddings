@@ -29,7 +29,7 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=gen \
 --model=distmult \
---run_name=dm-gen-ace-10 \
+--run_name=dm-gen-ace-11 \
 --no_semantic_network \
 --learning_rate=1e-5 \
 --batch_size=16 \
@@ -43,8 +43,8 @@ python -m python.eukg.train \
 --val_batch_size=32 \
 --num_generator_samples=4 \
 --nrof_queued_batches=20 \
---nrof_queued_workers=4 \
---encoder_checkpoint=/users/max/data/models/umls-embeddings/transd/transd-disc-ace-7/transd-300000
+--nrof_queued_workers=1 \
+--encoder_checkpoint=/users/max/data/models/umls-embeddings/transd/transd-disc-ace-7/transd-350000
 
 # train full GAN
 python -m python.eukg.train \
