@@ -44,10 +44,11 @@ class Generator(BaseModel):
     # [bsize * num_samples + bsize * num_samples + b_size + b_size]
     concepts = tf.concat([neg_subj_flat, neg_obj_flat, self.pos_subj, self.pos_obj], axis=0)
     e_concepts = self.embedding_model.embedding_lookup(concepts, 'concept')
+    emb_size = tf.shape(e_concepts)[-1]
     # first bsize * num_samples
-    e_neg_subj = tf.reshape(e_concepts[:total_neg_size], [bsize, nsamples], name='e_neg_subj')
+    e_neg_subj = tf.reshape(e_concepts[:total_neg_size], [bsize, nsamples, emb_size], name='e_neg_subj')
     # second bsize * num_samples
-    e_neg_obj = tf.reshape(e_concepts[total_neg_size:2 * total_neg_size], [bsize, nsamples], name='e_neg_obj')
+    e_neg_obj = tf.reshape(e_concepts[total_neg_size:2 * total_neg_size], [bsize, nsamples, emb_size], name='e_neg_obj')
     # bsize
     e_pos_subj = e_concepts[2*total_neg_size:2*total_neg_size + bsize]
     # bsize
