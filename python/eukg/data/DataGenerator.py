@@ -258,16 +258,14 @@ class QueuedDataWorker(threading.Thread):
     self.b_func = b_func
 
   def run(self):
-    in_batch = True
-    while in_batch:
-      b = self.q_in.get()
-      if b == 'end':
-        in_batch = False
-      else:
+    try:
+      while True:
+        b = self.q_in.get(block=False)
+        self.q_in.task_done()
         batch = self.b_func(b)
-        self.q_out.put(batch)
-      self.q_in.task_done()
-    self.q_out.put('end')
+        self.q_out.put((b, batch))
+    except queue.Empty:
+      pass
 
 
 class QueuedDataGenerator(DataGenerator):
@@ -321,20 +319,13 @@ class QueuedDataGenerator(DataGenerator):
     for w_id in range(nrof_workers):
       QueuedDataWorker(w_id, q_in, q_out, b_func).start()
 
-    # TODO this is the wrong way to end a queue.
-    for i in range(nrof_workers):
-      q_in.put('end')
-
-    in_batch = True
     b = 0
-    while in_batch:
-      batch = q_out.get()
+    # TODO re-order queue results to proper order.
+    while b < num_batches:
+      b_idx, batch = q_out.get()
       q_out.task_done()
-      if batch == 'end':
-        in_batch = False
-      else:
-        yield batch
-        b += 1
+      yield batch
+      b += 1
 
 
 def get_next_k_idxs(all_idxs, k, offset):
