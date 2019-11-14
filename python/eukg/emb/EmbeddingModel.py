@@ -406,7 +406,8 @@ class DistMultACE(BaseModel):
       total_flat_size = tf.math.reduce_prod(ids_shape)
       ids = tf.reshape(
         ids,
-        [total_flat_size]
+        [total_flat_size],
+        name='ids_flat'
       )
 
     encoder_out = self.ace_model.embedding_lookup(ids, emb_type)
@@ -423,7 +424,8 @@ class DistMultACE(BaseModel):
       emb_shape = tf.concat([ids_shape, [tf.shape(embeddings)[-1]]], axis=0)
       embeddings = tf.reshape(
         embeddings,
-        emb_shape
+        emb_shape,
+        'embeddings_reshaped'
       )
 
     return embeddings
