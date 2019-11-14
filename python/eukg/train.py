@@ -49,7 +49,9 @@ def train():
 
   data_generator = DataGenerator.QueuedDataGenerator(
     data, train_idx, val_idx, config, type2cuis,
-    nrof_queued_batches=config.nrof_queued_batches)
+    nrof_queued_batches=config.nrof_queued_batches,
+    nrof_queued_workers=config.nrof_queued_workers
+  )
 
   # config map
   config_map = config.flag_values_dict()

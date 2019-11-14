@@ -20,16 +20,17 @@ class ACEModel(object):
 
     print('Loading tokens.')
     with tf.variable_scope(self.scope):
-      self.token_ids = tf.constant(
-        tokens_dict['token_ids'],
-        dtype=tf.int32
-      )
-      max_token_length = tokens_dict['token_ids'].shape[1]
-      truncated_lengths = np.clip(tokens_dict['token_lengths'], 1, max_token_length)
-      self.token_lengths = tf.constant(
-        truncated_lengths,
-        dtype=tf.int32
-      )
+      with tf.device("/%s:0" % self.embedding_device):
+        max_token_length = tokens_dict['token_ids'].shape[1]
+        truncated_lengths = np.clip(tokens_dict['token_lengths'], 1, max_token_length)
+        self.token_ids = tf.constant(
+          tokens_dict['token_ids'],
+          dtype=tf.int64
+        )
+        self.token_lengths = tf.constant(
+          truncated_lengths,
+          dtype=tf.int64
+        )
     self.tensor_cache = {}
 
   def tokens_to_embeddings(self, token_ids, token_lengths, emb_type):

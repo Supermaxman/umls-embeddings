@@ -31,6 +31,7 @@ class DataGenerator:
 
     self.type2cuis = type2cuis
     self.test_mode = test_mode
+    self._sampler = self.init_sampler()
 
   @property
   def sn_sampler(self):
@@ -40,8 +41,6 @@ class DataGenerator:
 
   @property
   def sampler(self):
-    if self._sampler is None:
-      self._sampler = self.init_sampler()
     return self._sampler
 
   # must include test data in negative sampler
@@ -77,7 +76,7 @@ class DataGenerator:
   def create_mt_batch(self, subj, rel, obj):
     # TODO do sampling here
     nsubj, nobj = self.sampler.sample(subj, rel, obj)
-    yield rel, subj, obj, nsubj, nobj
+    return rel, subj, obj, nsubj, nobj
 
   def generate_mt_gen_mode(self, is_training):
     idxs = self.train_idx if is_training else self.val_idx
@@ -101,7 +100,7 @@ class DataGenerator:
       obj,
       self.config.num_generator_samples
     )
-    yield rel, subj, obj, sampl_subj, sampl_obj
+    return rel, subj, obj, sampl_subj, sampl_obj
 
   def generate_sn(self, is_training):
     print('\n\ngenerating SN data')
@@ -265,12 +264,9 @@ class QueuedDataWorker(threading.Thread):
       if b == 'end':
         in_batch = False
       else:
-        print(f'[{self.w_id}]:[{b}]:S')
         batch = self.b_func(b)
-        print(f'[{self.w_id}]:[{b}]:F')
         self.q_out.put(batch)
       self.q_in.task_done()
-    self.q_out.put('end')
 
 
 class QueuedDataGenerator(DataGenerator):
@@ -280,7 +276,6 @@ class QueuedDataGenerator(DataGenerator):
     super().__init__(data, train_idx, val_idx, config, type2cuis, test_mode)
     self.nrof_queued_batches = nrof_queued_batches
     self.nrof_queued_workers = nrof_queued_workers
-    self.mt_gen = queue.Queue()
 
   def generate_mt(self, is_training):
     idxs = self.train_idx if is_training else self.val_idx
@@ -319,23 +314,25 @@ class QueuedDataGenerator(DataGenerator):
     q_in = queue.Queue()
     for i in range(num_batches):
       q_in.put(i)
-    q_in.put('end')
 
     q_out = queue.Queue(maxsize=self.nrof_queued_batches)
     nrof_workers = self.nrof_queued_workers
     for w_id in range(nrof_workers):
       QueuedDataWorker(w_id, q_in, q_out, b_func).start()
+
+    # TODO this is the wrong way to end a queue.
+    for i in range(nrof_workers):
+      q_in.put('end')
+
     in_batch = True
     b = 0
-    while in_batch:
-      print(f'[P]:[{b}]:S')
+    while not q_in.empty():
       batch = q_out.get()
       q_out.task_done()
       if batch == 'end':
         in_batch = False
       else:
         yield batch
-        print(f'[P]:[{b}]:F')
         b += 1
 
 
