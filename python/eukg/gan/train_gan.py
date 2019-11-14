@@ -40,7 +40,10 @@ def train():
     type2cuis = data_util.load_semantic_network_data(config.data_dir, data)
   else:
     type2cuis = None
-  data_generator = DataGenerator.DataGenerator(data, train_idx, val_idx, config, type2cuis)
+  data_generator = DataGenerator.QueuedDataGenerator(
+    data, train_idx, val_idx, config, type2cuis,
+    nrof_queued_batches=config.nrof_queued_batches
+  )
 
   with tf.Graph().as_default(), tf.Session() as session:
     if config.ace_model:
@@ -52,15 +55,16 @@ def train():
       discriminator = init_model(config, 'disc', ace_model)
     with tf.variable_scope(config.gen_run_name):
       config.no_semantic_network = True
-      config.learning_rate = 1e-1
+      # TODO determine if this lr makes sense
+      # config.learning_rate = 1e-1
       generator = init_model(config, 'gen', ace_model)
     if use_semnet:
       with tf.variable_scope(config.sn_gen_run_name):
         config.no_semantic_network = False
         sn_generator = init_model(config, 'sn_gen', ace_model)
-
-    # init models
-    ace_model.init_from_checkpoint(config.encoder_checkpoint)
+    if config.ace_model and config.encoder_checkpoint is not None:
+      # init models
+      ace_model.init_from_checkpoint(config.encoder_checkpoint)
 
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()

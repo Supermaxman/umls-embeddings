@@ -3,7 +3,7 @@ import tensorflow as tf
 # control options
 tf.flags.DEFINE_string("data_dir", "data", "training data directory")
 tf.flags.DEFINE_string("model_dir", "model", "model directory")
-tf.flags.DEFINE_string("model", "transe", "Model: [transe, transd, distmult]")
+tf.flags.DEFINE_string("model", "transd", "Model: [transe, transd, distmult]")
 tf.flags.DEFINE_string("mode", "disc", "Mode: [disc, gen, gan]")
 tf.flags.DEFINE_string("run_name", None, "Run name")
 tf.flags.DEFINE_string("summaries_dir", "data/summary", "model summary dir")
@@ -67,7 +67,7 @@ tf.flags.DEFINE_bool("ace_model", False, "Train Atom Concept Embedding model whe
                                         "of the atoms and relation tokens.")
 
 tf.flags.DEFINE_string("encoder_checkpoint",
-                       '/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_model.ckpt',
+                       None, #'/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_model.ckpt'
                        "Checkpoint path for embedding encoder network. Start with bert pre-trained.")
 
 
