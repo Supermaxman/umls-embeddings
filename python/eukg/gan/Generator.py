@@ -29,13 +29,19 @@ class Generator(BaseModel):
   def build(self):
     summary = []
     # [batch_size, num_samples]
-    self.sampl_energies = self.embedding_model.energy(self.neg_subj,
-                                                      tf.expand_dims(self.relations, axis=1),
-                                                      self.neg_obj)
+    with tf.variable_scope("energy"):
+      self.sampl_energies = self.embedding_model.energy(
+        self.neg_subj,
+        tf.expand_dims(self.relations, axis=1),
+        self.neg_obj
+      )
     # [batch_size]
-    self.true_energies = self.embedding_model.energy(self.pos_subj,
-                                                     self.relations,
-                                                     self.pos_obj)
+    with tf.variable_scope("energy", reuse=True):
+      self.true_energies = self.embedding_model.energy(
+        self.pos_subj,
+        self.relations,
+        self.pos_obj
+      )
 
     # backprop
     optimizer = self.optimizer()

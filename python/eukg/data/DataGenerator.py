@@ -6,6 +6,9 @@ from tqdm import tqdm
 import os
 import json
 
+import threading
+import queue
+
 from . import data_util
 
 
@@ -76,8 +79,13 @@ class DataGenerator:
     # TODO queueing data generator
     for b in range(num_batches):
       idx = idxs[b * batch_size: (b + 1) * batch_size]
-      sampl_subj, sampl_obj = self.sampler.sample_for_generator(subj[idx], rel[idx], obj[idx],
-                                                                self.config.num_generator_samples)
+      # TODO in parallel run this sampler
+      sampl_subj, sampl_obj = self.sampler.sample_for_generator(
+        subj[idx],
+        rel[idx],
+        obj[idx],
+        self.config.num_generator_samples
+      )
       yield rel[idx], subj[idx], obj[idx], sampl_subj, sampl_obj
 
   def generate_sn(self, is_training):
@@ -224,6 +232,45 @@ class NegativeSampler:
 # TODO create normal and lazy data generators for word piece token info, etc.
 class AceDataGenerator:
   pass
+
+
+class QueuedDataWorker(threading.Thread):
+  def __init__(self, q, gen, *args, **kwargs):
+    super().__init__(*args, **kwargs)
+    self.q = q
+    self.gen = gen
+
+  def run(self):
+    for batch in self.gen:
+      self.q.put(batch)
+    self.q.put(False)
+
+
+class QueuedDataGenerator(DataGenerator):
+  def __init__(self, data, train_idx, val_idx, config, type2cuis=None, test_mode=False, nrof_queued_batches=10):
+    super().__init__(data, train_idx, val_idx, config, type2cuis, test_mode)
+    self.nrof_queued_batches = nrof_queued_batches
+    self.mt_gen = queue.Queue()
+
+  def generate_mt(self, is_training):
+    gen = super().generate_mt(is_training)
+    return self.queued_generate(gen)
+
+  def generate_mt_gen_mode(self, is_training):
+    gen = super().generate_mt_gen_mode(is_training)
+    return self.queued_generate(gen)
+
+  def queued_generate(self, gen):
+    q = queue.Queue(maxsize=self.nrof_queued_batches)
+    QueuedDataWorker(q, gen).start()
+    in_batch = True
+    while in_batch:
+      batch = q.get()
+      q.task_done()
+      if not batch:
+        in_batch = False
+      else:
+        yield batch
 
 
 def get_next_k_idxs(all_idxs, k, offset):

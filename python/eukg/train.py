@@ -46,7 +46,10 @@ def train():
     type2cuis = data_util.load_semantic_network_data(config.data_dir, data)
   else:
     type2cuis = None
-  data_generator = DataGenerator.DataGenerator(data, train_idx, val_idx, config, type2cuis)
+
+  data_generator = DataGenerator.QueuedDataGenerator(
+    data, train_idx, val_idx, config, type2cuis,
+    nrof_queued_batches=config.nrof_queued_batches)
 
   # config map
   config_map = config.flag_values_dict()

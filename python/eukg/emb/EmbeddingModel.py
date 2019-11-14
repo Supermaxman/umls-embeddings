@@ -276,6 +276,15 @@ class TransDACE(BaseModel):
   def embedding_lookup(self, ids, emb_type=None):
     assert emb_type is not None
 
+    ids_shape = tf.shape(ids)
+    ids_shape_count = ids_shape.get_shape().as_list()[0]
+    if ids_shape_count > 1:
+      total_flat_size = tf.math.reduce_prod(ids_shape)
+      ids = tf.reshape(
+        ids,
+        [total_flat_size]
+      )
+
     encoder_out = self.ace_model.embedding_lookup(ids, emb_type)
     with tf.variable_scope(self.embedding_scope):
       with tf.variable_scope(f'{emb_type}_embeddings', reuse=tf.AUTO_REUSE):
@@ -295,6 +304,17 @@ class TransDACE(BaseModel):
     embeddings = tf.nn.l2_normalize(embeddings, axis=-1)
     embeddings_proj = tf.nn.l2_normalize(embeddings_proj, axis=-1)
 
+    if ids_shape_count > 1:
+      emb_shape = tf.concat([ids_shape, [tf.shape(embeddings)[-1]]], axis=0)
+      embeddings = tf.reshape(
+        embeddings,
+        emb_shape
+      )
+      emb_proj_shape = tf.concat([ids_shape, [tf.shape(embeddings_proj)[-1]]], axis=0)
+      embeddings_proj = tf.reshape(
+        embeddings_proj,
+        emb_proj_shape
+      )
     return embeddings, embeddings_proj
 
   def normalize_parameters(self):
@@ -348,6 +368,16 @@ class DistMultACE(BaseModel):
 
   def embedding_lookup(self, ids, emb_type=None):
     assert emb_type is not None
+
+    ids_shape = tf.shape(ids)
+    ids_shape_count = ids_shape.get_shape().as_list()[0]
+    if ids_shape_count > 1:
+      total_flat_size = tf.math.reduce_prod(ids_shape)
+      ids = tf.reshape(
+        ids,
+        [total_flat_size]
+      )
+
     encoder_out = self.ace_model.embedding_lookup(ids, emb_type)
     with tf.variable_scope(self.embedding_scope):
       with tf.variable_scope(f'{emb_type}_embeddings', reuse=tf.AUTO_REUSE):
@@ -357,5 +387,13 @@ class DistMultACE(BaseModel):
           activation=None,
           name='embeddings'
         )
+
+    if ids_shape_count > 1:
+      emb_shape = tf.concat([ids_shape, [tf.shape(embeddings)[-1]]], axis=0)
+      embeddings = tf.reshape(
+        embeddings,
+        emb_shape
+      )
+
     return embeddings
 
