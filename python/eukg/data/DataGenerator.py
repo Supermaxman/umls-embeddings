@@ -329,6 +329,8 @@ class QueuedDataGenerator(DataGenerator):
 
   def queued_generate(self, b_func, num_batches):
     q_in = queue.Queue()
+    # TODO problem if generator is thrown away before all batches are used, worker thread will be left alive.
+    # TODO figure out how to dispose of worker thread if generator is not run to completion.
     for i in range(num_batches):
       q_in.put(i)
 
