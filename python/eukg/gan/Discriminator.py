@@ -92,14 +92,25 @@ class BaseModel(Trainable):
       # run once to get embeddings for everything first in stack for efficiency.
       concepts = tf.concat([self.neg_subj, self.neg_obj, self.pos_subj, self.pos_obj], axis=0)
       e_concepts = self.embedding_model.embedding_lookup(concepts, 'concept')
-      # bsize
-      e_neg_subj = e_concepts[:bsize]
-      # bsize
-      e_neg_obj = e_concepts[bsize:2 * bsize]
-      # bsize
-      e_pos_subj = e_concepts[2 * bsize:3 * bsize]
-      # bsize
-      e_pos_obj = e_concepts[3 * bsize:]
+      if isinstance(e_concepts, tuple):
+        e_concepts, e_concepts_proj = e_concepts
+        # bsize
+        e_neg_subj = e_concepts[:bsize], e_concepts_proj[:bsize]
+        # bsize
+        e_neg_obj = e_concepts[bsize:2 * bsize], e_concepts_proj[bsize:2 * bsize]
+        # bsize
+        e_pos_subj = e_concepts[2 * bsize:3 * bsize], e_concepts_proj[2 * bsize:3 * bsize]
+        # bsize
+        e_pos_obj = e_concepts[3 * bsize:], e_concepts_proj[3 * bsize:]
+      else:
+        # bsize
+        e_neg_subj = e_concepts[:bsize]
+        # bsize
+        e_neg_obj = e_concepts[bsize:2 * bsize]
+        # bsize
+        e_pos_subj = e_concepts[2 * bsize:3 * bsize]
+        # bsize
+        e_pos_obj = e_concepts[3 * bsize:]
 
       e_rels = self.embedding_model.embedding_lookup(self.relations, 'rel')
 

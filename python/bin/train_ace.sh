@@ -11,7 +11,7 @@
 python -m python.eukg.train \
 --mode=disc \
 --model=transd \
---run_name=transd-disc-ace-7 \
+--run_name=transd-disc-ace-10 \
 --batch_size=16 \
 --learning_rate=1e-5 \
 --no_semantic_network \
@@ -23,13 +23,15 @@ python -m python.eukg.train \
 --max_batches_per_epoch=50000 \
 --num_epochs=100 \
 --val_batch_size=32 \
+--nrof_queued_batches=20 \
+--nrof_queued_workers=1 \
 --encoder_checkpoint=/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_model.ckpt
 
 # pre-train generator
 python -m python.eukg.train \
 --mode=gen \
 --model=distmult \
---run_name=dm-gen-ace-12 \
+--run_name=dm-gen-ace-13 \
 --no_semantic_network \
 --learning_rate=1e-5 \
 --batch_size=16 \
@@ -41,7 +43,7 @@ python -m python.eukg.train \
 --max_batches_per_epoch=50000 \
 --num_epochs=100 \
 --val_batch_size=32 \
---num_generator_samples=4 \
+--num_generator_samples=8 \
 --nrof_queued_batches=20 \
 --nrof_queued_workers=1 \
 --encoder_checkpoint=/users/max/data/models/umls-embeddings/transd/transd-disc-ace-7/transd-350000

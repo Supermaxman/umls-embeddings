@@ -59,9 +59,13 @@ class DataGenerator:
 
   def generate_mt(self, is_training):
     idxs = self.train_idx if is_training else self.val_idx
+    if is_training:
+      print('\n\nshuffling')
+      np.random.shuffle(idxs)
     batch_size = self.config.batch_size if is_training else self.config.val_batch_size
     subj, rel, obj = self.data['subj'], self.data['rel'], self.data['obj']
-    # nsubj, nobj = self.sampler.sample(subj, rel, obj)
+    print('\n\nsampling')
+    nsubj, nobj = self.sampler.sample(subj, rel, obj, verbose=True)
     num_batches = int(math.floor(float(len(idxs)) / batch_size))
     print('\n\ngenerating %d batches' % num_batches)
     # TODO queueing data generator
@@ -70,21 +74,23 @@ class DataGenerator:
       yield self.create_mt_batch(
         subj[idx],
         rel[idx],
-        obj[idx]
+        obj[idx],
+        nsubj[idx],
+        nobj[idx]
       )
 
-  def create_mt_batch(self, subj, rel, obj):
-    # TODO do sampling here
-    nsubj, nobj = self.sampler.sample(subj, rel, obj)
+  def create_mt_batch(self, subj, rel, obj, nsubj, nobj):
     return rel, subj, obj, nsubj, nobj
 
   def generate_mt_gen_mode(self, is_training):
     idxs = self.train_idx if is_training else self.val_idx
+    if is_training:
+      print('\n\nshuffling')
+      np.random.shuffle(idxs)
     batch_size = self.config.batch_size if is_training else self.config.val_batch_size
     subj, rel, obj = self.data['subj'], self.data['rel'], self.data['obj']
     num_batches = int(math.floor(float(len(idxs)) / batch_size))
     print('\n\ngenerating %d batches in generation mode' % num_batches)
-    # TODO queueing data generator
     for b in range(num_batches):
       idx = idxs[b * batch_size: (b + 1) * batch_size]
       yield self.create_mt_gen_mode_batch(
@@ -94,6 +100,7 @@ class DataGenerator:
       )
 
   def create_mt_gen_mode_batch(self, subj, rel, obj):
+    # TODO consider pre-sampling these
     sampl_subj, sampl_obj = self.sampler.sample_for_generator(
       subj,
       rel,
@@ -205,12 +212,14 @@ class NegativeSampler:
       elif not replace_s and c not in self.sr2o[(s_, r_)]:
         return s_, c
 
-  def sample(self, subj, rel, obj):
+  def sample(self, subj, rel, obj, verbose=False):
     neg_subj = []
     neg_obj = []
     # print("\n")
-    # for s, r, o in tqdm(zip(subj, rel, obj), desc='negative sampling', total=len(subj)):
-    for s, r, o in zip(subj, rel, obj):
+    tuple_iter = zip(subj, rel, obj)
+    if verbose:
+      tuple_iter = tqdm(tuple_iter, desc='negative sampling', total=len(subj))
+    for s, r, o in tuple_iter:
       ns, no = self._neg_sample(s, r, o, random.random() > 0.5)
       neg_subj.append(ns)
       neg_obj.append(no)
@@ -278,9 +287,13 @@ class QueuedDataGenerator(DataGenerator):
 
   def generate_mt(self, is_training):
     idxs = self.train_idx if is_training else self.val_idx
+    if is_training:
+      print('\n\nshuffling')
+      np.random.shuffle(idxs)
     batch_size = self.config.batch_size if is_training else self.config.val_batch_size
     subj, rel, obj = self.data['subj'], self.data['rel'], self.data['obj']
-    # nsubj, nobj = self.sampler.sample(subj, rel, obj)
+    print('\n\nsampling')
+    nsubj, nobj = self.sampler.sample(subj, rel, obj, verbose=True)
     num_batches = int(math.floor(float(len(idxs)) / batch_size))
     print('\n\ngenerating %d batches' % num_batches)
     def b_func(b):
@@ -288,13 +301,18 @@ class QueuedDataGenerator(DataGenerator):
       batch = self.create_mt_batch(
         subj[idx],
         rel[idx],
-        obj[idx]
+        obj[idx],
+        nsubj[idx],
+        nobj[idx]
       )
       return batch
     return self.queued_generate(b_func, num_batches)
 
   def generate_mt_gen_mode(self, is_training):
     idxs = self.train_idx if is_training else self.val_idx
+    if is_training:
+      print('\n\nshuffling')
+      np.random.shuffle(idxs)
     batch_size = self.config.batch_size if is_training else self.config.val_batch_size
     subj, rel, obj = self.data['subj'], self.data['rel'], self.data['obj']
     num_batches = int(math.floor(float(len(idxs)) / batch_size))
