@@ -9,7 +9,7 @@ from .. import Config
 from ..data import data_util, DataGenerator
 from ..emb import EmbeddingModel
 from .Generator import GanGenerator
-from . import Discriminator
+from . import Discriminator, DisGen
 from ..emb import AceModel
 
 
@@ -45,19 +45,20 @@ def train():
     nrof_queued_batches=config.nrof_queued_batches
   )
 
+  d_model, g_model = config.model.split('-')
   with tf.Graph().as_default(), tf.Session() as session:
     if config.ace_model:
       t_data = data_util.load_metathesaurus_token_data(config.data_dir)
       ace_model = AceModel.ACEModel(config, t_data)
     else:
       ace_model = None
-    with tf.variable_scope(config.dis_run_name):
-      discriminator = init_model(config, 'disc', ace_model)
-    with tf.variable_scope(config.gen_run_name):
-      config.no_semantic_network = True
-      # TODO determine if this lr makes sense
-      # config.learning_rate = 1e-1
-      generator = init_model(config, 'gen', ace_model)
+    # with tf.variable_scope(config.dis_run_name):
+    discriminator = init_model(config, d_model, 'disc', ace_model)
+    # with tf.variable_scope(config.gen_run_name):
+    config.no_semantic_network = True
+    # TODO determine if this lr makes sense
+    # config.learning_rate = 1e-1
+    generator = init_model(config, g_model, 'gen', ace_model)
     if use_semnet:
       with tf.variable_scope(config.sn_gen_run_name):
         config.no_semantic_network = False
@@ -66,20 +67,31 @@ def train():
       # init models
       ace_model.init_from_checkpoint(config.encoder_checkpoint)
 
-    tf.global_variables_initializer().run()
-    tf.local_variables_initializer().run()
+    if not config.ace_model:
+      # init saver
 
-    # init saver
-    dis_saver = tf.train.Saver(var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=config.dis_run_name),
-                               max_to_keep=10)
-    gen_saver = tf.train.Saver(var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=config.gen_run_name),
-                               max_to_keep=10)
+      tf.global_variables_initializer().run()
+      tf.local_variables_initializer().run()
 
-    # load models
-    dis_ckpt = tf.train.latest_checkpoint(os.path.join(config.model_dir, config.model, config.dis_run_name))
-    dis_saver.restore(session, dis_ckpt)
-    gen_ckpt = tf.train.latest_checkpoint(os.path.join(config.model_dir, "distmult", config.gen_run_name))
-    gen_saver.restore(session, gen_ckpt)
+      dis_saver = tf.train.Saver(var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=config.dis_run_name),
+                                 max_to_keep=10)
+      gen_saver = tf.train.Saver(var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES, scope=config.gen_run_name),
+                                 max_to_keep=10)
+
+      # # load models
+      dis_ckpt = tf.train.latest_checkpoint(os.path.join(config.model_dir, config.model, config.dis_run_name))
+      dis_saver.restore(session, dis_ckpt)
+      gen_ckpt = tf.train.latest_checkpoint(os.path.join(config.model_dir, "distmult", config.gen_run_name))
+      gen_saver.restore(session, gen_ckpt)
+    else:
+      tf_saver = tf.train.Saver(max_to_keep=10)
+      pre_model_ckpt = tf.train.latest_checkpoint(os.path.join(config.model_dir, config.model, config.pre_run_name))
+      # init models, partial restore (ignoring ADAM and other optimizer params).
+      ace_model.init_from_checkpoint(pre_model_ckpt)
+      # tf_saver.restore(session, pre_model_ckpt)
+      tf.global_variables_initializer().run()
+      tf.local_variables_initializer().run()
+
     if use_semnet:
       sn_gen_saver = tf.train.Saver(var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
                                                                scope=config.sn_gen_run_name),
@@ -119,15 +131,18 @@ def train():
         global_step = train_epoch(session, discriminator, generator, config, data_generator, train_summary_writer,
                                   global_step)
       print("Saving models to %s at step %d" % (gan_model_dir, global_step))
-      dis_saver.save(session, os.path.join(gan_model_dir, 'discriminator', config.model), global_step=global_step)
-      gen_saver.save(session, os.path.join(gan_model_dir, 'generator', config.model), global_step=global_step)
+      if not config.ace_model:
+        dis_saver.save(session, os.path.join(gan_model_dir, 'discriminator', config.model), global_step=global_step)
+        gen_saver.save(session, os.path.join(gan_model_dir, 'generator', config.model), global_step=global_step)
+      else:
+        tf_saver.save(session, os.path.join(gan_model_dir, config.model), global_step=global_step)
       reset_local_vars()
       print('----------------------------')
       print('Begin Validation Epoch %d' % ep)
       validation_epoch(session, discriminator, config, data_generator, val_summary_writer, global_step)
 
 
-def init_model(config, mode, ace_model=None):
+def init_model(config, c_model, mode, ace_model=None):
   print('Initializing %s model...' % mode)
 
   if mode == 'disc':
@@ -136,24 +151,32 @@ def init_model(config, mode, ace_model=None):
         em = EmbeddingModel.TransE(config)
       elif config.model == 'transd':
         # TODO ask if these embeddings should be reduced here.
-        # config.embedding_size = config.embedding_size / 2
+        config.embedding_size = config.embedding_size // 2
         em = EmbeddingModel.TransD(config)
-        # config.embedding_size = config.embedding_size * 2
+        config.embedding_size = config.embedding_size * 2
       else:
         raise ValueError('Unrecognized model type: %s' % config.model)
     else:
-      if config.model == 'transd':
+      if c_model == 'transd':
+        config.embedding_size = config.embedding_size // 2
         em = EmbeddingModel.TransDACE(config, ace_model)
+        config.embedding_size = config.embedding_size * 2
       else:
         raise ValueError('Unrecognized model type: %s' % config.model)
 
-    model = Discriminator.BaseModel(config, em)
+    if not config.ace_model:
+      model = Discriminator.BaseModel(config, em)
+    else:
+      model = DisGen.DisGenGanDiscriminator(config, em)
   elif mode == 'gen':
     if not config.ace_model:
       em = EmbeddingModel.DistMult(config)
     else:
       em = EmbeddingModel.DistMultACE(config, ace_model)
-    model = GanGenerator(config, em)
+    if not config.ace_model:
+      model = GanGenerator(config, em)
+    else:
+      model = DisGen.DisGenGanGenerator(config, em)
   elif mode == 'sn_gen':
     if config.ace_model:
       raise ValueError('Unrecognized ace model type')

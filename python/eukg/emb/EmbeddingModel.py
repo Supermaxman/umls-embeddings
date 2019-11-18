@@ -255,7 +255,7 @@ class TransDACE(BaseModel):
   def __init__(self, config, ace_model):
     BaseModel.__init__(self, config)
     self.ace_model = ace_model
-    with tf.variable_scope('embeddings') as e_scope:
+    with tf.variable_scope('transd_embeddings') as e_scope:
       self.embedding_scope = e_scope
 
   def energy(self, head, rel, tail, norm_ord='euclidean'):
@@ -361,7 +361,7 @@ class DistMultACE(BaseModel):
       self.energy_activation = lambda x: x
     else:
       raise Exception('Unrecognized activation: %s' % config.energy_activation)
-    with tf.variable_scope('embeddings') as e_scope:
+    with tf.variable_scope('dm_embeddings') as e_scope:
       self.embedding_scope = e_scope
 
   def energy(self, head, rel, tail, norm_ord='euclidean'):
@@ -377,7 +377,6 @@ class DistMultACE(BaseModel):
     post_activation = self.energy_activation(pre_activation)
 
     return post_activation
-
 
   def normalize_parameters(self):
     return tf.no_op()

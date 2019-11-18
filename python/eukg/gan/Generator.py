@@ -205,15 +205,15 @@ class GanGenerator(Generator):
       discounted_grads_and_vars = [(self.discounted_reward * g, v) for g, v in grads_and_vars if g is not None]
       self.train_op = optimizer.apply_gradients(discounted_grads_and_vars,
                                                 global_step=tf.train.get_or_create_global_step())
-      summary = [tf.summary.scalar('avg_st_prob', tf.reduce_mean(self.type_probabilities)),
-                 tf.summary.scalar('sn_loss', loss / self.batch_size),
-                 tf.summary.scalar('reward', self.discounted_reward)]
+      tf.summary.scalar('avg_st_prob', tf.reduce_mean(self.type_probabilities))
+      tf.summary.scalar('sn_loss', loss / self.batch_size)
+      tf.summary.scalar('reward', self.discounted_reward)
     else:
       # [batch_size, num_samples] - this is for sampling during GAN training
       self.probability_distributions = tf.nn.softmax(self.sampl_energies, axis=-1)
       self.probabilities = tf.gather_nd(self.probability_distributions, self.gan_loss_sample, name='sampl_probs')
       loss = -tf.reduce_sum(tf.log(self.probabilities))
-      summary = [tf.summary.scalar('avg_sampled_prob', tf.reduce_mean(self.probabilities))]
+      tf.summary.scalar('avg_sampled_prob', tf.reduce_mean(self.probabilities))
 
       # if training as part of a GAN, gradients should be scaled by discounted_reward
       grads_and_vars = optimizer.compute_gradients(loss)
@@ -230,4 +230,4 @@ class GanGenerator(Generator):
     # reporting loss
     self.loss = loss / self.batch_size
     # summary
-    self.summary = tf.summary.merge(summary)
+    self.summary = tf.summary.merge_all()

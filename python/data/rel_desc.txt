@@ -1,0 +1,15 @@
+AQ 	Allowed qualifier
+CHD 	has child relationship
+DEL 	Deleted concept
+PAR 	has parent relationship
+QB 	can be qualified by
+RB 	has a broader relationship
+RL 	the relationship is similar or alike
+RN 	has a narrower relationship
+RO 	has relationship other than synonymous, narrower, or broader
+RQ 	related and possibly synonymous
+RU 	Related, unspecified
+SIB 	has sibling relationship
+SY 	source asserted synonymy
+XR 	Not related, no mapping
+  	Empty relationship

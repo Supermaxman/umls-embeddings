@@ -35,6 +35,7 @@ tf.flags.DEFINE_bool("save_ranks", True, "Save ranks? (turn off while debugging)
 tf.flags.DEFINE_string("dis_run_name", None, "Run name for the discriminator model")
 tf.flags.DEFINE_string("gen_run_name", "dm-gen", "Run name for the generator model")
 tf.flags.DEFINE_string("sn_gen_run_name", "dm-sn-gen", "Run name for the semnet generator model")
+tf.flags.DEFINE_string("pre_run_name", None, "Run name for the joint dis/gen pre-trained model")
 
 # model params
 # TODO consider alternatives, like higher gamma

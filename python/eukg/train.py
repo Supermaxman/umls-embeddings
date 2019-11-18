@@ -6,7 +6,7 @@ import math
 from .tf_util import Trainer, ModelSaver
 
 from .emb import EmbeddingModel
-from .gan import Generator, train_gan, Discriminator
+from .gan import Generator, train_gan, Discriminator, DisGen
 from . import Config
 from .data import data_util, DataGenerator
 from .emb import AceModel
@@ -75,9 +75,9 @@ def train():
     else:
       ace_model = None
 
-    with tf.variable_scope(config.run_name):
-      model = init_model(config, data_generator, ace_model)
-      # session.run(model.train_init_op)
+    # with tf.variable_scope(config.run_name):
+    model = init_model(config, data_generator, ace_model)
+    # session.run(model.train_init_op)
 
     # init models
     if config.ace_model:
@@ -131,7 +131,7 @@ def init_model(config, data_generator, ace_model=None):
     if config.model == 'transe':
       em = EmbeddingModel.TransE(config, embeddings_dict=npz)
     elif config.model == 'transd':
-      config.embedding_size = config.embedding_size / 2
+      config.embedding_size = config.embedding_size // 2
       em = EmbeddingModel.TransD(config, embeddings_dict=npz)
     elif config.model == 'distmult':
       em = EmbeddingModel.DistMult(config, embeddings_dict=npz)
@@ -139,10 +139,15 @@ def init_model(config, data_generator, ace_model=None):
       raise ValueError('Unrecognized model type: %s' % config.model)
   else:
     if config.model == 'transd':
-      config.embedding_size = config.embedding_size / 2
+      config.embedding_size = config.embedding_size // 2
       em = EmbeddingModel.TransDACE(config, ace_model)
     elif config.model == 'distmult':
       em = EmbeddingModel.DistMultACE(config, ace_model)
+    elif config.model == 'transd-distmult':
+      g_em = EmbeddingModel.DistMultACE(config, ace_model)
+      config.embedding_size = config.embedding_size // 2
+      d_em = EmbeddingModel.TransDACE(config, ace_model)
+      em = d_em, g_em
     else:
       raise ValueError('Unrecognized model type: %s' % config.model)
 
@@ -150,6 +155,9 @@ def init_model(config, data_generator, ace_model=None):
     model = Discriminator.BaseModel(config, em, data_generator)
   elif config.mode == 'gen':
     model = Generator.Generator(config, em, data_generator)
+  elif config.mode == 'disgen':
+    d_em, g_em = em
+    model = DisGen.DisGen(config, d_em, g_em, data_generator)
   else:
     raise ValueError('Unrecognized mode: %s' % config.mode)
 
