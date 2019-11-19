@@ -26,12 +26,12 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=gan \
 --model=transd-distmult \
---run_name=gan-ace-8 \
+--run_name=gan-ace-9 \
 --no_semantic_network \
 --pre_run_name=transd-dm-disgen-ace-1 \
 --dis_learning_rate=1e-3 \
 --gen_learning_rate=1e-2 \
---batch_size=8 \
+--batch_size=4 \
 --data_dir=/users/max/data/artifacts/umls-embeddings \
 --model_dir=/users/max/data/models/umls-embeddings \
 --summaries_dir=/shared/hltdir4/disk1/max/logs \
@@ -39,7 +39,7 @@ python -m python.eukg.train \
 --train_bert=False \
 --max_batches_per_epoch=100000 \
 --num_epochs=100 \
---val_batch_size=32 \
---num_generator_samples=8 \
+--val_batch_size=16 \
+--num_generator_samples=16 \
 --nrof_queued_batches=10 \
 --nrof_queued_workers=1

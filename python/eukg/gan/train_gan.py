@@ -98,6 +98,7 @@ def train():
       # tf_saver.restore(session, pre_model_ckpt)
       tf.global_variables_initializer().run()
       tf.local_variables_initializer().run()
+      # tf_saver.export_meta_graph(filename=os.path.join(config.model_dir, config.model))
 
     if use_semnet:
       sn_gen_saver = tf.train.Saver(var_list=tf.get_collection(tf.GraphKeys.GLOBAL_VARIABLES,
@@ -116,7 +117,10 @@ def train():
     # init summary directories and summary writers
     if not os.path.exists(os.path.join(config.summaries_dir, 'train')):
       os.makedirs(os.path.join(config.summaries_dir, 'train'))
-    train_summary_writer = tf.summary.FileWriter(os.path.join(config.summaries_dir, 'train'))
+    train_summary_writer = tf.summary.FileWriter(
+      os.path.join(config.summaries_dir, 'train'),
+      graph=session.graph
+    )
     if not os.path.exists(os.path.join(config.summaries_dir, 'val')):
       os.makedirs(os.path.join(config.summaries_dir, 'val'))
     val_summary_writer = tf.summary.FileWriter(os.path.join(config.summaries_dir, 'val'))
