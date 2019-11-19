@@ -40,6 +40,8 @@ tf.flags.DEFINE_string("pre_run_name", None, "Run name for the joint dis/gen pre
 # model params
 # TODO consider alternatives, like higher gamma
 tf.flags.DEFINE_float("learning_rate", 1e-5, "Starting learning rate")
+tf.flags.DEFINE_float("dis_learning_rate", 1e-5, "Starting learning rate for gan dis.")
+tf.flags.DEFINE_float("gen_learning_rate", 1e-5, "Starting learning rate for gan gen.")
 tf.flags.DEFINE_float("decay_rate", 0.96, "LR decay rate")
 tf.flags.DEFINE_float("momentum", 0.9, "Momentum")
 tf.flags.DEFINE_float("gamma", 0.1, "Margin parameter for loss")

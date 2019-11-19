@@ -59,11 +59,12 @@ def train():
     else:
       ace_model = None
     # with tf.variable_scope(config.dis_run_name):
+    config.learning_rate = config.dis_learning_rate
     discriminator = init_model(config, d_model, 'disc', ace_model)
     # with tf.variable_scope(config.gen_run_name):
     config.no_semantic_network = True
     # TODO determine if this lr makes sense
-    # config.learning_rate = config.learning_rate * 10
+    config.learning_rate = config.gen_learning_rate
     generator = init_model(config, g_model, 'gen', ace_model)
     if use_semnet:
       with tf.variable_scope(config.sn_gen_run_name):

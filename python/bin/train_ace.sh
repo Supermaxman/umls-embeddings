@@ -26,10 +26,11 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=gan \
 --model=transd-distmult \
---run_name=gan-ace-7 \
+--run_name=gan-ace-8 \
 --no_semantic_network \
 --pre_run_name=transd-dm-disgen-ace-1 \
---learning_rate=1e-4 \
+--dis_learning_rate=1e-3 \
+--gen_learning_rate=1e-2 \
 --batch_size=8 \
 --data_dir=/users/max/data/artifacts/umls-embeddings \
 --model_dir=/users/max/data/models/umls-embeddings \
