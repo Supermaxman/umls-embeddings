@@ -99,7 +99,7 @@ class ACEModel(object):
     max_length = tf.reduce_max(token_lengths)
     token_ids = token_ids[:, :max_length]
     encoder_seq_out = self.tokens_to_shared_encoder(token_ids, token_lengths)
-    embeddings = self.shared_encoder_to_embeddings(encoder_seq_out, token_lengths)
+    embeddings = self.shared_encoder_to_embeddings(encoder_seq_out, token_lengths, emb_type)
     return embeddings
 
   def embedding_lookup(self, ids, emb_type):
