@@ -26,7 +26,7 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=gan \
 --model=transd-distmult \
---run_name=gan-ace-22 \
+--run_name=gan-ace-23 \
 --pre_run_name=transd-dm-disgen-ace-1 \
 --ace_model \
 --no_semantic_network \

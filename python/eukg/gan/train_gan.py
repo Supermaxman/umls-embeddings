@@ -248,7 +248,27 @@ def train_epoch(session, discriminator, generator, config, data_generator, summa
   pbar = tqdm(total=console_update_interval)
   idx_np = np.arange(config.num_generator_samples)
   # TODO allow for smaller epochs here.
-  for b, batch in enumerate(data_generator.generate_mt_gen_mode(True)):
+  max_batches_per_epoch = config.max_batches_per_epoch
+  if max_batches_per_epoch is None:
+    print('Each training epoch will pass through the full dataset.')
+    train_data_provider = lambda: data_generator.generate_mt_gen_mode(True)
+  else:
+    print('Each training epoch will process at most %d batches.' % max_batches_per_epoch)
+    global it
+    it = iter(data_generator.generate_mt_gen_mode(True))
+
+    def bounded_train_data_provider():
+      global it
+      for b in range(max_batches_per_epoch):
+        try:
+          yield next(it)
+        except StopIteration:
+          print('WARNING: reached the end of training data. Looping over it again.')
+          it = iter(data_generator.generate_mt_gen_mode(True))
+          yield next(it)
+    train_data_provider = bounded_train_data_provider
+
+  for b, batch in enumerate(train_data_provider()):
     verbose_batch = b > 0 and b % console_update_interval == 0
 
     # generation

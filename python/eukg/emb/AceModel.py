@@ -2,6 +2,7 @@
 import tensorflow as tf
 import numpy as np
 from bert import modeling
+from collections import defaultdict
 
 
 class ACEModel(object):
@@ -60,21 +61,17 @@ class ACEModel(object):
         self.token_lengths_placeholder: self.truncated_lengths}
     )
 
-  def tokens_to_embeddings(self, token_ids, token_lengths, emb_type):
-    # dynamic token id sizing so we don't waste compute
-    max_length = tf.reduce_max(token_lengths)
-    token_ids = token_ids[:, :max_length]
-
+  def tokens_to_shared_encoder(self, token_ids, token_lengths):
     # TODO determine proper reuse of bert, prob keep same weights for both concepts & relations
     with tf.variable_scope('bert', reuse=tf.AUTO_REUSE) as scope:
       input_mask = tf.sequence_mask(
-          token_lengths,
-          maxlen=tf.shape(token_ids)[1],
-          dtype=tf.int32
+        token_lengths,
+        maxlen=tf.shape(token_ids)[1],
+        dtype=tf.int32
       )
       bert_model = modeling.BertModel(
         config=self.bert_config,
-        is_training=False, # TODO determine if we want to use dropout during training
+        is_training=False,  # TODO determine if we want to use dropout during training
         input_ids=token_ids,
         input_mask=input_mask,
         scope=scope
@@ -83,10 +80,11 @@ class ACEModel(object):
       # If we do not want to train BERT at all and leave it frozen then stop gradients at output.
       if not self.train_bert:
         encoder_seq_out = tf.stop_gradient(encoder_seq_out)
+      return encoder_seq_out
 
+  def shared_encoder_to_embeddings(self, encoder_seq_out, token_lengths, emb_type):
     with tf.variable_scope('ace_encoder'):
-      # TODO determine proper reuse of rnn layer (reuse between concepts, maybe new for rels?)
-      with tf.variable_scope(f'rnn_{emb_type}_encoder', reuse=tf.AUTO_REUSE) as scope:
+      with tf.variable_scope(f'rnn_{emb_type}_encoder', reuse=tf.AUTO_REUSE):
         encoder_out = rnn_encoder(
           encoder_seq_out,
           token_lengths,
@@ -95,6 +93,14 @@ class ACEModel(object):
           reuse=tf.AUTO_REUSE
         )
       return encoder_out
+
+  def tokens_to_embeddings(self, token_ids, token_lengths, emb_type):
+    # dynamic token id sizing so we don't waste compute
+    max_length = tf.reduce_max(token_lengths)
+    token_ids = token_ids[:, :max_length]
+    encoder_seq_out = self.tokens_to_shared_encoder(token_ids, token_lengths)
+    embeddings = self.shared_encoder_to_embeddings(encoder_seq_out, token_lengths)
+    return embeddings
 
   def embedding_lookup(self, ids, emb_type):
     """
