@@ -16,6 +16,9 @@ from ..emb import AceModel
 # noinspection PyUnboundLocalVariable
 def train():
   config = Config.flags
+  seed = config.seed
+  random.seed(seed)
+  np.random.seed(seed)
 
   use_semnet = not config.no_semantic_network
 
@@ -41,18 +44,16 @@ def train():
   else:
     type2cuis = None
 
-  data_generator = DataGenerator.QueuedDataGenerator(
-    data, train_idx, val_idx, config, type2cuis,
-    nrof_queued_batches=config.nrof_queued_batches,
-    nrof_queued_workers=config.nrof_queued_workers
-  )
-
-  # data_generator = DataGenerator.DataGenerator(
-  #   data, train_idx, val_idx, config, type2cuis
-  # )
-
   d_model, g_model = config.model.split('-')
-  with tf.Graph().as_default(), tf.Session() as session:
+
+  if config.gpu_memory_growth:
+    gpu_config = tf.ConfigProto()
+    gpu_config.gpu_options.allow_growth = True
+  else:
+    gpu_config = None
+
+  with tf.Graph().as_default(), tf.Session(config=gpu_config) as session:
+    tf.set_random_seed(seed)
     if config.ace_model:
       t_data = data_util.load_metathesaurus_token_data(config.data_dir)
       ace_model = AceModel.ACEModel(config, t_data)
@@ -63,13 +64,33 @@ def train():
     discriminator = init_model(config, d_model, 'disc', ace_model)
     # with tf.variable_scope(config.gen_run_name):
     config.no_semantic_network = True
-    # TODO determine if this lr makes sense
     config.learning_rate = config.gen_learning_rate
     generator = init_model(config, g_model, 'gen', ace_model)
     if use_semnet:
-      with tf.variable_scope(config.sn_gen_run_name):
-        config.no_semantic_network = False
-        sn_generator = init_model(config, 'sn_gen', ace_model)
+      # with tf.variable_scope(config.sn_gen_run_name):
+      config.no_semantic_network = False
+      sn_generator = init_model(config, 'sn_gen', ace_model)
+
+    # init summary directories and summary writers
+    if not os.path.exists(os.path.join(config.summaries_dir, 'train')):
+      os.makedirs(os.path.join(config.summaries_dir, 'train'))
+
+    # To include graphdef in logs: graph=tf.get_default_graph()
+    # TODO this way of saving the graphdef does not seem to be working, causes tensorboard to freeze up, so try
+    # TODO manually loading graphpb as file.
+    train_summary_writer = tf.summary.FileWriter(
+      os.path.join(config.summaries_dir, 'train'),
+      graph=tf.get_default_graph()
+    )
+    with open(os.path.join(config.summaries_dir, 'train', 'graph.pbtxt'), 'w') as f:
+      graph_def = tf.get_default_graph().as_graph_def()
+      graphpb_txt = str(graph_def)
+      f.write(graphpb_txt)
+
+    if not os.path.exists(os.path.join(config.summaries_dir, 'val')):
+      os.makedirs(os.path.join(config.summaries_dir, 'val'))
+    val_summary_writer = tf.summary.FileWriter(os.path.join(config.summaries_dir, 'val'))
+
     if config.ace_model and config.encoder_checkpoint is not None:
       # init models
       ace_model.init_from_checkpoint(config.encoder_checkpoint)
@@ -98,6 +119,7 @@ def train():
       # tf_saver.restore(session, pre_model_ckpt)
       tf.global_variables_initializer().run()
       tf.local_variables_initializer().run()
+      ace_model.initialize_tokens(session)
       # tf_saver.export_meta_graph(filename=os.path.join(config.model_dir, config.model))
 
     if use_semnet:
@@ -114,23 +136,22 @@ def train():
     print('local variables that will be reinitialized every epoch: %s' % tf.local_variables())
     reset_local_vars = lambda: session.run(discriminator.reset_streaming_metrics_op)
 
-    # init summary directories and summary writers
-    if not os.path.exists(os.path.join(config.summaries_dir, 'train')):
-      os.makedirs(os.path.join(config.summaries_dir, 'train'))
-    train_summary_writer = tf.summary.FileWriter(
-      os.path.join(config.summaries_dir, 'train'),
-      graph=session.graph
-    )
-    if not os.path.exists(os.path.join(config.summaries_dir, 'val')):
-      os.makedirs(os.path.join(config.summaries_dir, 'val'))
-    val_summary_writer = tf.summary.FileWriter(os.path.join(config.summaries_dir, 'val'))
-
     # config_map = config.flag_values_dict()
     # config_map['data'] = data
     # config_map['train_idx'] = train_idx
     # config_map['val_idx'] = val_idx
 
     global_step = 0
+
+    data_generator = DataGenerator.QueuedDataGenerator(
+      data, train_idx, val_idx, config, type2cuis,
+      nrof_queued_batches=config.nrof_queued_batches,
+      nrof_queued_workers=config.nrof_queued_workers
+    )
+
+    # data_generator = DataGenerator.DataGenerator(
+    #   data, train_idx, val_idx, config, type2cuis
+    # )
     for ep in range(config.num_epochs):
       print('----------------------------')
       print('Begin Train Epoch %d' % ep)

@@ -255,8 +255,6 @@ class TransDACE(BaseModel):
   def __init__(self, config, ace_model):
     BaseModel.__init__(self, config)
     self.ace_model = ace_model
-    with tf.variable_scope('transd_embeddings') as e_scope:
-      self.embedding_scope = e_scope
 
   def energy(self, head, rel, tail, norm_ord='euclidean'):
     """
@@ -311,7 +309,7 @@ class TransDACE(BaseModel):
       )
 
     encoder_out = self.ace_model.embedding_lookup(ids, emb_type)
-    with tf.variable_scope(self.embedding_scope):
+    with tf.variable_scope('transd_embeddings'):
       with tf.variable_scope(f'{emb_type}_embeddings', reuse=tf.AUTO_REUSE):
         embeddings = tf.layers.dense(
           inputs=encoder_out,
@@ -361,8 +359,6 @@ class DistMultACE(BaseModel):
       self.energy_activation = lambda x: x
     else:
       raise Exception('Unrecognized activation: %s' % config.energy_activation)
-    with tf.variable_scope('dm_embeddings') as e_scope:
-      self.embedding_scope = e_scope
 
   def energy(self, head, rel, tail, norm_ord='euclidean'):
     h = self.embedding_lookup(head, 'concept')
@@ -410,7 +406,7 @@ class DistMultACE(BaseModel):
       )
 
     encoder_out = self.ace_model.embedding_lookup(ids, emb_type)
-    with tf.variable_scope(self.embedding_scope):
+    with tf.variable_scope('dm_embeddings'):
       with tf.variable_scope(f'{emb_type}_embeddings', reuse=tf.AUTO_REUSE):
         embeddings = tf.layers.dense(
           inputs=encoder_out,

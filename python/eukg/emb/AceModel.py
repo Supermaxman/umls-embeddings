@@ -13,34 +13,60 @@ class ACEModel(object):
     self.bert_rnn_layers = config.encoder_rnn_layers
     self.bert_rnn_size = config.encoder_rnn_size
     self.train_bert = config.train_bert
-    with tf.variable_scope('ace_encoder') as scope:
-      self.scope = scope
-    with tf.variable_scope('bert', reuse=tf.AUTO_REUSE) as bert_scope:
-      self.bert_scope = bert_scope
 
     print('Loading tokens.')
-    with tf.variable_scope(self.scope):
+    with tf.variable_scope('ace_encoder'):
       with tf.device("/%s:0" % self.embedding_device):
-        max_token_length = tokens_dict['token_ids'].shape[1]
+        nrof_idxs, max_token_length = tokens_dict['token_ids'].shape
         truncated_lengths = np.clip(tokens_dict['token_lengths'], 1, max_token_length)
-        self.token_ids = tf.constant(
-          tokens_dict['token_ids'],
+        self.token_ids_placeholder = tf.placeholder(
+          dtype=tf.int64,
+          shape=[nrof_idxs, max_token_length],
+          name='token_ids_placeholder'
+        )
+        self.token_ids = tf.get_variable(
+          name='token_ids',
+          shape=[nrof_idxs, max_token_length],
           dtype=tf.int64
         )
-        self.token_lengths = tf.constant(
-          truncated_lengths,
+        self.token_lengths_placeholder = tf.placeholder(
+          dtype=tf.int64,
+          shape=[nrof_idxs],
+          name='token_lengths_placeholder'
+        )
+        self.token_lengths = tf.get_variable(
+          name='token_lengths',
+          shape=[nrof_idxs],
           dtype=tf.int64
         )
+        self.token_id_initialize = tf.assign(
+          self.token_ids,
+          self.token_ids_placeholder
+        )
+        self.token_lengths_initialize = tf.assign(
+          self.token_lengths,
+          self.token_lengths_placeholder
+        )
+        self.tokens_dict = tokens_dict
+        self.truncated_lengths = truncated_lengths
+
     self.tensor_cache = {}
+
+  def initialize_tokens(self, session):
+    session.run(
+      [self.token_id_initialize, self.token_lengths_initialize],
+      feed_dict={
+        self.token_ids_placeholder: self.tokens_dict['token_ids'],
+        self.token_lengths_placeholder: self.truncated_lengths}
+    )
 
   def tokens_to_embeddings(self, token_ids, token_lengths, emb_type):
     # dynamic token id sizing so we don't waste compute
     max_length = tf.reduce_max(token_lengths)
     token_ids = token_ids[:, :max_length]
 
-
     # TODO determine proper reuse of bert, prob keep same weights for both concepts & relations
-    with tf.variable_scope(self.bert_scope) as scope:
+    with tf.variable_scope('bert', reuse=tf.AUTO_REUSE) as scope:
       input_mask = tf.sequence_mask(
           token_lengths,
           maxlen=tf.shape(token_ids)[1],
@@ -58,7 +84,7 @@ class ACEModel(object):
       if not self.train_bert:
         encoder_seq_out = tf.stop_gradient(encoder_seq_out)
 
-    with tf.variable_scope(self.scope):
+    with tf.variable_scope('ace_encoder'):
       # TODO determine proper reuse of rnn layer (reuse between concepts, maybe new for rels?)
       with tf.variable_scope(f'rnn_{emb_type}_encoder', reuse=tf.AUTO_REUSE) as scope:
         encoder_out = rnn_encoder(
