@@ -40,10 +40,16 @@ def train():
     type2cuis = data_util.load_semantic_network_data(config.data_dir, data)
   else:
     type2cuis = None
+
   data_generator = DataGenerator.QueuedDataGenerator(
     data, train_idx, val_idx, config, type2cuis,
-    nrof_queued_batches=config.nrof_queued_batches
+    nrof_queued_batches=config.nrof_queued_batches,
+    nrof_queued_workers=config.nrof_queued_workers
   )
+
+  # data_generator = DataGenerator.DataGenerator(
+  #   data, train_idx, val_idx, config, type2cuis
+  # )
 
   d_model, g_model = config.model.split('-')
   with tf.Graph().as_default(), tf.Session() as session:
@@ -57,7 +63,7 @@ def train():
     # with tf.variable_scope(config.gen_run_name):
     config.no_semantic_network = True
     # TODO determine if this lr makes sense
-    # config.learning_rate = 1e-1
+    # config.learning_rate = config.learning_rate * 10
     generator = init_model(config, g_model, 'gen', ace_model)
     if use_semnet:
       with tf.variable_scope(config.sn_gen_run_name):
@@ -215,6 +221,7 @@ def train_epoch(session, discriminator, generator, config, data_generator, summa
   console_update_interval = config.progress_update_interval
   pbar = tqdm(total=console_update_interval)
   idx_np = np.arange(config.num_generator_samples)
+  # TODO allow for smaller epochs here.
   for b, batch in enumerate(data_generator.generate_mt_gen_mode(True)):
     verbose_batch = b > 0 and b % console_update_interval == 0
 

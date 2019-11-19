@@ -68,7 +68,7 @@ class DataGenerator:
     nsubj, nobj = self.sampler.sample(subj, rel, obj, verbose=True)
     num_batches = int(math.floor(float(len(idxs)) / batch_size))
     print('\n\ngenerating %d batches' % num_batches)
-    # TODO queueing data generator
+
     for b in range(num_batches):
       idx = idxs[b * batch_size: (b + 1) * batch_size]
       yield self.create_mt_batch(
@@ -89,6 +89,7 @@ class DataGenerator:
       np.random.shuffle(idxs)
     batch_size = self.config.batch_size if is_training else self.config.val_batch_size
     subj, rel, obj = self.data['subj'], self.data['rel'], self.data['obj']
+
     num_batches = int(math.floor(float(len(idxs)) / batch_size))
     print('\n\ngenerating %d batches in generation mode' % num_batches)
     for b in range(num_batches):
@@ -100,14 +101,13 @@ class DataGenerator:
       )
 
   def create_mt_gen_mode_batch(self, subj, rel, obj):
-    # TODO consider pre-sampling these
-    sampl_subj, sampl_obj = self.sampler.sample_for_generator(
+    nsubj, nobj = self.sampler.sample_for_generator(
       subj,
       rel,
       obj,
       self.config.num_generator_samples
     )
-    return rel, subj, obj, sampl_subj, sampl_obj
+    return rel, subj, obj, nsubj, nobj
 
   def generate_sn(self, is_training):
     print('\n\ngenerating SN data')
@@ -195,7 +195,7 @@ class NegativeSampler:
       self.sr2o[(s, r)].add(o)
       self.or2s[(o, r)].add(s)
       concepts.update([s, o])
-    self.concepts = list(concepts)
+    self.concepts = np.asarray(list(concepts), dtype=np.int32)
 
       # print('\n\ncaching negative sampler maps to %s' % cachedir)
       # os.makedirs(cachedir)
@@ -236,7 +236,7 @@ class NegativeSampler:
 
     return neg_subj, neg_obj
 
-  def sample_for_generator(self, subj_array, rel_array, obj_array, k):
+  def sample_for_generator_old(self, subj_array, rel_array, obj_array, k):
     subj_samples = []
     obj_samples = []
     for s, r, o in zip(subj_array, rel_array, obj_array):
@@ -245,6 +245,46 @@ class NegativeSampler:
       obj_samples.append(no)
 
     return np.asarray(subj_samples, dtype=np.int32), np.asarray(obj_samples, dtype=np.int32)
+
+  def sample_for_generator(self, subj_array, rel_array, obj_array, k, verbose=False):
+    # faster impl of sample_for_generator with initial vectorized sampling
+    # and loop resampling if samples are checked to be invalid.
+    # subj_array [bsize]
+    # rel_array [bsize]
+    # obj_array [bsize]
+    # need to get [bsize, k] nsubj and nobj
+    n = len(subj_array)
+    # perform majority of sampling in single step
+    subj_samples = np.reshape(np.repeat(np.copy(subj_array), k), [n, k])
+    obj_samples = np.reshape(np.repeat(np.copy(obj_array), k), [n, k])
+    if verbose:
+      print('negative generator batch sampling...')
+    samples = np.random.choice(self.concepts, size=(n, k))
+    replace_s = np.random.random((n, k)) > 0.5
+    subj_samples[replace_s] = samples[replace_s]
+    obj_samples[np.logical_not(replace_s)] = samples[np.logical_not(replace_s)]
+    # fix any invalid relations by iterating over them to check.
+    sample_iter = range(n)
+    if verbose:
+      sample_iter = tqdm(sample_iter, desc='negative generator sample checking...', total=n)
+    for i in sample_iter:
+      r = rel_array[i]
+      for j in range(k):
+        r_s = replace_s[i, j]
+        if r_s:
+          c = subj_samples[i, j]
+          o = obj_samples[i, j]
+          if c in self.or2s[(o, r)]:
+            c, _ = self._neg_sample(c, r, o, r_s)
+            subj_samples[i, j] = c
+        else:
+          c = obj_samples[i, j]
+          s = subj_samples[i, j]
+          if c in self.sr2o[(s, r)]:
+            _, c = self._neg_sample(s, r, c, r_s)
+            obj_samples[i, j] = c
+
+    return subj_samples, obj_samples
 
   def invalid_concepts(self, subj, rel, obj, replace_subj):
     if replace_subj:
@@ -280,7 +320,7 @@ class QueuedDataWorker(threading.Thread):
 class QueuedDataGenerator(DataGenerator):
   def __init__(self, data, train_idx, val_idx, config, type2cuis=None, test_mode=False,
                nrof_queued_batches=10,
-               nrof_queued_workers=4):
+               nrof_queued_workers=1):
     super().__init__(data, train_idx, val_idx, config, type2cuis, test_mode)
     self.nrof_queued_batches = nrof_queued_batches
     self.nrof_queued_workers = nrof_queued_workers
@@ -296,6 +336,7 @@ class QueuedDataGenerator(DataGenerator):
     nsubj, nobj = self.sampler.sample(subj, rel, obj, verbose=True)
     num_batches = int(math.floor(float(len(idxs)) / batch_size))
     print('\n\ngenerating %d batches' % num_batches)
+
     def b_func(b):
       idx = idxs[b * batch_size: (b + 1) * batch_size]
       batch = self.create_mt_batch(
@@ -315,8 +356,10 @@ class QueuedDataGenerator(DataGenerator):
       np.random.shuffle(idxs)
     batch_size = self.config.batch_size if is_training else self.config.val_batch_size
     subj, rel, obj = self.data['subj'], self.data['rel'], self.data['obj']
+
     num_batches = int(math.floor(float(len(idxs)) / batch_size))
     print('\n\ngenerating %d batches in generation mode' % num_batches)
+
     def b_func(b):
       idx = idxs[b * batch_size: (b + 1) * batch_size]
       batch = self.create_mt_gen_mode_batch(

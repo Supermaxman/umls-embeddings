@@ -53,6 +53,10 @@ def train():
     nrof_queued_workers=config.nrof_queued_workers
   )
 
+  # data_generator = DataGenerator.DataGenerator(
+  #   data, train_idx, val_idx, config, type2cuis
+  # )
+
   # config map
   config_map = config.flag_values_dict()
   config_map['data'] = data

@@ -314,6 +314,8 @@ class DisGenGanGenerator(BaseModel):
       # [batch_size, num_samples] - this is for sampling during GAN training
       self.probability_distributions = tf.nn.softmax(self.sampl_energies, axis=-1)
       self.probabilities = tf.gather_nd(self.probability_distributions, self.gan_loss_sample, name='sampl_probs')
+      # TODO ask if self.discounted_reward should be [bsize] neg energies, then multiplied to each of these
+      # TODO losses before sum/avg instead of sum and multiplying by avg neg energy of discriminator.
       g_loss = -tf.reduce_sum(tf.log(self.probabilities))
 
       # if training as part of a GAN, gradients should be scaled by discounted_reward
@@ -422,6 +424,7 @@ class DisGenGanDiscriminator(BaseModel):
     with tf.variable_scope("dis_loss"):
       self.predictions = tf.argmax(
         tf.stack([self.d_pos_energy, self.d_neg_energy], axis=1), axis=1, output_type=tf.int32)
+      # TODO ask about why reward is mean over all neg energies.
       self.reward = tf.reduce_mean(self.d_neg_energy, name='reward')
       # loss
       self.loss = tf.reduce_mean(tf.nn.relu(self.gamma - self.d_neg_energy + self.d_pos_energy), name='loss')
