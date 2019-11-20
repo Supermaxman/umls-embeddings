@@ -255,6 +255,237 @@ class DisGen(BaseModel):
       return self.data_generator.generate_mt_gen_mode(is_training)
 
 
+class DisGenGan(DisGen):
+  def __init__(self, config, dis_embedding_model, gen_embedding_model, data_generator=None):
+    super().__init__(config, dis_embedding_model, gen_embedding_model, data_generator)
+    self.baseline = tf.Variable(
+      0.0,
+      trainable=False,
+      name='baseline'
+    )
+    self.batches_per_epoch = config.batches_per_epoch
+    self.decay_rate = config.decay_rate
+    self.optimizer = config.optimizer
+    self.momentum = config.momentum
+    self.d_learning_rate = config.dis_learning_rate
+    self.g_learning_rate = config.gen_learning_rate
+
+  def create_optimizer(self, lr):
+    learning_rate = tf.train.exponential_decay(
+      lr,
+      tf.train.get_or_create_global_step(),
+      self.batches_per_epoch,
+      self.decay_rate,
+      staircase=True
+    )
+    if self.optimizer == "adam":
+      optimizer = tf.train.AdamOptimizer(learning_rate)
+    else:
+      optimizer = tf.train.MomentumOptimizer(
+        learning_rate,
+        self.momentum,
+        use_nesterov=True)
+    return optimizer
+
+  def build(self):
+    summary = []
+    d_optimizer = self.create_optimizer(self.d_learning_rate)
+    g_optimizer = self.create_optimizer(self.g_learning_rate)
+    neg_shape = tf.shape(self.neg_subj)
+    bsize, nsamples = neg_shape[0], neg_shape[1]
+    total_neg_size = bsize * nsamples
+    # [bsize * num_samples]
+    neg_subj_flat = tf.reshape(self.neg_subj, [total_neg_size], name='neg_subj_flat')
+    # [bsize * num_samples]
+    neg_obj_flat = tf.reshape(self.neg_obj, [total_neg_size], name='neg_obj_flat')
+
+    # [bsize * num_samples + bsize * num_samples + b_size + b_size]
+    concepts = tf.concat([neg_subj_flat, neg_obj_flat, self.pos_subj, self.pos_obj], axis=0)
+
+    g_e_concepts = self.gen_embedding_model.embedding_lookup(concepts, 'concept')
+
+    def un_flatten_gen(e_concepts):
+      emb_size = tf.shape(e_concepts)[-1]
+      # first bsize * num_samples
+      e_neg_subj = tf.reshape(e_concepts[:total_neg_size], [bsize, nsamples, emb_size])
+      # second bsize * num_samples
+      e_neg_obj = tf.reshape(e_concepts[total_neg_size:2 * total_neg_size], [bsize, nsamples, emb_size])
+      # bsize
+      e_pos_subj = e_concepts[2*total_neg_size:2*total_neg_size + bsize]
+      # bsize
+      e_pos_obj = e_concepts[2*total_neg_size + bsize:]
+
+      return e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj
+
+    g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj = un_flatten_gen(g_e_concepts)
+    g_e_rels = self.gen_embedding_model.embedding_lookup(self.relations, 'rel')
+
+    # [batch_size, num_samples]
+    with tf.variable_scope("gen_energy"):
+      self.g_sampl_energies = self.gen_embedding_model.energy_from_embeddings(
+        g_e_neg_subj,
+        tf.expand_dims(g_e_rels, axis=1),
+        g_e_neg_obj
+      )
+      self.g_avg_neg_energy = tf.reduce_mean(self.g_sampl_energies)
+      # [bsize, 1]
+      # index into [bsize, num_samples]
+      # TODO double check these sample energies are my logits
+      self.g_sampls = tf.stop_gradient(
+        tf.random.categorical(self.g_sampl_energies, 1, name='g_sampls')[:, 0]
+      )
+
+    # TODO can be more efficient since only need sampled neg subj and obj
+    d_e_concepts = self.dis_embedding_model.embedding_lookup(concepts, 'concept')
+
+    def un_flatten_dis(e_concepts, g_sampls):
+      if isinstance(e_concepts, tuple):
+        e_concepts, e_concepts_proj = e_concepts
+        e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj = un_flatten_gen(e_concepts)
+        e_neg_subj_proj, e_neg_obj_proj, e_pos_subj_proj, e_pos_obj_proj = un_flatten_gen(e_concepts_proj)
+        # only take first negative sample for discriminator loss
+        # TODO replace this index with g_sampl gather
+        e_neg_subj = tf.batch_gather(e_neg_subj, g_sampls)
+        e_neg_subj_proj = tf.batch_gather(e_neg_subj_proj, g_sampls)
+        e_neg_obj = tf.batch_gather(e_neg_obj, g_sampls)
+        e_neg_obj_proj = tf.batch_gather(e_neg_obj_proj, g_sampls)
+
+        e_neg_subj = e_neg_subj, e_neg_subj_proj
+        e_neg_obj = e_neg_obj, e_neg_obj_proj
+        e_pos_subj = e_pos_subj, e_pos_subj_proj
+        e_pos_obj = e_pos_obj, e_pos_obj_proj
+      else:
+        e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj = un_flatten_gen(e_concepts)
+        # TODO replace this index with g_sampl gather
+        e_neg_subj = tf.batch_gather(e_neg_subj, g_sampls)
+        e_neg_obj = tf.batch_gather(e_neg_obj, g_sampls)
+
+      return e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj
+
+    d_e_neg_subj, d_e_neg_obj, d_e_pos_subj, d_e_pos_obj = un_flatten_dis(
+      d_e_concepts,
+      self.g_sampls
+    )
+    d_e_rels = self.dis_embedding_model.embedding_lookup(self.relations, 'rel')
+
+    with tf.variable_scope('dis_energy'):
+      self.d_pos_energy = self.dis_embedding_model.energy_from_embeddings(
+        d_e_pos_subj,
+        d_e_rels,
+        d_e_pos_obj,
+        norm_ord=self.energy_norm
+      )
+
+      self.d_neg_energy = self.dis_embedding_model.energy_from_embeddings(
+        d_e_neg_subj,
+        d_e_rels,
+        d_e_neg_obj,
+        norm_ord=self.energy_norm
+      )
+      self.d_avg_pos_energy = tf.reduce_mean(self.d_pos_energy)
+      self.d_avg_neg_energy = tf.reduce_mean(self.d_neg_energy)
+
+    with tf.variable_scope("dis_loss"):
+      self.d_predictions = tf.argmax(
+        tf.stack([self.d_pos_energy, self.d_neg_energy], axis=1), axis=1, output_type=tf.int32)
+      # TODO double check this is correct with REINFORCE
+      # TODO also double check this shouldn't be negative here
+      self.d_reward = tf.reduce_mean(self.d_neg_energy, name='reward')
+      # loss
+      # loss wants high neg energy and low pos energy
+      self.d_loss = tf.reduce_mean(tf.nn.relu(self.gamma - self.d_neg_energy + self.d_pos_energy), name='loss')
+      self.d_accuracy = tf.reduce_mean(tf.to_float(tf.equal(self.d_predictions, self.labels)))
+      self.d_train_op = d_optimizer.minimize(self.d_loss, name='d_train_op')
+
+    summary += [
+      tf.summary.scalar('dis_loss', self.d_loss),
+      tf.summary.scalar('dis_margin', self.d_avg_pos_energy - self.d_avg_neg_energy),
+      tf.summary.scalar('dis_accuracy', self.d_accuracy)
+    ]
+
+    with tf.variable_scope("gen_loss"):
+      # TODO determine if this is a good baseline method
+      self.discounted_reward = tf.stop_gradient(self.d_reward - self.baseline)
+      # [batch_size, num_samples] - this is for sampling during GAN training
+      self.g_probability_distributions = tf.nn.softmax(self.g_sampl_energies, axis=-1)
+      self.g_probabilities = tf.batch_gather(self.g_probability_distributions, self.g_sampls, name='sampl_probs')
+      # TODO ask if self.discounted_reward should be [bsize] neg energies, then multiplied to each of these
+      # TODO losses before sum/avg instead of sum and multiplying by avg neg energy of discriminator.
+      g_loss = -tf.reduce_sum(tf.log(self.g_probabilities))
+
+      # if training as part of a GAN, gradients should be scaled by discounted_reward
+      grads_and_vars = g_optimizer.compute_gradients(g_loss)
+      vars_with_grad = [v for g, v in grads_and_vars if g is not None]
+      if not vars_with_grad:
+        raise ValueError(
+          "No gradients provided for any variable, check your graph for ops"
+          " that do not support gradients, between variables %s and loss %s." %
+          ([str(v) for _, v in grads_and_vars], g_loss))
+      discounted_grads_and_vars = [(self.discounted_reward * g, v) for g, v in grads_and_vars if g is not None]
+
+      self.g_loss = g_loss / tf.cast(bsize, tf.float32)
+      self.g_avg_prob = tf.reduce_mean(self.g_probabilities)
+
+      with tf.control_dependencies([self.d_train_op]):
+        self.g_train_op = g_optimizer.apply_gradients(
+          discounted_grads_and_vars,
+          global_step=tf.train.get_or_create_global_step(),
+          name='g_train_op'
+        )
+        with tf.control_dependencies([self.g_train_op]):
+          # TODO determine if this is a good baseline method
+          self.update_baseline_op = tf.assign(
+            self.baseline,
+            self.d_reward
+          )
+          with tf.control_dependencies([self.update_baseline_op]):
+            self.train_op = tf.no_op(name='train_op')
+
+    summary += [
+      tf.summary.scalar('gen_loss', self.g_loss),
+      tf.summary.scalar('gen_avg_sampled_prob', self.g_avg_prob),
+      tf.summary.scalar('gen_discounted_reward', self.discounted_reward),
+      tf.summary.scalar('gen_reward', self.d_reward)
+    ]
+
+    # # TODO this loss isn't really being optimized in the GAN formulation of the loss
+    # # regularization for distmult
+    # if self.g_model == "distmult":
+    #   # TODO use already computed embeddings here
+    #   reg = self.regulatization_parameter * self.gen_embedding_model.regularization(
+    #     [g_e_concepts],
+    #     [g_e_rels]
+    #   )
+    #   summary += [
+    #     tf.summary.scalar('gen_reg', reg)
+    #   ]
+    #   self.loss += reg
+
+    # summary
+    self.summary = tf.summary.merge(summary)
+
+  def fetches(self, is_training, verbose=False):
+    fetches = [self.summary, self.g_loss, self.d_loss]
+    if verbose:
+      fetches += [self.d_accuracy]
+    if is_training:
+      fetches += [self.train_op]
+    return fetches
+
+  def prepare_feed_dict(self, batch, is_training, **kwargs):
+    rel, psub, pobj, nsub, nobj = batch
+    return {self.relations: rel,
+            self.pos_subj: psub,
+            self.pos_obj: pobj,
+            self.neg_subj: nsub,
+            self.neg_obj: nobj}
+
+  def progress_update(self, batch, fetched, **kwargs):
+    print('Avg gen loss of last batch: %.4f' % np.average(fetched[1]))
+    print('Avg dis loss of last batch: %.4f' % np.average(fetched[2]))
+    print('Avg dis accuracy of last batch: %.4f' % np.average(fetched[3]))
+
+
 class DisGenGanGenerator(BaseModel):
   def __init__(self, config, gen_embedding_model, data_generator=None):
     super().__init__(config, gen_embedding_model, data_generator)

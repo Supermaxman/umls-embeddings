@@ -85,7 +85,11 @@ def train():
 
     # init models
     if config.ace_model:
-      ace_model.init_from_checkpoint(config.encoder_checkpoint)
+      if config.pre_run_name is not None:
+        pre_model_ckpt = tf.train.latest_checkpoint(os.path.join(config.model_dir, config.model, config.pre_run_name))
+        ace_model.init_from_checkpoint(pre_model_ckpt)
+      else:
+        ace_model.init_from_checkpoint(config.encoder_checkpoint)
 
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()
@@ -95,6 +99,7 @@ def train():
 
     # init saver
     tf_saver = tf.train.Saver(max_to_keep=10)
+
     saver = init_saver(config, tf_saver, session)
 
     # load model
@@ -165,6 +170,9 @@ def init_model(config, data_generator, ace_model=None):
   elif config.mode == 'disgen':
     d_em, g_em = em
     model = DisGen.DisGen(config, d_em, g_em, data_generator)
+  elif config.mode == 'gan-joint':
+    d_em, g_em = em
+    model = DisGen.DisGenGan(config, d_em, g_em, data_generator)
   else:
     raise ValueError('Unrecognized mode: %s' % config.mode)
 
