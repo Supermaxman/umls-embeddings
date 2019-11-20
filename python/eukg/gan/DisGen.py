@@ -270,6 +270,7 @@ class DisGenGan(DisGen):
     self.momentum = config.momentum
     self.d_learning_rate = config.dis_learning_rate
     self.g_learning_rate = config.gen_learning_rate
+    self.baseline_type = config.baseline_type
 
   def create_optimizer(self, lr):
     learning_rate = tf.train.exponential_decay(
@@ -435,20 +436,34 @@ class DisGenGan(DisGen):
       self.g_loss = tf.reduce_mean(self.discounted_reward * g_loss)
       self.g_avg_prob = tf.reduce_mean(self.g_probabilities)
 
-      with tf.control_dependencies([self.d_train_op]):
-        self.g_train_op = g_optimizer.minimize(
-          self.g_loss,
-          global_step=tf.train.get_or_create_global_step(),
-          name='g_train_op'
+      self.g_train_op = g_optimizer.minimize(
+        self.g_loss,
+        global_step=tf.train.get_or_create_global_step(),
+        name='g_train_op'
+      )
+      # ensure update baseline doesn't happen till after g train op
+      with tf.control_dependencies([self.g_train_op]):
+        # TODO determine if this is a good baseline method, maybe running mean or something
+        # TODO use baseline_type to change to running avg, etc.
+        if self.baseline_type == 'avg_prev_batch':
+          self.new_baseline = self.avg_reward
+        elif self.baseline_type == 'avg_prev_batch_momentum':
+          momentum = 0.9
+          self.new_baseline = ((1.0 - momentum) * self.avg_reward) + (momentum * self.baseline)
+        else:
+          raise ValueError(f'Unknown baseline type: {self.baseline_type}')
+        self.update_baseline_op = tf.assign(
+          self.baseline,
+          self.new_baseline
         )
-        with tf.control_dependencies([self.g_train_op]):
-          # TODO determine if this is a good baseline method, maybe running mean or something
-          self.update_baseline_op = tf.assign(
-            self.baseline,
-            self.avg_reward
-          )
-          with tf.control_dependencies([self.update_baseline_op]):
-            self.train_op = tf.no_op(name='train_op')
+
+      self.train_op = tf.group(
+        self.d_train_op,
+        self.g_train_op,
+        self.update_baseline_op,
+        name='train_op'
+      )
+
 
     summary += [
       tf.summary.scalar('gen_loss', avg_g_loss),

@@ -69,7 +69,7 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=gan-joint \
 --model=transd-distmult \
---run_name=gan-ace-34 \
+--run_name=gan-ace-38 \
 --pre_run_name=transd-dm-disgen-ace-1 \
 --ace_model \
 --no_semantic_network \
@@ -90,7 +90,7 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=gan-joint \
 --model=transd-distmult \
---run_name=gan-ace-35 \
+--run_name=gan-ace-37 \
 --pre_run_name=transd-dm-disgen-ace-1 \
 --ace_model \
 --no_semantic_network \
