@@ -98,6 +98,7 @@ class DisGen(BaseModel):
 
     with tf.variable_scope("gen_loss"):
       # [batch_size]
+      # TODO WHY -energy here???
       sm_numerator = tf.exp(-self.g_true_energies)
       # [batch_size]
       exp_sampl_nergies = tf.exp(-self.g_sampl_energies)
@@ -300,6 +301,9 @@ class DisGenGan(DisGen):
     neg_obj_flat = tf.reshape(self.neg_obj, [total_neg_size], name='neg_obj_flat')
 
     # [bsize * num_samples + bsize * num_samples + b_size + b_size]
+    # TODO more efficiency to be saved here, neg_subj and neg_obj are tons of duplicates of
+    # TODO the original item, so could cut size down to bsize * nsamples // 2
+    # TODO since only subj or obj is replaced in sampled triples.
     concepts = tf.concat([neg_subj_flat, neg_obj_flat, self.pos_subj, self.pos_obj], axis=0)
 
     g_e_concepts = self.gen_embedding_model.embedding_lookup(concepts, 'concept')
@@ -331,8 +335,10 @@ class DisGenGan(DisGen):
       # [bsize, 1]
       # index into [bsize, num_samples]
       # TODO double check these sample energies are my logits
+      # TODO this needs to be negative because of how the pre-trained model was trained with negative softmax inputs
+      # TODO WHYYYY
       self.g_sampls = tf.stop_gradient(
-        tf.random.categorical(self.g_sampl_energies, 1, name='g_sampls')
+        tf.random.categorical(-self.g_sampl_energies, 1, name='g_sampls')
       )
 
     # TODO can be more efficient since only need sampled neg subj and obj
@@ -391,7 +397,7 @@ class DisGenGan(DisGen):
       # TODO double check this is correct with REINFORCE
       # TODO also double check this shouldn't be negative here
       #
-      self.d_reward = tf.identity(self.d_neg_energy, name='reward')
+      self.d_reward = tf.identity(-self.d_neg_energy, name='reward')
       # loss
       # loss wants high neg energy and low pos energy
       self.d_loss = tf.reduce_mean(tf.nn.relu(self.gamma - self.d_neg_energy + self.d_pos_energy), name='loss')
@@ -410,7 +416,9 @@ class DisGenGan(DisGen):
       self.avg_reward = tf.reduce_mean(self.d_reward)
       self.avg_discounted_reward = tf.reduce_mean(self.discounted_reward)
       # [batch_size, num_samples] - this is for sampling during GAN training
-      self.g_probability_distributions = tf.nn.softmax(self.g_sampl_energies, axis=-1)
+      # TODO this needs to be negative because of how the pre-trained model was trained with negative softmax inputs
+      # TODO WHYYYY
+      self.g_probability_distributions = tf.nn.softmax(-self.g_sampl_energies, axis=-1)
       self.g_probabilities = tf.gather(
         self.g_probability_distributions,
         self.g_sampls,
