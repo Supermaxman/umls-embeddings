@@ -332,7 +332,7 @@ class DisGenGan(DisGen):
       # index into [bsize, num_samples]
       # TODO double check these sample energies are my logits
       self.g_sampls = tf.stop_gradient(
-        tf.random.categorical(self.g_sampl_energies, 1, name='g_sampls')[:, 0]
+        tf.random.categorical(self.g_sampl_energies, 1, name='g_sampls')
       )
 
     # TODO can be more efficient since only need sampled neg subj and obj
@@ -345,10 +345,10 @@ class DisGenGan(DisGen):
         e_neg_subj_proj, e_neg_obj_proj, e_pos_subj_proj, e_pos_obj_proj = un_flatten_gen(e_concepts_proj)
         # only take first negative sample for discriminator loss
         # TODO replace this index with g_sampl gather
-        e_neg_subj = tf.gather(e_neg_subj, g_sampls, batch_dims=1, axis=1)
-        e_neg_subj_proj = tf.gather(e_neg_subj_proj, g_sampls, batch_dims=1, axis=1)
-        e_neg_obj = tf.gather(e_neg_obj, g_sampls, batch_dims=1, axis=1)
-        e_neg_obj_proj = tf.gather(e_neg_obj_proj, g_sampls, batch_dims=1, axis=1)
+        e_neg_subj = tf.gather(e_neg_subj, g_sampls, batch_dims=1, axis=1)[:, 0]
+        e_neg_subj_proj = tf.gather(e_neg_subj_proj, g_sampls, batch_dims=1, axis=1)[:, 0]
+        e_neg_obj = tf.gather(e_neg_obj, g_sampls, batch_dims=1, axis=1)[:, 0]
+        e_neg_obj_proj = tf.gather(e_neg_obj_proj, g_sampls, batch_dims=1, axis=1)[:, 0]
         print(e_neg_subj.get_shape())
 
         e_neg_subj = e_neg_subj, e_neg_subj_proj
@@ -358,8 +358,8 @@ class DisGenGan(DisGen):
       else:
         e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj = un_flatten_gen(e_concepts)
         # TODO replace this index with g_sampl gather
-        e_neg_subj = tf.gather(e_neg_subj, g_sampls, batch_dims=1, axis=1)
-        e_neg_obj = tf.gather(e_neg_obj, g_sampls, batch_dims=1, axis=1)
+        e_neg_subj = tf.gather(e_neg_subj, g_sampls, batch_dims=1, axis=1)[:, 0]
+        e_neg_obj = tf.gather(e_neg_obj, g_sampls, batch_dims=1, axis=1)[:, 0]
 
       return e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj
 
@@ -416,7 +416,8 @@ class DisGenGan(DisGen):
         batch_dims=1,
         axis=1,
         name='sampl_probs'
-      )
+      )[:, 0]
+      print(self.g_probabilities.get_shape())
       # TODO ask if self.discounted_reward should be [bsize] neg energies, then multiplied to each of these
       # TODO losses before sum/avg instead of sum and multiplying by avg neg energy of discriminator.
       g_loss = -tf.reduce_sum(tf.log(self.g_probabilities))
