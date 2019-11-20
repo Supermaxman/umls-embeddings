@@ -136,7 +136,7 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=gan-joint \
 --model=transd-distmult \
---run_name=gan-ace-30 \
+--run_name=gan-ace-31 \
 --pre_run_name=transd-dm-disgen-ace-1 \
 --ace_model \
 --no_semantic_network \

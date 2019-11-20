@@ -390,9 +390,8 @@ class DisGenGan(DisGen):
         tf.stack([self.d_pos_energy, self.d_neg_energy], axis=1), axis=1, output_type=tf.int32)
       # TODO double check this is correct with REINFORCE
       # TODO also double check this shouldn't be negative here
-      # here we minimize negative neg_energy, so we maximize neg_energy
-      # therefore the generator should use negative neg_energy as a reward.
-      self.d_reward = tf.identity(self.d_neg_energy, name='reward')
+      #
+      self.d_reward = tf.identity(-self.d_neg_energy, name='reward')
       # loss
       # loss wants high neg energy and low pos energy
       self.d_loss = tf.reduce_mean(tf.nn.relu(self.gamma - self.d_neg_energy + self.d_pos_energy), name='loss')
@@ -425,7 +424,7 @@ class DisGenGan(DisGen):
       # we want to maximize -f(neg) * log(p(neg)) so we minimize -[-f(neg) * log(p(neg))]
       g_loss = -tf.log(self.g_probabilities)
       avg_g_loss = tf.reduce_mean(g_loss)
-      self.g_loss = tf.reduce_mean(self.discounted_reward * g_loss)
+      self.g_loss = tf.reduce_mean(self.discounted_reward * tf.log(self.g_probabilities))
       self.g_avg_prob = tf.reduce_mean(self.g_probabilities)
 
       with tf.control_dependencies([self.d_train_op]):
