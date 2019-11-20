@@ -392,7 +392,7 @@ class DisGenGan(DisGen):
       # TODO also double check this shouldn't be negative here
       # here we minimize negative neg_energy, so we maximize neg_energy
       # therefore the generator should use negative neg_energy as a reward.
-      self.d_reward = tf.identity(-self.d_neg_energy, name='reward')
+      self.d_reward = tf.identity(self.d_neg_energy, name='reward')
       # loss
       # loss wants high neg energy and low pos energy
       self.d_loss = tf.reduce_mean(tf.nn.relu(self.gamma - self.d_neg_energy + self.d_pos_energy), name='loss')
@@ -423,7 +423,9 @@ class DisGenGan(DisGen):
       # TODO losses before sum/avg instead of sum and multiplying by avg neg energy of discriminator.
       # g_loss = -tf.reduce_sum(tf.log(self.g_probabilities))
       # we want to maximize -f(neg) * log(p(neg)) so we minimize -[-f(neg) * log(p(neg))]
-      self.g_loss = -tf.reduce_mean(self.discounted_reward * tf.log(self.g_probabilities))
+      g_loss = -tf.log(self.g_probabilities)
+      avg_g_loss = tf.reduce_mean(g_loss)
+      self.g_loss = tf.reduce_mean(self.discounted_reward * g_loss)
       self.g_avg_prob = tf.reduce_mean(self.g_probabilities)
 
       with tf.control_dependencies([self.d_train_op]):
@@ -442,7 +444,7 @@ class DisGenGan(DisGen):
             self.train_op = tf.no_op(name='train_op')
 
     summary += [
-      tf.summary.scalar('gen_loss', self.g_loss),
+      tf.summary.scalar('gen_loss', avg_g_loss),
       tf.summary.scalar('gen_avg_sampled_prob', self.g_avg_prob),
       tf.summary.scalar('gen_discounted_reward', self.avg_discounted_reward),
       tf.summary.scalar('gen_reward', self.avg_reward)
