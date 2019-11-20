@@ -391,7 +391,7 @@ class DisGenGan(DisGen):
       # TODO double check this is correct with REINFORCE
       # TODO also double check this shouldn't be negative here
       #
-      self.d_reward = tf.identity(-self.d_neg_energy, name='reward')
+      self.d_reward = tf.identity(self.d_neg_energy, name='reward')
       # loss
       # loss wants high neg energy and low pos energy
       self.d_loss = tf.reduce_mean(tf.nn.relu(self.gamma - self.d_neg_energy + self.d_pos_energy), name='loss')

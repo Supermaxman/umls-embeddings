@@ -136,15 +136,15 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=gan-joint \
 --model=transd-distmult \
---run_name=gan-ace-31 \
+--run_name=gan-ace-33 \
 --pre_run_name=transd-dm-disgen-ace-1 \
 --ace_model \
 --no_semantic_network \
 --train_bert=False \
 --dis_learning_rate=1e-5 \
 --gen_learning_rate=1e-4 \
---batch_size=8 \
---num_generator_samples=16 \
+--batch_size=4 \
+--num_generator_samples=32 \
 --val_batch_size=16 \
 --max_batches_per_epoch=100000 \
 --num_epochs=100 \
