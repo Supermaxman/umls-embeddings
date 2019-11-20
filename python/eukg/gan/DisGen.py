@@ -271,6 +271,7 @@ class DisGenGan(DisGen):
     self.d_learning_rate = config.dis_learning_rate
     self.g_learning_rate = config.gen_learning_rate
     self.baseline_type = config.baseline_type
+    self.baseline_momentum = config.baseline_momentum
 
   def create_optimizer(self, lr):
     learning_rate = tf.train.exponential_decay(
@@ -310,7 +311,7 @@ class DisGenGan(DisGen):
     g_e_concepts = self.gen_embedding_model.embedding_lookup(concepts, 'concept')
 
     def un_flatten_gen(e_concepts):
-      emb_size = tf.shape(e_concepts)[-1]
+      emb_size = e_concepts.get_shape()[-1]
       # first bsize * num_samples
       e_neg_subj = tf.reshape(e_concepts[:total_neg_size], [bsize, nsamples, emb_size])
       # second bsize * num_samples
@@ -353,9 +354,14 @@ class DisGenGan(DisGen):
         # only take first negative sample for discriminator loss
         # TODO replace this index with g_sampl gather
         e_neg_subj = tf.gather(e_neg_subj, g_sampls, batch_dims=1, axis=1)[:, 0]
+        print(g_sampls.get_shape())
+        print(e_neg_subj_proj.get_shape())
+        print(tf.gather(e_neg_subj_proj, g_sampls, batch_dims=1, axis=1).get_shape())
         e_neg_subj_proj = tf.gather(e_neg_subj_proj, g_sampls, batch_dims=1, axis=1)[:, 0]
+        print(e_neg_subj_proj.get_shape())
         e_neg_obj = tf.gather(e_neg_obj, g_sampls, batch_dims=1, axis=1)[:, 0]
         e_neg_obj_proj = tf.gather(e_neg_obj_proj, g_sampls, batch_dims=1, axis=1)[:, 0]
+
 
         e_neg_subj = e_neg_subj, e_neg_subj_proj
         e_neg_obj = e_neg_obj, e_neg_obj_proj
@@ -389,6 +395,8 @@ class DisGenGan(DisGen):
         d_e_neg_obj,
         norm_ord=self.energy_norm
       )
+      print(self.d_pos_energy.get_shape())
+      print(self.d_neg_energy.get_shape())
       self.d_avg_pos_energy = tf.reduce_mean(self.d_pos_energy)
       self.d_avg_neg_energy = tf.reduce_mean(self.d_neg_energy)
 
@@ -419,7 +427,10 @@ class DisGenGan(DisGen):
       # [batch_size, num_samples] - this is for sampling during GAN training
       # TODO this needs to be negative because of how the pre-trained model was trained with negative softmax inputs
       # TODO WHYYYY
+      print(self.g_sampl_energies.get_shape())
       self.g_probability_distributions = tf.nn.softmax(-self.g_sampl_energies, axis=-1)
+      print(self.g_probability_distributions.get_shape())
+      print(self.g_sampls.get_shape())
       self.g_probabilities = tf.gather(
         self.g_probability_distributions,
         self.g_sampls,
@@ -427,6 +438,7 @@ class DisGenGan(DisGen):
         axis=1,
         name='sampl_probs'
       )[:, 0]
+      print(self.g_probabilities.get_shape())
       # TODO ask if self.discounted_reward should be [bsize] neg energies, then multiplied to each of these
       # TODO losses before sum/avg instead of sum and multiplying by avg neg energy of discriminator.
       # g_loss = -tf.reduce_sum(tf.log(self.g_probabilities))
@@ -448,7 +460,7 @@ class DisGenGan(DisGen):
         if self.baseline_type == 'avg_prev_batch':
           self.new_baseline = self.avg_reward
         elif self.baseline_type == 'avg_prev_batch_momentum':
-          momentum = 0.9
+          momentum = self.baseline_momentum
           self.new_baseline = ((1.0 - momentum) * self.avg_reward) + (momentum * self.baseline)
         else:
           raise ValueError(f'Unknown baseline type: {self.baseline_type}')
@@ -464,12 +476,12 @@ class DisGenGan(DisGen):
         name='train_op'
       )
 
-
     summary += [
       tf.summary.scalar('gen_loss', avg_g_loss),
       tf.summary.scalar('gen_avg_sampled_prob', self.g_avg_prob),
       tf.summary.scalar('gen_discounted_reward', self.avg_discounted_reward),
-      tf.summary.scalar('gen_reward', self.avg_reward)
+      tf.summary.scalar('gen_reward', self.avg_reward),
+      tf.summary.scalar('gen_baseline', self.baseline)
     ]
 
     # # TODO this loss isn't really being optimized in the GAN formulation of the loss
@@ -487,6 +499,7 @@ class DisGenGan(DisGen):
 
     # summary
     self.summary = tf.summary.merge(summary)
+    input('hit enter to continue...')
 
   def fetches(self, is_training, verbose=False):
     fetches = [self.summary, self.g_loss, self.d_loss]
