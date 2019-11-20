@@ -89,10 +89,8 @@ def train():
       if config.pre_run_name is not None:
         pre_model_ckpt = tf.train.latest_checkpoint(
           os.path.join(all_models_dir, config.model, config.pre_run_name))
-        print(pre_model_ckpt)
         ace_model.init_from_checkpoint(pre_model_ckpt)
       else:
-        print('encoder ckpt')
         ace_model.init_from_checkpoint(config.encoder_checkpoint)
 
     tf.global_variables_initializer().run()
