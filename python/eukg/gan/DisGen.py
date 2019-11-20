@@ -390,7 +390,9 @@ class DisGenGan(DisGen):
         tf.stack([self.d_pos_energy, self.d_neg_energy], axis=1), axis=1, output_type=tf.int32)
       # TODO double check this is correct with REINFORCE
       # TODO also double check this shouldn't be negative here
-      self.d_reward = tf.reduce_mean(self.d_neg_energy, name='reward')
+      # here we minimize negative neg_energy, so we maximize neg_energy
+      # therefore the generator should use negative neg_energy as a reward.
+      self.d_reward = tf.identity(-self.d_neg_energy, name='reward')
       # loss
       # loss wants high neg energy and low pos energy
       self.d_loss = tf.reduce_mean(tf.nn.relu(self.gamma - self.d_neg_energy + self.d_pos_energy), name='loss')
@@ -406,6 +408,8 @@ class DisGenGan(DisGen):
     with tf.variable_scope("gen_loss"):
       # TODO determine if this is a good baseline method
       self.discounted_reward = tf.stop_gradient(self.d_reward - self.baseline)
+      self.avg_reward = tf.reduce_mean(self.d_reward)
+      self.avg_discounted_reward = tf.reduce_mean(self.discounted_reward)
       # [batch_size, num_samples] - this is for sampling during GAN training
       self.g_probability_distributions = tf.nn.softmax(self.g_sampl_energies, axis=-1)
       self.g_probabilities = tf.gather(
@@ -417,32 +421,22 @@ class DisGenGan(DisGen):
       )[:, 0]
       # TODO ask if self.discounted_reward should be [bsize] neg energies, then multiplied to each of these
       # TODO losses before sum/avg instead of sum and multiplying by avg neg energy of discriminator.
-      g_loss = -tf.reduce_sum(tf.log(self.g_probabilities))
-
-      # if training as part of a GAN, gradients should be scaled by discounted_reward
-      grads_and_vars = g_optimizer.compute_gradients(g_loss)
-      vars_with_grad = [v for g, v in grads_and_vars if g is not None]
-      if not vars_with_grad:
-        raise ValueError(
-          "No gradients provided for any variable, check your graph for ops"
-          " that do not support gradients, between variables %s and loss %s." %
-          ([str(v) for _, v in grads_and_vars], g_loss))
-      discounted_grads_and_vars = [(self.discounted_reward * g, v) for g, v in grads_and_vars if g is not None]
-
-      self.g_loss = g_loss / tf.cast(bsize, tf.float32)
+      # g_loss = -tf.reduce_sum(tf.log(self.g_probabilities))
+      # we want to maximize -f(neg) * log(p(neg)) so we minimize -[-f(neg) * log(p(neg))]
+      self.g_loss = -tf.reduce_mean(self.discounted_reward * tf.log(self.g_probabilities))
       self.g_avg_prob = tf.reduce_mean(self.g_probabilities)
 
       with tf.control_dependencies([self.d_train_op]):
-        self.g_train_op = g_optimizer.apply_gradients(
-          discounted_grads_and_vars,
+        self.g_train_op = g_optimizer.minimize(
+          self.g_loss,
           global_step=tf.train.get_or_create_global_step(),
           name='g_train_op'
         )
         with tf.control_dependencies([self.g_train_op]):
-          # TODO determine if this is a good baseline method
+          # TODO determine if this is a good baseline method, maybe running mean or something
           self.update_baseline_op = tf.assign(
             self.baseline,
-            self.d_reward
+            self.avg_reward
           )
           with tf.control_dependencies([self.update_baseline_op]):
             self.train_op = tf.no_op(name='train_op')
@@ -450,8 +444,8 @@ class DisGenGan(DisGen):
     summary += [
       tf.summary.scalar('gen_loss', self.g_loss),
       tf.summary.scalar('gen_avg_sampled_prob', self.g_avg_prob),
-      tf.summary.scalar('gen_discounted_reward', self.discounted_reward),
-      tf.summary.scalar('gen_reward', self.d_reward)
+      tf.summary.scalar('gen_discounted_reward', self.avg_discounted_reward),
+      tf.summary.scalar('gen_reward', self.avg_reward)
     ]
 
     # # TODO this loss isn't really being optimized in the GAN formulation of the loss
