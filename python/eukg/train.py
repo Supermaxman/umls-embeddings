@@ -26,7 +26,7 @@ def train():
     exit()
 
   # init model dir
-  config.all_models_dir = config.model_dir
+  all_models_dir = config.model_dir
   config.model_dir = os.path.join(config.model_dir, config.model, config.run_name)
   if not os.path.exists(config.model_dir):
     os.makedirs(config.model_dir)
@@ -88,7 +88,7 @@ def train():
     if config.ace_model:
       if config.pre_run_name is not None:
         pre_model_ckpt = tf.train.latest_checkpoint(
-          os.path.join(config.all_models_dir, config.model, config.pre_run_name))
+          os.path.join(all_models_dir, config.model, config.pre_run_name))
         print(pre_model_ckpt)
         ace_model.init_from_checkpoint(pre_model_ckpt)
       else:
