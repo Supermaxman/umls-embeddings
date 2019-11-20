@@ -424,7 +424,7 @@ class DisGenGan(DisGen):
       # we want to maximize -f(neg) * log(p(neg)) so we minimize -[-f(neg) * log(p(neg))]
       g_loss = -tf.log(self.g_probabilities)
       avg_g_loss = tf.reduce_mean(g_loss)
-      self.g_loss = tf.reduce_mean(self.discounted_reward * tf.log(self.g_probabilities))
+      self.g_loss = tf.reduce_mean(self.discounted_reward * g_loss)
       self.g_avg_prob = tf.reduce_mean(self.g_probabilities)
 
       with tf.control_dependencies([self.d_train_op]):
