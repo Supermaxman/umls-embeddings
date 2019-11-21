@@ -499,7 +499,7 @@ class DisGenGan(DisGen):
 
     # summary
     self.summary = tf.summary.merge(summary)
-    input('hit enter to continue...')
+    # input('hit enter to continue...')
 
   def fetches(self, is_training, verbose=False):
     fetches = [self.summary, self.g_loss, self.d_loss]
