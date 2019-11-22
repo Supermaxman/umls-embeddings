@@ -273,6 +273,8 @@ class DisGenGan(DisGen):
     self.baseline_type = config.baseline_type
     self.baseline_momentum = config.baseline_momentum
 
+    self.shared_learning_rate = config.learning_rate
+
   def create_optimizer(self, lr):
     learning_rate = tf.train.exponential_decay(
       lr,
@@ -292,8 +294,9 @@ class DisGenGan(DisGen):
 
   def build(self):
     summary = []
-    d_optimizer = self.create_optimizer(self.d_learning_rate)
-    g_optimizer = self.create_optimizer(self.g_learning_rate)
+    # d_optimizer = self.create_optimizer(self.d_learning_rate)
+    # g_optimizer = self.create_optimizer(self.g_learning_rate)
+    optimizer = self.create_optimizer(self.shared_learning_rate)
     neg_shape = tf.shape(self.neg_subj)
     bsize, nsamples = neg_shape[0], neg_shape[1]
     total_neg_size = bsize * nsamples
@@ -411,7 +414,7 @@ class DisGenGan(DisGen):
       # loss wants high neg energy and low pos energy
       self.d_loss = tf.reduce_mean(tf.nn.relu(self.gamma - self.d_neg_energy + self.d_pos_energy), name='loss')
       self.d_accuracy = tf.reduce_mean(tf.to_float(tf.equal(self.d_predictions, self.labels)))
-      self.d_train_op = d_optimizer.minimize(self.d_loss, name='d_train_op')
+      # self.d_train_op = d_optimizer.minimize(self.d_loss, name='d_train_op')
 
     summary += [
       tf.summary.scalar('dis_loss', self.d_loss),
@@ -448,13 +451,22 @@ class DisGenGan(DisGen):
       self.g_loss = tf.reduce_mean(self.discounted_reward * g_loss)
       self.g_avg_prob = tf.reduce_mean(self.g_probabilities)
 
-      self.g_train_op = g_optimizer.minimize(
-        self.g_loss,
-        global_step=tf.train.get_or_create_global_step(),
-        name='g_train_op'
-      )
+      # self.g_train_op = g_optimizer.minimize(
+      #   self.g_loss,
+      #   global_step=tf.train.get_or_create_global_step(),
+      #   name='g_train_op'
+      # )
       # ensure update baseline doesn't happen till after g train op
-      with tf.control_dependencies([self.g_train_op]):
+
+    shared_loss = self.d_loss + self.g_loss
+    self.train_op = optimizer.minimize(
+      shared_loss,
+      global_step=tf.train.get_or_create_global_step(),
+      name='shared_train_op'
+    )
+
+    with tf.variable_scope('gen_loss'):
+      with tf.control_dependencies([self.train_op]):
         # TODO determine if this is a good baseline method, maybe running mean or something
         # TODO use baseline_type to change to running avg, etc.
         if self.baseline_type == 'avg_prev_batch':
@@ -469,13 +481,10 @@ class DisGenGan(DisGen):
           self.new_baseline
         )
 
-      self.train_op = tf.group(
-        self.d_train_op,
-        self.g_train_op,
-        self.update_baseline_op,
-        name='train_op'
-      )
-
+    self.train_op = tf.group(
+      self.train_op,
+      self.update_baseline_op
+    )
     summary += [
       tf.summary.scalar('gen_loss', avg_g_loss),
       tf.summary.scalar('gen_avg_sampled_prob', self.g_avg_prob),
