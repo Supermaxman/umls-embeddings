@@ -10,14 +10,15 @@ from collections import defaultdict
 from ..data import data_util, DataGenerator
 from .. import Config, train
 from ..threading_util import synchronized, parallel_stream
+from ..emb import AceModel
 
 
 config = Config.flags
 
 
 def save_ranks():
-  random.seed(1337)
-  config.batch_size = 4096
+  random.seed(config.seed)
+  np.random.seed(config.seed)
 
   cui2id, train_data, _, _ = data_util.load_metathesaurus_data(config.data_dir, config.val_proportion)
   id2cui = {v: k for k, v in cui2id.iteritems()}
@@ -32,17 +33,24 @@ def save_ranks():
   print('%d valid triples' % len(valid_triples))
 
   model_name = config.run_name
-  if config.mode == 'gan':
-    scope = config.dis_run_name
-    model_name += '/discriminator'
-    config.mode = 'disc'
-  else:
-    scope = config.run_name
+  # if config.mode == 'gan':
+  #   scope = config.dis_run_name
+  #   model_name += '/discriminator'
+  #   config.mode = 'disc'
+  # else:
+  #   scope = config.run_name
 
   with tf.Graph().as_default(), tf.Session() as session:
     # init model
-    with tf.variable_scope(scope):
-      model = train.init_model(config, None)
+    # with tf.variable_scope(scope):
+    tf.set_random_seed(config.seed)
+
+    if config.ace_model:
+      t_data = data_util.load_metathesaurus_token_data(config.data_dir)
+      ace_model = AceModel.ACEModel(config, t_data)
+    else:
+      ace_model = None
+    model = train.init_model(config, None, ace_model)
 
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()
@@ -183,8 +191,8 @@ def calculate_scores(subj, rel, obj, replace_subject, concept_ids, session, mode
 
 
 def save_ranks_sn():
-  random.seed(1337)
-  config.batch_size = 4096
+  random.seed(config.seed)
+
   assert not config.no_semantic_network
 
   data = {}
@@ -201,17 +209,25 @@ def save_ranks_sn():
   print('%d valid triples' % len(valid_triples))
 
   model_name = config.run_name
-  if config.mode == 'gan':
-    scope = config.dis_run_name
-    model_name += '/discriminator'
-    config.mode = 'disc'
-  else:
-    scope = config.run_name
+  # if config.mode == 'gan':
+  #   scope = config.dis_run_name
+  #   model_name += '/discriminator'
+  #   config.mode = 'disc'
+  # else:
+  #   scope = config.run_name
 
   with tf.Graph().as_default(), tf.Session() as session:
     # init model
-    with tf.variable_scope(scope):
-      model = train.init_model(config, None)
+    # with tf.variable_scope(scope):
+    tf.set_random_seed(config.seed)
+    # init model
+    # with tf.variable_scope(scope):
+    if config.ace_model:
+      t_data = data_util.load_metathesaurus_token_data(config.data_dir)
+      ace_model = AceModel.ACEModel(config, t_data)
+    else:
+      ace_model = None
+    model = train.init_model(config, None, ace_model)
 
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()

@@ -483,7 +483,8 @@ class DisGenGan(DisGen):
 
     self.train_op = tf.group(
       self.train_op,
-      self.update_baseline_op
+      self.update_baseline_op,
+      name='train_op'
     )
     summary += [
       tf.summary.scalar('gen_loss', avg_g_loss),

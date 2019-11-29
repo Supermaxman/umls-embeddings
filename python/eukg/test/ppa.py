@@ -7,12 +7,14 @@ from tqdm import tqdm
 
 from ..data import data_util, DataGenerator
 from .. import Config, train
+from ..emb import AceModel
 
 config = Config.flags
 
 
 def evaluate():
-  random.seed(1337)
+  random.seed(config.seed)
+  np.random.seed(config.seed)
   config.no_semantic_network = True
 
   cui2id, train_data, _, _ = data_util.load_metathesaurus_data(config.data_dir, config.val_proportion)
@@ -35,17 +37,25 @@ def evaluate():
   print('%d valid triples' % len(valid_triples))
 
   model_name = config.run_name
-  if config.mode == 'gan':
-    scope = config.dis_run_name
-    model_name += '/discriminator'
-    config.mode = 'disc'
-  else:
-    scope = config.run_name
+  # if config.mode == 'gan':
+  #   scope = config.dis_run_name
+  #   model_name += '/discriminator'
+  #   config.mode = 'disc'
+  # else:
+  #   scope = config.run_name
 
   with tf.Graph().as_default(), tf.Session() as session:
     # init model
-    with tf.variable_scope(scope):
-      model = train.init_model(config, data_generator)
+    # with tf.variable_scope(scope):
+    tf.set_random_seed(config.seed)
+    # init model
+    # with tf.variable_scope(scope):
+    if config.ace_model:
+      t_data = data_util.load_metathesaurus_token_data(config.data_dir)
+      ace_model = AceModel.ACEModel(config, t_data)
+    else:
+      ace_model = None
+    model = train.init_model(config, data_generator, ace_model)
 
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()

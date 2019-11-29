@@ -6,6 +6,8 @@ from tqdm import tqdm
 
 from ..data import data_util, DataGenerator
 from .. import Config, train
+from ..emb import AceModel
+
 from sklearn.svm import LinearSVC
 from sklearn import metrics
 
@@ -13,10 +15,9 @@ config = Config.flags
 
 
 def evaluate():
-  random.seed(1337)
-  np.random.seed(1337)
+  random.seed(config.seed)
+  np.random.seed(config.seed)
   config.no_semantic_network = True
-  config.batch_size = 2000
 
   cui2id, train_data, _, _ = data_util.load_metathesaurus_data(config.data_dir, config.val_proportion)
   test_data = data_util.load_metathesaurus_test_data(config.data_dir)
@@ -46,9 +47,15 @@ def evaluate():
     scope = config.run_name
 
   with tf.Graph().as_default(), tf.Session() as session:
+    tf.set_random_seed(config.seed)
     # init model
-    with tf.variable_scope(scope):
-      model = train.init_model(config, None)
+    # with tf.variable_scope(scope):
+    if config.ace_model:
+      t_data = data_util.load_metathesaurus_token_data(config.data_dir)
+      ace_model = AceModel.ACEModel(config, t_data)
+    else:
+      ace_model = None
+    model = train.init_model(config, None, ace_model)
 
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()
@@ -107,7 +114,8 @@ def evaluate():
 
 
 def evaluate_sn():
-  random.seed(1337)
+  random.seed(config.seed)
+  np.random.seed(config.seed)
   config.no_semantic_network = False
 
   data = {}
