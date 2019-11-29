@@ -19,7 +19,7 @@ def evaluate():
   all_models_dir = config.model_dir
 
   cui2id, train_data, _, _ = data_util.load_metathesaurus_data(config.data_dir, config.val_proportion)
-  id2cui = {v: k for k, v in cui2id.iteritems()}
+  id2cui = {v: k for k, v in cui2id.items()}
   test_data = data_util.load_metathesaurus_test_data(config.data_dir)
   print('Loaded %d test triples from %s' % (len(test_data['rel']), config.data_dir))
   concept_ids = np.unique(np.concatenate([train_data['subj'], train_data['obj'], test_data['subj'], test_data['obj']]))
@@ -119,7 +119,7 @@ def evaluate_sn():
 
   data = {}
   cui2id, _, _, _ = data_util.load_metathesaurus_data(config.data_dir, 0.)
-  id2cui = {v: k for k, v in cui2id.iteritems()}
+  id2cui = {v: k for k, v in cui2id.items()}
   _ = data_util.load_semantic_network_data(config.data_dir, data)
   subj, rel, obj = data['sn_subj'], data['sn_rel'], data['sn_obj']
   print('Loaded %d sn triples from %s' % (len(rel), config.data_dir))
