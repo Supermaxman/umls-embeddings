@@ -19,6 +19,7 @@ config = Config.flags
 def save_ranks():
   random.seed(config.seed)
   np.random.seed(config.seed)
+  all_models_dir = config.model_dir
 
   cui2id, train_data, _, _ = data_util.load_metathesaurus_data(config.data_dir, config.val_proportion)
   id2cui = {v: k for k, v in cui2id.items()}
@@ -52,19 +53,26 @@ def save_ranks():
       ace_model = None
     model = train.init_model(config, None, ace_model)
 
+    if config.ace_model:
+      if config.pre_run_name is not None:
+        pre_model_ckpt = tf.train.latest_checkpoint(
+          os.path.join(all_models_dir, config.model, config.pre_run_name))
+        ace_model.init_from_checkpoint(pre_model_ckpt)
+
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()
 
     if config.ace_model:
       ace_model.initialize_tokens(session)
 
-    # init saver
-    tf_saver = tf.train.Saver(max_to_keep=10)
+    if config.load:
+      # init saver
+      tf_saver = tf.train.Saver(max_to_keep=10)
 
-    # load model
-    ckpt = tf.train.latest_checkpoint(os.path.join(config.model_dir, config.model, model_name))
-    print('Loading checkpoint: %s' % ckpt)
-    tf_saver.restore(session, ckpt)
+      # load model
+      ckpt = tf.train.latest_checkpoint(os.path.join(config.model_dir, config.model, model_name))
+      print('Loading checkpoint: %s' % ckpt)
+      tf_saver.restore(session, ckpt)
     tf.get_default_graph().finalize()
 
     if not config.save_ranks:
