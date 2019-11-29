@@ -18,6 +18,7 @@ def evaluate():
   random.seed(config.seed)
   np.random.seed(config.seed)
   config.no_semantic_network = True
+  all_models_dir = config.model_dir
 
   cui2id, train_data, _, _ = data_util.load_metathesaurus_data(config.data_dir, config.val_proportion)
   test_data = data_util.load_metathesaurus_test_data(config.data_dir)
@@ -39,14 +40,15 @@ def evaluate():
   print('%d valid triples' % len(valid_triples))
 
   model_name = config.run_name
-  if config.mode == 'gan':
-    scope = config.dis_run_name
-    model_name += '/discriminator'
-    config.mode = 'disc'
-  else:
-    scope = config.run_name
 
-  with tf.Graph().as_default(), tf.Session() as session:
+
+  if config.gpu_memory_growth:
+    gpu_config = tf.ConfigProto()
+    gpu_config.gpu_options.allow_growth = True
+  else:
+    gpu_config = None
+
+  with tf.Graph().as_default(), tf.Session(config=gpu_config) as session:
     tf.set_random_seed(config.seed)
     # init model
     # with tf.variable_scope(scope):
@@ -57,16 +59,25 @@ def evaluate():
       ace_model = None
     model = train.init_model(config, None, ace_model)
 
+    if config.ace_model and not config.load and config.pre_run_name is not None:
+      pre_model_ckpt = tf.train.latest_checkpoint(
+        os.path.join(all_models_dir, config.model, config.pre_run_name))
+      ace_model.init_from_checkpoint(pre_model_ckpt)
+
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()
 
-    # init saver
-    tf_saver = tf.train.Saver(max_to_keep=10)
+    if config.ace_model:
+      ace_model.initialize_tokens(session)
 
-    # load model
-    ckpt = tf.train.latest_checkpoint(os.path.join(config.model_dir, config.model, model_name))
-    print('Loading checkpoint: %s' % ckpt)
-    tf_saver.restore(session, ckpt)
+    if config.load:
+      # init saver
+      tf_saver = tf.train.Saver(max_to_keep=10)
+
+      # load model
+      ckpt = tf.train.latest_checkpoint(os.path.join(config.model_dir, config.model, model_name))
+      print('Loading checkpoint: %s' % ckpt)
+      tf_saver.restore(session, ckpt)
     tf.get_default_graph().finalize()
 
     scores = []
