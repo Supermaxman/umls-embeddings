@@ -51,7 +51,7 @@ def save_ranks():
       ace_model = AceModel.ACEModel(config, t_data)
     else:
       ace_model = None
-    model = train.init_model(config, None, ace_model)
+    model = train.init_model(config, None, ace_model, eval=True)
 
     if config.ace_model and not config.load and config.pre_run_name is not None:
       pre_model_ckpt = tf.train.latest_checkpoint(

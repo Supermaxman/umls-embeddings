@@ -137,7 +137,7 @@ def train():
                   max_batches_per_epoch=config_map['max_batches_per_epoch'])
 
 
-def init_model(config, data_generator, ace_model=None):
+def init_model(config, data_generator, ace_model=None, eval=False):
   print('Initializing %s embedding model in %s mode...' % (config.model, config.mode))
   npz = np.load(config.embedding_file) if config.load_embeddings else None
 
@@ -181,9 +181,12 @@ def init_model(config, data_generator, ace_model=None):
   if npz:
     # noinspection PyUnresolvedReferences
     npz.close()
-
-  model.build()
-  print('Built model.')
+  if eval:
+    model.build_eval()
+    print('Built eval model.')
+  else:
+    model.build()
+    print('Built model.')
   print('use semnet: %s' % model.use_semantic_network)
   return model
 

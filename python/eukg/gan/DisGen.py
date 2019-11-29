@@ -294,6 +294,46 @@ class DisGenGan(DisGen):
         use_nesterov=True)
     return optimizer
 
+  def build_eval(self):
+    pos_shape = tf.shape(self.pos_subj)
+
+    bsize = pos_shape[0]
+
+    concepts = tf.concat([self.pos_subj, self.pos_obj], axis=0)
+    d_e_concepts = self.dis_embedding_model.embedding_lookup(concepts, 'concept')
+    d_e_rels = self.dis_embedding_model.embedding_lookup(self.relations, 'rel')
+
+    def un_flatten_gen(e_concepts):
+      # bsize
+      e_pos_subj = e_concepts[:bsize]
+      # bsize
+      e_pos_obj = e_concepts[bsize:]
+
+      return e_pos_subj, e_pos_obj
+
+    def un_flatten_dis(e_concepts):
+      if isinstance(e_concepts, tuple):
+        e_concepts, e_concepts_proj = e_concepts
+        e_pos_subj, e_pos_obj = un_flatten_gen(e_concepts)
+        e_pos_subj_proj, e_pos_obj_proj = un_flatten_gen(e_concepts_proj)
+        e_pos_subj = e_pos_subj, e_pos_subj_proj
+        e_pos_obj = e_pos_obj, e_pos_obj_proj
+      else:
+        e_pos_subj, e_pos_obj = un_flatten_gen(e_concepts)
+      return e_pos_subj, e_pos_obj
+
+    d_e_pos_subj, d_e_pos_obj = un_flatten_dis(
+      d_e_concepts
+    )
+
+    with tf.variable_scope('dis_energy'):
+      self.pos_energy = self.dis_embedding_model.energy_from_embeddings(
+        d_e_pos_subj,
+        d_e_rels,
+        d_e_pos_obj,
+        norm_ord=self.energy_norm
+      )
+
   def build(self):
     summary = []
     # d_optimizer = self.create_optimizer(self.d_learning_rate)
