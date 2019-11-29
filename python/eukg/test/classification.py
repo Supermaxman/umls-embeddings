@@ -86,8 +86,8 @@ def evaluate():
       pscores, nscores = session.run([model.pos_energy, model.neg_energy], {model.relations: r,
                                                                             model.pos_subj: s,
                                                                             model.pos_obj: o,
-                                                                            model.neg_subj: ns,
-                                                                            model.neg_obj: no})
+                                                                            model.neg_subj: np.expand_dims(ns, axis=-1),
+                                                                            model.neg_obj: np.expand_dims(no, axis=-1)})
       scores += pscores.tolist()
       labels += np.ones_like(pscores, dtype=np.int).tolist()
       scores += nscores.tolist()
@@ -109,8 +109,8 @@ def evaluate():
       pscores, nscores = session.run([model.pos_energy, model.neg_energy], {model.relations: r,
                                                                             model.pos_subj: s,
                                                                             model.pos_obj: o,
-                                                                            model.neg_subj: ns,
-                                                                            model.neg_obj: no})
+                                                                            model.neg_subj: np.expand_dims(ns, axis=-1),
+                                                                            model.neg_obj: np.expand_dims(no, axis=-1)})
       scores += pscores.tolist()
       labels += np.ones_like(pscores, dtype=np.int).tolist()
       scores += nscores.tolist()
