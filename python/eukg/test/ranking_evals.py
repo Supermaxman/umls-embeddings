@@ -21,7 +21,7 @@ def save_ranks():
   np.random.seed(config.seed)
 
   cui2id, train_data, _, _ = data_util.load_metathesaurus_data(config.data_dir, config.val_proportion)
-  id2cui = {v: k for k, v in cui2id.iteritems()}
+  id2cui = {v: k for k, v in cui2id.items()}
   test_data = data_util.load_metathesaurus_test_data(config.data_dir)
   print('Loaded %d test triples from %s' % (len(test_data['rel']), config.data_dir))
 
@@ -197,7 +197,7 @@ def save_ranks_sn():
 
   data = {}
   cui2id, _, _, _ = data_util.load_metathesaurus_data(config.data_dir, 0.)
-  id2cui = {v: k for k, v in cui2id.iteritems()}
+  id2cui = {v: k for k, v in cui2id.items()}
   _ = data_util.load_semantic_network_data(config.data_dir, data)
   subj, rel, obj = data['sn_subj'], data['sn_rel'], data['sn_obj']
   n = len(rel)
@@ -409,7 +409,7 @@ def calculate_ranking_evals_per_rel():
         ranks[fields[4]] += [fields[0], fields[1]]
   print('Gathered %d rankings' % len(ranks))
 
-  for rel, rl in ranks.iteritems():
+  for rel, rl in ranks.items():
     ranks_np = np.asarray(rl, dtype=np.float)
     ranks[rel] = [mrr(ranks_np), mr(ranks_np), hits_at_10(ranks_np), len(rl)]
 
