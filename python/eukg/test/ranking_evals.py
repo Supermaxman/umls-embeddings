@@ -53,11 +53,10 @@ def save_ranks():
       ace_model = None
     model = train.init_model(config, None, ace_model)
 
-    if config.ace_model:
-      if config.pre_run_name is not None:
-        pre_model_ckpt = tf.train.latest_checkpoint(
-          os.path.join(all_models_dir, config.model, config.pre_run_name))
-        ace_model.init_from_checkpoint(pre_model_ckpt)
+    if config.ace_model and not config.load and config.pre_run_name is not None:
+      pre_model_ckpt = tf.train.latest_checkpoint(
+        os.path.join(all_models_dir, config.model, config.pre_run_name))
+      ace_model.init_from_checkpoint(pre_model_ckpt)
 
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()

@@ -156,6 +156,8 @@ class DisGen(BaseModel):
         d_e_neg_obj,
         norm_ord=self.energy_norm
       )
+      self.pos_energy = self.d_pos_energy
+      self.neg_energy = self.d_neg_energy
       self.d_avg_pos_energy = tf.reduce_mean(self.d_pos_energy)
       self.d_avg_neg_energy = tf.reduce_mean(self.d_neg_energy)
 
@@ -398,6 +400,9 @@ class DisGenGan(DisGen):
         d_e_neg_obj,
         norm_ord=self.energy_norm
       )
+
+      self.pos_energy = self.d_pos_energy
+      self.neg_energy = self.d_neg_energy
       print(self.d_pos_energy.get_shape())
       print(self.d_neg_energy.get_shape())
       self.d_avg_pos_energy = tf.reduce_mean(self.d_pos_energy)
