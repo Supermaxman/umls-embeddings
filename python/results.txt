@@ -1,0 +1,29 @@
+# classification transd-dm-disgen-ace-1
+pred: 199936
+lbl: 199936
+Relation Triple Classification Accuracy:  0.9143
+Relation Triple Classification Precision: 0.9019
+Relation Triple Classification Recall:    0.9296
+              precision    recall  f1-score   support
+
+           0       0.93      0.90      0.91     99968
+           1       0.90      0.93      0.92     99968
+
+    accuracy                           0.91    199936
+   macro avg       0.91      0.91      0.91    199936
+weighted avg       0.91      0.91      0.91    199936
+
+# classification gan-ace-50
+pred: 199936
+lbl: 199936
+Relation Triple Classification Accuracy:  0.9156
+Relation Triple Classification Precision: 0.9042
+Relation Triple Classification Recall:    0.9298
+              precision    recall  f1-score   support
+
+           0       0.93      0.90      0.91     99968
+           1       0.90      0.93      0.92     99968
+
+    accuracy                           0.92    199936
+   macro avg       0.92      0.92      0.92    199936
+weighted avg       0.92      0.92      0.92    199936

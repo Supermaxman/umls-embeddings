@@ -38,3 +38,43 @@ python -m python.eukg.test.classification \
 --eval_dir=/users/max/data/artifacts/umls-embeddings \
 --load=False \
 --pre_run_name=transd-dm-disgen-ace-1
+
+
+python -m python.eukg.test.ppa \
+--mode=disgen \
+--model=transd-distmult \
+--run_name=transd-dm-disgen-ace-1 \
+--ace_model \
+--no_semantic_network \
+--train_bert=False \
+--learning_rate=1e-5 \
+--batch_size=64 \
+--num_generator_samples=1 \
+--val_batch_size=64 \
+--data_dir=/users/max/data/artifacts/umls-embeddings \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs \
+--eval_mode=save \
+--eval_dir=/users/max/data/artifacts/umls-embeddings \
+--load=False \
+--pre_run_name=transd-dm-disgen-ace-1
+
+
+python -m python.eukg.test.classification \
+--mode=gan-joint \
+--model=transd-distmult \
+--run_name=gan-ace-50 \
+--ace_model \
+--no_semantic_network \
+--train_bert=False \
+--learning_rate=1e-5 \
+--batch_size=64 \
+--num_generator_samples=1 \
+--val_batch_size=64 \
+--baseline_type=avg_prev_batch_momentum \
+--baseline_momentum=0.99 \
+--data_dir=/users/max/data/artifacts/umls-embeddings \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs \
+--eval_dir=/users/max/data/artifacts/umls-embeddings \
+--load=True
