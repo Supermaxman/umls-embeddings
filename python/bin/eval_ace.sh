@@ -9,7 +9,7 @@ python -m python.eukg.test.ranking_evals \
 --train_bert=False \
 --learning_rate=1e-5 \
 --batch_size=32 \
---num_generator_samples=4 \
+--num_generator_samples=1 \
 --val_batch_size=32 \
 --data_dir=/users/max/data/artifacts/umls-embeddings \
 --model_dir=/users/max/data/models/umls-embeddings \

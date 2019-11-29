@@ -40,8 +40,13 @@ def save_ranks():
   #   config.mode = 'disc'
   # else:
   #   scope = config.run_name
+  if config.gpu_memory_growth:
+    gpu_config = tf.ConfigProto()
+    gpu_config.gpu_options.allow_growth = True
+  else:
+    gpu_config = None
 
-  with tf.Graph().as_default(), tf.Session() as session:
+  with tf.Graph().as_default(), tf.Session(config=gpu_config) as session:
     # init model
     # with tf.variable_scope(scope):
     tf.set_random_seed(config.seed)
