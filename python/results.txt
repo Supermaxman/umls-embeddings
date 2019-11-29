@@ -27,3 +27,12 @@ Relation Triple Classification Recall:    0.9298
     accuracy                           0.92    199936
    macro avg       0.92      0.92      0.92    199936
 weighted avg       0.92      0.92      0.92    199936
+
+
+# ppa transd-dm-disgen-ace-1
+PPA: 0.9829
+
+# ppa gan-ace-50
+PPA: 0.9858
+
+
