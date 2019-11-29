@@ -55,6 +55,9 @@ def save_ranks():
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()
 
+    if config.ace_model:
+      ace_model.initialize_tokens(session)
+
     # init saver
     tf_saver = tf.train.Saver(max_to_keep=10)
 
@@ -231,6 +234,9 @@ def save_ranks_sn():
 
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()
+
+    if config.ace_model:
+      ace_model.initialize_tokens(session)
 
     # init saver
     tf_saver = tf.train.Saver(max_to_keep=10)
