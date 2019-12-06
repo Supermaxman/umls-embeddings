@@ -12,7 +12,7 @@ def synchronized(func):
   return r
 
 
-def parallel_stream(iterable, parallelizable_fn, future_consumer=None):
+def parallel_stream(iterable, parallelizable_fn, future_consumer=None, num_threads=None):
   """
   Executes parallelizable_fn on each element of iterable in parallel. When each thread finishes, its future is passed
   to future_consumer if provided.
@@ -24,7 +24,7 @@ def parallel_stream(iterable, parallelizable_fn, future_consumer=None):
   if future_consumer is None:
     future_consumer = lambda f: f.result()
 
-  num_threads = multiprocessing.cpu_count()
+  num_threads = num_threads if num_threads is not None else multiprocessing.cpu_count()
   executor = ThreadPoolExecutor(max_workers=num_threads)
   futures = []
   for tup in iterable:

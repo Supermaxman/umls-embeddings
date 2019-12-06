@@ -59,6 +59,9 @@ class BaseModel(Trainable):
 
     self.pos_energy = None
     self.neg_energy = None
+    self.concepts = tf.placeholder(dtype=tf.int32, shape=[None], name='concepts')
+    self.concept_embeddings = None
+    self.relation_embeddings = None
     self.predictions = None
     self.reward = None
     self.sn_reward = None

@@ -61,22 +61,34 @@ class DisGen(BaseModel):
     g_e_pos_subj, g_e_pos_obj = un_flatten_gen(
       g_e_concepts
     )
+    self.pos_subj_embs = d_e_pos_subj
+    self.relation_embs = d_e_rels
+    self.pos_obj_embs = d_e_pos_obj
 
     with tf.variable_scope('dis_energy'):
-      self.dis_energy = self.dis_embedding_model.energy_from_embeddings(
-        d_e_pos_subj,
-        d_e_rels,
-        d_e_pos_obj,
-        norm_ord=self.energy_norm
-      )
+      with tf.device('gpu:0'):
+        self.dis_energy = self.dis_embedding_model.energy_from_embeddings(
+          d_e_pos_subj,
+          d_e_rels,
+          d_e_pos_obj,
+          norm_ord=self.energy_norm
+        )
       self.pos_energy = self.dis_energy
 
     with tf.variable_scope('gen_energy'):
-      self.gen_energy = self.gen_embedding_model.energy_from_embeddings(
-        g_e_pos_subj,
-        g_e_rels,
-        g_e_pos_obj
-      )
+      with tf.device('gpu:0'):
+        self.gen_energy = self.gen_embedding_model.energy_from_embeddings(
+          g_e_pos_subj,
+          g_e_rels,
+          g_e_pos_obj
+        )
+
+  def build_emb(self):
+    d_e_concepts = self.dis_embedding_model.embedding_lookup(self.concepts, 'concept')
+    d_e_rels = self.dis_embedding_model.embedding_lookup(self.relations, 'rel')
+
+    self.concept_embeddings = d_e_concepts
+    self.relation_embeddings = d_e_rels
 
   def build(self):
     summary = []
@@ -133,8 +145,9 @@ class DisGen(BaseModel):
     g_e_rels = self.gen_embedding_model.embedding_lookup(self.relations, 'rel')
 
     d_e_neg_subj, d_e_neg_obj, d_e_pos_subj, d_e_pos_obj = un_flatten_dis(d_e_concepts)
+    self.concept_embeddings = d_e_concepts
     d_e_rels = self.dis_embedding_model.embedding_lookup(self.relations, 'rel')
-
+    self.relation_embeddings = d_e_rels
     # [batch_size, num_samples]
     with tf.variable_scope("gen_energy"):
       self.g_sampl_energies = self.gen_embedding_model.energy_from_embeddings(

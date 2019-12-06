@@ -137,7 +137,7 @@ def train():
                   max_batches_per_epoch=config_map['max_batches_per_epoch'])
 
 
-def init_model(config, data_generator, ace_model=None, eval=False):
+def init_model(config, data_generator, ace_model=None, eval=False, emb_mode=False):
   print('Initializing %s embedding model in %s mode...' % (config.model, config.mode))
   npz = np.load(config.embedding_file) if config.load_embeddings else None
 
@@ -184,6 +184,9 @@ def init_model(config, data_generator, ace_model=None, eval=False):
   if eval:
     model.build_eval()
     print('Built eval model.')
+  elif emb_mode:
+    model.build_emb()
+    print('Built emb model.')
   else:
     model.build()
     print('Built model.')

@@ -28,7 +28,8 @@ tf.flags.DEFINE_string("save_strategy", "epoch", "Save every epoch or saved ever
 tf.flags.DEFINE_string("eval_mode", "save", "Evaluation mode: [save, calc]")
 tf.flags.DEFINE_string("eval_dir", "eval", "directory for evaluation outputs")
 tf.flags.DEFINE_integer("shard", 1, "Shard number for distributed eval.")
-tf.flags.DEFINE_integer("num_shards", 1, "Total number of shards for distributed eval.")
+tf.flags.DEFINE_integer("num_shards", 2, "Total number of shards for distributed eval.")
+tf.flags.DEFINE_integer("num_eval_threads", 2, "Total number of eval threads for distributed eval.")
 tf.flags.DEFINE_bool("save_ranks", True, "Save ranks? (turn off while debugging)")
 
 # gan control options
