@@ -25,10 +25,7 @@ class BaseModel:
     """
     raise NotImplementedError("subclass should implement")
 
-  def energy_from_embeddings(self, head, rel, tail, norm_ord='euclidean'):
-    raise NotImplementedError("subclass should implement")
-
-  def embedding_lookup(self, ids, emb_type=None):
+  def embed(self, ids, emb_type=None):
     """
     returns embedding vectors or tuple of embedding vectors for the passed ids
     :param ids: ids of embedding vectors in an embedding matrix
@@ -252,28 +249,10 @@ class DistMult(TransE):
 
 
 class TransDACE(BaseModel):
-  def __init__(self, config, ace_model):
+  def __init__(self, config):
     BaseModel.__init__(self, config)
-    self.ace_model = ace_model
 
   def energy(self, head, rel, tail, norm_ord='euclidean'):
-    """
-        Computes the TransD energy of a relation triple
-        :param head: head concept embedding ids [batch_size]
-        :param rel: relation embedding ids [batch_size]
-        :param tail: tail concept embedding ids [batch_size]
-        :param norm_ord: norm order ['euclidean', 'fro', 'inf', 1, 2, 3, etc.]
-        :return: [batch_size] vector of energies
-        """
-    # x & x_proj both [batch_size, embedding_size]
-    h = self.embedding_lookup(head, 'concept')
-    r = self.embedding_lookup(rel, 'rel')
-    t = self.embedding_lookup(tail, 'concept')
-
-    # [batch_size]
-    return self.energy_from_embeddings(h, r, t, norm_ord)
-
-  def energy_from_embeddings(self, head, rel, tail, norm_ord='euclidean'):
     h, h_proj = head
     r, r_proj = rel
     t, t_proj = tail
@@ -296,29 +275,30 @@ class TransDACE(BaseModel):
     """
     return c + tf.reduce_sum(c * c_proj, axis=-1, keepdims=True) * r_proj
 
-  def embedding_lookup(self, ids, emb_type=None):
-    assert emb_type is not None
+  def embed(self, input_encodings, emb_type=None):
 
-    ids_shape = tf.shape(ids)
-    ids_shape_count = ids_shape.get_shape().as_list()[0]
-    if ids_shape_count > 1:
-      total_flat_size = tf.math.reduce_prod(ids_shape)
-      ids = tf.reshape(
-        ids,
-        [total_flat_size]
+    ids_shape = tf.shape(input_encodings)
+    feature_size = ids_shape[-1]
+    input_shape = ids_shape[:-1]
+    input_shape_count = input_shape.get_shape().as_list()[0]
+    if input_shape_count > 1:
+      total_flat_size = tf.math.reduce_prod(input_shape)
+      input_encodings = tf.reshape(
+        input_encodings,
+        [total_flat_size, feature_size],
+        name='input_embeddings_flat'
       )
 
-    encoder_out = self.ace_model.embedding_lookup(ids, emb_type)
     with tf.variable_scope('transd_embeddings'):
       with tf.variable_scope(f'{emb_type}_embeddings', reuse=tf.AUTO_REUSE):
         embeddings = tf.layers.dense(
-          inputs=encoder_out,
+          inputs=input_encodings,
           units=self.embedding_size,
           activation=None,
           name='embeddings'
         )
         embeddings_proj = tf.layers.dense(
-          inputs=encoder_out,
+          inputs=input_encodings,
           units=self.embedding_size,
           activation=None,
           name='embeddings_proj'
@@ -327,17 +307,18 @@ class TransDACE(BaseModel):
     embeddings = tf.nn.l2_normalize(embeddings, axis=-1)
     embeddings_proj = tf.nn.l2_normalize(embeddings_proj, axis=-1)
 
-    if ids_shape_count > 1:
-      emb_shape = tf.concat([ids_shape, [tf.shape(embeddings)[-1]]], axis=0)
+    if input_shape_count > 1:
       embeddings = tf.reshape(
         embeddings,
-        emb_shape
+        input_shape + [self.embedding_size],
+        'embeddings_reshaped'
       )
-      emb_proj_shape = tf.concat([ids_shape, [tf.shape(embeddings_proj)[-1]]], axis=0)
       embeddings_proj = tf.reshape(
         embeddings_proj,
-        emb_proj_shape
+        input_shape + [self.embedding_size],
+        'embeddings_proj_reshaped'
       )
+
     return embeddings, embeddings_proj
 
   def normalize_parameters(self):
@@ -346,9 +327,8 @@ class TransDACE(BaseModel):
 
 
 class DistMultACE(BaseModel):
-  def __init__(self, config, ace_model):
+  def __init__(self, config):
     BaseModel.__init__(self, config)
-    self.ace_model = ace_model
     if config.energy_activation == 'relu':
       self.energy_activation = tf.nn.relu
     elif config.energy_activation == 'tanh':
@@ -361,13 +341,6 @@ class DistMultACE(BaseModel):
       raise Exception('Unrecognized activation: %s' % config.energy_activation)
 
   def energy(self, head, rel, tail, norm_ord='euclidean'):
-    h = self.embedding_lookup(head, 'concept')
-    r = self.embedding_lookup(rel, 'rel')
-    t = self.embedding_lookup(tail, 'concept')
-
-    return self.energy_from_embeddings(h, r, t, norm_ord)
-
-  def energy_from_embeddings(self, head, rel, tail, norm_ord='euclidean'):
 
     pre_activation = tf.reduce_sum(head * rel * tail, axis=-1)
     post_activation = self.energy_activation(pre_activation)
@@ -392,34 +365,34 @@ class DistMultACE(BaseModel):
     reg_term = reg_term / tf.cast(reg_count, tf.float32)
     return reg_term
 
-  def embedding_lookup(self, ids, emb_type=None):
+  def embed(self, input_encodings, emb_type=None):
     assert emb_type is not None
 
-    ids_shape = tf.shape(ids)
-    ids_shape_count = ids_shape.get_shape().as_list()[0]
-    if ids_shape_count > 1:
-      total_flat_size = tf.math.reduce_prod(ids_shape)
-      ids = tf.reshape(
-        ids,
-        [total_flat_size],
-        name='ids_flat'
+    ids_shape = tf.shape(input_encodings)
+    feature_size = ids_shape[-1]
+    input_shape = ids_shape[:-1]
+    input_shape_count = input_shape.get_shape().as_list()[0]
+    if input_shape_count > 1:
+      total_flat_size = tf.math.reduce_prod(input_shape)
+      input_encodings = tf.reshape(
+        input_encodings,
+        [total_flat_size, feature_size],
+        name='input_embeddings_flat'
       )
 
-    encoder_out = self.ace_model.embedding_lookup(ids, emb_type)
     with tf.variable_scope('dm_embeddings'):
       with tf.variable_scope(f'{emb_type}_embeddings', reuse=tf.AUTO_REUSE):
         embeddings = tf.layers.dense(
-          inputs=encoder_out,
+          inputs=input_encodings,
           units=self.embedding_size,
           activation=None,
           name='embeddings'
         )
 
-    if ids_shape_count > 1:
-      emb_shape = tf.concat([ids_shape, [tf.shape(embeddings)[-1]]], axis=0)
+    if input_shape_count > 1:
       embeddings = tf.reshape(
         embeddings,
-        emb_shape,
+        input_shape + [self.embedding_size],
         'embeddings_reshaped'
       )
 

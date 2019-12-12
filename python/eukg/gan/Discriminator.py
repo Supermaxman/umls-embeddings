@@ -1,10 +1,14 @@
+
 import tensorflow as tf
 import numpy as np
+from bert import modeling
+
 
 from ..data import DataGenerator
 from ..emb import Smoothing
 
 from ..tf_util.Trainable import Trainable
+
 
 
 class BaseModel(Trainable):

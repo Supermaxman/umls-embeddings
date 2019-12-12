@@ -79,6 +79,8 @@ tf.flags.DEFINE_string("bert_config", '/users/max/data/models/bert/uncased_L-12_
                        "Config path for pre-trained bert model.")
 tf.flags.DEFINE_string("bert_vocab", '/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_vocab.txt',
                        "Vocab path for pre-trained bert model.")
+tf.flags.DEFINE_integer("lm_encoder_size", 768, "Language model encoding size.")
+
 
 tf.flags.DEFINE_integer("encoder_rnn_layers", 1, "Number of layers of encoder rnn.")
 tf.flags.DEFINE_integer("encoder_rnn_size", 64, "Size of encoder rnn.")
@@ -91,6 +93,7 @@ tf.flags.DEFINE_integer("nrof_queued_batches", 20, "Number of batches to queue u
 tf.flags.DEFINE_integer("nrof_queued_workers", 1, "Number of workers to queue up batches in another thread.")
 tf.flags.DEFINE_string("baseline_type", "avg_prev_batch", "Type of baseline for policy gradient update.")
 tf.flags.DEFINE_float("baseline_momentum", 0.9, "Momentum of baseline for policy gradient update.")
+
 
 
 flags = tf.flags.FLAGS

@@ -8,8 +8,9 @@ from .tf_util import Trainer, ModelSaver
 from .emb import EmbeddingModel
 from .gan import Generator, train_gan, Discriminator, DisGen
 from . import Config
-from .data import data_util, DataGenerator
+from .data import data_util, DataGenerator, TfDataGenerator
 from .emb import AceModel
+from .tf_util import checkpoint_utils
 
 import random
 import numpy as np
@@ -48,10 +49,21 @@ def train():
   else:
     type2cuis = None
 
-  data_generator = DataGenerator.QueuedDataGenerator(
-    data, train_idx, val_idx, config, type2cuis,
-    nrof_queued_batches=config.nrof_queued_batches,
-    nrof_queued_workers=config.nrof_queued_workers
+  # data_generator = DataGenerator.QueuedDataGenerator(
+  #   data, train_idx, val_idx, config, type2cuis,
+  #   nrof_queued_batches=config.nrof_queued_batches,
+  #   nrof_queued_workers=config.nrof_queued_workers
+  # )
+
+  data_generator = TfDataGenerator.TfDataGenerator(
+    data,
+    train_idx,
+    val_idx,
+    config.data_dir,
+    config.num_generator_samples,
+    config.batch_size,
+    config.num_epochs,
+    config.lm_encoder_size
   )
 
   # data_generator = DataGenerator.DataGenerator(
@@ -75,8 +87,7 @@ def train():
   with tf.Graph().as_default(), tf.Session(config=gpu_config) as session:
     tf.set_random_seed(seed)
     if config.ace_model:
-      t_data = data_util.load_metathesaurus_token_data(config.data_dir)
-      ace_model = AceModel.ACEModel(config, t_data)
+      ace_model = AceModel.ACEModel(config)
     else:
       ace_model = None
 
@@ -85,19 +96,23 @@ def train():
     # session.run(model.train_init_op)
 
     # init models
-    if config.ace_model:
-      if config.pre_run_name is not None:
-        pre_model_ckpt = tf.train.latest_checkpoint(
-          os.path.join(all_models_dir, config.model, config.pre_run_name))
-        ace_model.init_from_checkpoint(pre_model_ckpt)
-      else:
-        ace_model.init_from_checkpoint(config.encoder_checkpoint)
+    # if config.ace_model:
+    #   if config.pre_run_name is not None:
+    #     pre_model_ckpt = tf.train.latest_checkpoint(
+    #       os.path.join(all_models_dir, config.model, config.pre_run_name))
+    #     ace_model.init_from_checkpoint(pre_model_ckpt)
+    #   else:
+    #     ace_model.init_from_checkpoint(config.encoder_checkpoint)
+    if config.pre_run_name is not None:
+      pre_model_ckpt = tf.train.latest_checkpoint(
+        os.path.join(all_models_dir, config.model, config.pre_run_name))
+      checkpoint_utils.init_from_checkpoint(pre_model_ckpt)
 
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()
 
-    if config.ace_model:
-      ace_model.initialize_tokens(session)
+    # if config.ace_model:
+    #   ace_model.initialize_tokens(session)
 
     # init saver
     tf_saver = tf.train.Saver(max_to_keep=10)
@@ -154,13 +169,13 @@ def init_model(config, data_generator, ace_model=None, eval=False, emb_mode=Fals
   else:
     if config.model == 'transd':
       config.embedding_size = config.embedding_size // 2
-      em = EmbeddingModel.TransDACE(config, ace_model)
+      em = EmbeddingModel.TransDACE(config)
     elif config.model == 'distmult':
-      em = EmbeddingModel.DistMultACE(config, ace_model)
+      em = EmbeddingModel.DistMultACE(config)
     elif config.model == 'transd-distmult':
-      g_em = EmbeddingModel.DistMultACE(config, ace_model)
+      g_em = EmbeddingModel.DistMultACE(config)
       config.embedding_size = config.embedding_size // 2
-      d_em = EmbeddingModel.TransDACE(config, ace_model)
+      d_em = EmbeddingModel.TransDACE(config)
       em = d_em, g_em
     else:
       raise ValueError('Unrecognized model type: %s' % config.model)
@@ -171,10 +186,10 @@ def init_model(config, data_generator, ace_model=None, eval=False, emb_mode=Fals
     model = Generator.Generator(config, em, data_generator)
   elif config.mode == 'disgen':
     d_em, g_em = em
-    model = DisGen.DisGen(config, d_em, g_em, data_generator)
+    model = DisGen.DisGen(config, d_em, g_em, data_generator, ace_model)
   elif config.mode == 'gan-joint':
     d_em, g_em = em
-    model = DisGen.DisGenGan(config, d_em, g_em, data_generator)
+    model = DisGen.DisGenGan(config, d_em, g_em, data_generator, ace_model)
   else:
     raise ValueError('Unrecognized mode: %s' % config.mode)
 
@@ -204,6 +219,14 @@ def init_saver(config, tf_saver, session):
       return ModelSaver.EpochSaver(tf_saver, session, model_file)
     else:
       raise ValueError('Unrecognized save strategy: %s' % config.save_strategy)
+
+
+def batch(items, batch_size, shuffle=False):
+  if shuffle:
+    np.random.shuffle(items)
+  nrof_batches = int(np.ceil(len(items) / batch_size))
+  for i in range(nrof_batches):
+    yield items[i * batch_size: (i+1) * batch_size]
 
 
 if __name__ == "__main__":

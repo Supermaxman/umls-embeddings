@@ -1,137 +1,24 @@
 
 import tensorflow as tf
-import numpy as np
-from bert import modeling
-from collections import defaultdict
 
 
 class ACEModel(object):
-  def __init__(self, config, tokens_dict):
-    self.embedding_size = config.embedding_size
-    self.embedding_device = config.embedding_device
-    self.vocab_size = config.vocab_size
-    self.bert_config = modeling.BertConfig.from_json_file(config.bert_config)
-    self.bert_rnn_layers = config.encoder_rnn_layers
-    self.bert_rnn_size = config.encoder_rnn_size
-    self.train_bert = config.train_bert
+  def __init__(self, config):
+    self.encoder_rnn_layers = config.encoder_rnn_layers
+    self.encoder_rnn_size = config.encoder_rnn_size
 
-    print('Loading tokens.')
-    with tf.variable_scope('ace_encoder'):
-      with tf.device("/%s:0" % self.embedding_device):
-        nrof_idxs, max_token_length = tokens_dict['token_ids'].shape
-        truncated_lengths = np.clip(tokens_dict['token_lengths'], 1, max_token_length)
-        self.token_ids_placeholder = tf.placeholder(
-          dtype=tf.int64,
-          shape=[nrof_idxs, max_token_length],
-          name='token_ids_placeholder'
-        )
-        self.token_ids = tf.get_variable(
-          name='token_ids',
-          shape=[nrof_idxs, max_token_length],
-          dtype=tf.int64
-        )
-        self.token_lengths_placeholder = tf.placeholder(
-          dtype=tf.int64,
-          shape=[nrof_idxs],
-          name='token_lengths_placeholder'
-        )
-        self.token_lengths = tf.get_variable(
-          name='token_lengths',
-          shape=[nrof_idxs],
-          dtype=tf.int64
-        )
-        self.token_id_initialize = tf.assign(
-          self.token_ids,
-          self.token_ids_placeholder
-        )
-        self.token_lengths_initialize = tf.assign(
-          self.token_lengths,
-          self.token_lengths_placeholder
-        )
-        self.tokens_dict = tokens_dict
-        self.truncated_lengths = truncated_lengths
-
-    self.tensor_cache = {}
-
-  def initialize_tokens(self, session):
-    session.run(
-      [self.token_id_initialize, self.token_lengths_initialize],
-      feed_dict={
-        self.token_ids_placeholder: self.tokens_dict['token_ids'],
-        self.token_lengths_placeholder: self.truncated_lengths}
-    )
-
-  def tokens_to_shared_encoder(self, token_ids, token_lengths):
-    # TODO determine proper reuse of bert, prob keep same weights for both concepts & relations
-    with tf.variable_scope('bert', reuse=tf.AUTO_REUSE) as scope:
-      input_mask = tf.sequence_mask(
-        token_lengths,
-        maxlen=tf.shape(token_ids)[1],
-        dtype=tf.int32
-      )
-      bert_model = modeling.BertModel(
-        config=self.bert_config,
-        is_training=False,  # TODO determine if we want to use dropout during training
-        input_ids=token_ids,
-        input_mask=input_mask,
-        scope=scope
-      )
-      encoder_seq_out = bert_model.get_sequence_output()
-      # If we do not want to train BERT at all and leave it frozen then stop gradients at output.
-      if not self.train_bert:
-        encoder_seq_out = tf.stop_gradient(encoder_seq_out)
-      return encoder_seq_out
-
-  def shared_encoder_to_embeddings(self, encoder_seq_out, token_lengths, emb_type):
+  def encode(self, encoder_seq_out, token_lengths, emb_type):
+    assert emb_type is not None
     with tf.variable_scope('ace_encoder'):
       with tf.variable_scope(f'rnn_{emb_type}_encoder', reuse=tf.AUTO_REUSE):
         encoder_out = rnn_encoder(
           encoder_seq_out,
           token_lengths,
-          nrof_layers=self.bert_rnn_layers,
-          nrof_units=self.bert_rnn_size,
+          nrof_layers=self.encoder_rnn_layers,
+          nrof_units=self.encoder_rnn_size,
           reuse=tf.AUTO_REUSE
         )
       return encoder_out
-
-  def tokens_to_embeddings(self, token_ids, token_lengths, emb_type):
-    # dynamic token id sizing so we don't waste compute
-    max_length = tf.reduce_max(token_lengths)
-    token_ids = token_ids[:, :max_length]
-    encoder_seq_out = self.tokens_to_shared_encoder(token_ids, token_lengths)
-    embeddings = self.shared_encoder_to_embeddings(encoder_seq_out, token_lengths, emb_type)
-    return embeddings
-
-  def embedding_lookup(self, ids, emb_type):
-    """
-    returns embedding vectors or tuple of embedding vectors for the passed ids
-    :param ids: ids of embedding vectors in an embedding matrix
-    :param emb_type: type of id embedding (concept, rel).
-    :return: embedding vectors or tuple of embedding vectors for the passed ids
-    """
-    assert emb_type is not None
-
-    # TODO relations with expand dims breaks this cache
-    if ids.name not in self.tensor_cache:
-      token_ids = tf.nn.embedding_lookup(self.token_ids, ids)
-      token_lengths = tf.nn.embedding_lookup(self.token_lengths, ids)
-      t_embs = self.tokens_to_embeddings(token_ids, token_lengths, emb_type)
-      self.tensor_cache[ids.name] = t_embs
-    return self.tensor_cache[ids.name]
-
-  def init_from_checkpoint(self, init_checkpoint):
-    t_vars = tf.trainable_variables()
-    (assignment_map, initialized_variable_names) = modeling.get_assignment_map_from_checkpoint(
-      t_vars,
-      init_checkpoint
-    )
-    tf.train.init_from_checkpoint(init_checkpoint, assignment_map)
-
-    for trainable_var in t_vars:
-      init_string = ""
-      if trainable_var.name in initialized_variable_names:
-        init_string = '*INIT_FROM_CKPT*'
-      print(f'{trainable_var.name}: {trainable_var.get_shape()} {init_string}')
 
 
 def rnn_encoder(input_embs, input_lengths, nrof_layers, nrof_units, reuse=tf.AUTO_REUSE):
