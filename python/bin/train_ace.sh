@@ -85,7 +85,7 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=disgen \
 --model=transd-distmult \
---run_name=transd-dm-disgen-ace-5 \
+--run_name=transd-dm-disgen-ace-6 \
 --ace_model \
 --no_semantic_network \
 --learning_rate=1e-5 \
@@ -99,7 +99,7 @@ python -m python.eukg.train \
 --summaries_dir=/shared/hltdir4/disk1/max/logs \
 --num_workers=6 \
 --buffer_size=1 \
---load=True
+--load=False
 
 
 

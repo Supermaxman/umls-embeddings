@@ -2,6 +2,7 @@
 import os
 import tensorflow as tf
 import numpy as np
+import zlib
 
 from . import data_util
 
@@ -68,6 +69,18 @@ class TfDataGenerator:
       results = tf.io.decode_compressed(results, compression_type='ZLIB')
       return results
 
+    # offsets = np.load(lm_embedding_dir + '_grouped/offsets.npz')['offsets']
+    # def read_offsets(concept_ids):
+    #   c_list = np.empty(shape=len(concept_ids), dtype=object)
+    #   with open(lm_embedding_dir + '_grouped/embeddings.tfexample', 'rb') as f:
+    #     for idx, c_id in enumerate(concept_ids):
+    #       c_s, c_l = offsets[c_id]
+    #       f.seek(c_s, os.SEEK_SET)
+    #       c_bytes = f.read(c_l)
+    #       c_bytes = zlib.decompress(c_bytes)
+    #       c_list[idx] = c_bytes
+    #   return c_list
+
     def parse_example(example_idx):
       # go from index to concept id
       b_subj = tf.nn.embedding_lookup(subjs, example_idx)
@@ -91,8 +104,14 @@ class TfDataGenerator:
       for i in range(3 + subj_sample_count + obj_sample_count):
         b_ex = read_file(b_paths[i])
         b_concepts.append(b_ex)
-
       b_concepts = tf.stack(b_concepts, axis=0)
+
+      # b_concepts = tf.py_func(
+      #   func=read_offsets,
+      #   inp=[b_concept_ids],
+      #   Tout=tf.string
+      # )
+
       b_concept_exs = tf.io.parse_example(b_concepts, features=features)
       b_concept_lengths = b_concept_exs['token_length']
       b_max_token_length = tf.reduce_max(b_concept_lengths)
