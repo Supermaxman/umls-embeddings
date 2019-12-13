@@ -61,7 +61,7 @@ class TfDataGenerator:
     rels = tf.constant(self.data['rel'])
 
     def transform_to_path(x):
-      return tf.strings.join([lm_embedding_dir, '/', tf.strings.as_string(x), '.tfexample'])
+      return tf.strings.join([lm_embedding_dir + '/', tf.strings.as_string(x), '.tfexample'])
 
     def read_file(file_path):
       results = tf.io.read_file(file_path)
@@ -81,33 +81,17 @@ class TfDataGenerator:
       b_nsubjs_samples = tf.random.uniform(shape=[subj_sample_count], maxval=subj_count, dtype=tf.int32)
       b_nobjs_samples = tf.random.uniform(shape=[obj_sample_count], maxval=obj_count, dtype=tf.int32)
 
+      b_concept_count = 3 + subj_sample_count + obj_sample_count
+
       # convert concept ids to paths and read features
-      b_subj_path = transform_to_path(b_subj)
-      b_rel_path = transform_to_path(b_rel)
-      b_obj_path = transform_to_path(b_obj)
-      b_nsubj_samples_paths = transform_to_path(b_nsubjs_samples)
-      b_nobj_samples_paths = transform_to_path(b_nobjs_samples)
-
       b_concepts = []
-      b_subj_ex = read_file(b_subj_path)
-      b_concepts.append(b_subj_ex)
-      b_rel_ex = read_file(b_rel_path)
-      b_concepts.append(b_rel_ex)
-      b_obj_ex = read_file(b_obj_path)
-      b_concepts.append(b_obj_ex)
-      b_nsubj_exs = []
-      for i in range(subj_sample_count):
-        b_nsubj_ex = read_file(b_nsubj_samples_paths[i])
-        b_nsubj_exs.append(b_nsubj_ex)
-        b_concepts.append(b_nsubj_ex)
+      b_concept_ids = tf.concat([tf.stack([b_subj, b_rel, b_obj], axis=0), b_nsubjs_samples, b_nobjs_samples], axis=0)
 
-      b_nobj_exs = []
-      for i in range(obj_sample_count):
-        b_nobj_ex = read_file(b_nobj_samples_paths[i])
-        b_nobj_exs.append(b_nobj_ex)
-        b_concepts.append(b_nobj_ex)
+      b_paths = transform_to_path(b_concept_ids)
+      for i in range(3 + subj_sample_count + obj_sample_count):
+        b_ex = read_file(b_paths[i])
+        b_concepts.append(b_ex)
 
-      b_concept_count = len(b_concepts)
       b_concepts = tf.stack(b_concepts, axis=0)
       b_concept_exs = tf.io.parse_example(b_concepts, features=features)
       b_concept_lengths = b_concept_exs['token_length']
