@@ -184,6 +184,13 @@ class TfDataGenerator:
     #   buffer_size=10240
     # )
 
+    # dataset = dataset.apply(
+    #   tf.data.experimental.map_and_batch(
+    #     parse_example,
+    #     self.batch_size,
+    #     num_parallel_batches=4
+    #   )
+    # )
     dataset = dataset.map(
       map_func=parse_example,
       num_parallel_calls=16
@@ -191,12 +198,18 @@ class TfDataGenerator:
     dataset = dataset.batch(
       batch_size=self.batch_size
     )
-    dataset = dataset.prefetch(
-      buffer_size=4
-    )
-    # train_dataset = train_dataset.repeat(
-    #   count=self.num_epochs
+
+    # dataset = dataset.apply(
+    #   tf.data.experimental.prefetch_to_device(
+    #     device='gpu:0',
+    #     buffer_size=1
+    #   )
     # )
+
+    dataset = dataset.prefetch(
+      buffer_size=1
+    )
+
     iterator = dataset.make_initializable_iterator()
 
     self.data_indices_placeholder = data_indices_placeholder
