@@ -7,11 +7,12 @@ from . import data_util
 
 
 class TfDataGenerator:
-  def __init__(self, data, train_idx, val_idx, data_dir, num_generator_samples, batch_size, num_epochs, lm_encoder_size, test_mode=False):
+  def __init__(self, data, train_idx, val_idx, data_dir, secondary_data_dir, num_generator_samples, batch_size, num_epochs, lm_encoder_size, test_mode=False):
     self.data = data
     self.train_idx = train_idx
     self.val_idx = val_idx
     self.data_dir = data_dir
+    self.secondary_data_dir = secondary_data_dir
     self.num_generator_samples = num_generator_samples
     self.batch_size = batch_size
     self.num_epochs = num_epochs
@@ -40,7 +41,7 @@ class TfDataGenerator:
     # TODO make this into initializable system so we can swap train/val data
     data_indices_placeholder = tf.placeholder(tf.int32, [None])
     dataset = tf.data.Dataset.from_tensor_slices(data_indices_placeholder)
-    lm_embedding_dir = os.path.join(self.data_dir, 'lm_embeddings')
+    lm_embedding_dir = os.path.join(self.secondary_data_dir, 'lm_embeddings')
 
     features = {
       'lm_embedding': tf.io.VarLenFeature(tf.float32),

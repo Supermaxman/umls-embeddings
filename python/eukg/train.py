@@ -60,6 +60,7 @@ def train():
     train_idx,
     val_idx,
     config.data_dir,
+    config.secondary_data_dir,
     config.num_generator_samples,
     config.batch_size,
     config.num_epochs,
