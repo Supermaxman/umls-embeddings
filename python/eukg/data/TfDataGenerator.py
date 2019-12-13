@@ -188,31 +188,31 @@ class TfDataGenerator:
     #   buffer_size=10240
     # )
 
-    dataset = dataset.apply(
-      tf.data.experimental.map_and_batch(
-        parse_example,
-        self.batch_size,
-        num_parallel_batches=self.num_workers
-      )
+    # dataset = dataset.apply(
+    #   tf.data.experimental.map_and_batch(
+    #     parse_example,
+    #     self.batch_size,
+    #     num_parallel_batches=self.num_workers
+    #   )
+    # )
+    dataset = dataset.map(
+      map_func=parse_example,
+      num_parallel_calls=self.num_workers
     )
-    # dataset = dataset.map(
-    #   map_func=parse_example,
-    #   num_parallel_calls=self.num_workers
-    # )
-    # dataset = dataset.batch(
-    #   batch_size=self.batch_size
-    # )
+    dataset = dataset.batch(
+      batch_size=self.batch_size
+    )
 
-    dataset = dataset.apply(
-      tf.data.experimental.prefetch_to_device(
-        device='gpu:0',
-        buffer_size=self.buffer_size
-      )
-    )
-    #
-    # dataset = dataset.prefetch(
-    #   buffer_size=1
+    # dataset = dataset.apply(
+    #   tf.data.experimental.prefetch_to_device(
+    #     device='gpu:0',
+    #     buffer_size=self.buffer_size
+    #   )
     # )
+    #
+    dataset = dataset.prefetch(
+      buffer_size=self.buffer_size
+    )
 
     iterator = dataset.make_initializable_iterator()
 
