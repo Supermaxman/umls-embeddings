@@ -64,7 +64,9 @@ def train():
     config.num_generator_samples,
     config.batch_size,
     config.num_epochs,
-    config.lm_encoder_size
+    config.lm_encoder_size,
+    config.num_workers,
+    config.buffer_size
   )
 
   # data_generator = DataGenerator.DataGenerator(

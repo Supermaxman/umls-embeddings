@@ -7,7 +7,8 @@ from . import data_util
 
 
 class TfDataGenerator:
-  def __init__(self, data, train_idx, val_idx, data_dir, secondary_data_dir, num_generator_samples, batch_size, num_epochs, lm_encoder_size, test_mode=False):
+  def __init__(self, data, train_idx, val_idx, data_dir, secondary_data_dir, num_generator_samples, batch_size,
+               num_epochs, lm_encoder_size, num_workers, buffer_size, test_mode=False):
     self.data = data
     self.train_idx = train_idx
     self.val_idx = val_idx
@@ -20,6 +21,8 @@ class TfDataGenerator:
     self.test_mode = test_mode
 
     self.lm_encoder_size = lm_encoder_size
+    self.num_workers = num_workers
+    self.buffer_size = buffer_size
 
   # must include test data in negative sampler
   def create_iterator(self):
@@ -189,7 +192,7 @@ class TfDataGenerator:
       tf.data.experimental.map_and_batch(
         parse_example,
         self.batch_size,
-        num_parallel_batches=2
+        num_parallel_batches=self.num_workers
       )
     )
     # dataset = dataset.map(
@@ -203,7 +206,7 @@ class TfDataGenerator:
     dataset = dataset.apply(
       tf.data.experimental.prefetch_to_device(
         device='gpu:0',
-        buffer_size=128
+        buffer_size=self.buffer_size
       )
     )
     #

@@ -81,6 +81,8 @@ tf.flags.DEFINE_string("bert_config", '/users/max/data/models/bert/uncased_L-12_
 tf.flags.DEFINE_string("bert_vocab", '/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_vocab.txt',
                        "Vocab path for pre-trained bert model.")
 tf.flags.DEFINE_integer("lm_encoder_size", 768, "Language model encoding size.")
+tf.flags.DEFINE_integer("num_workers", 2, "Number of workers for dataset feeding.")
+tf.flags.DEFINE_integer("buffer_size", 128, "Size of dataset feeding buffer.")
 
 
 tf.flags.DEFINE_integer("encoder_rnn_layers", 1, "Number of layers of encoder rnn.")
