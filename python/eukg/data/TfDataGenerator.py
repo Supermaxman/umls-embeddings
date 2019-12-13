@@ -189,7 +189,7 @@ class TfDataGenerator:
       tf.data.experimental.map_and_batch(
         parse_example,
         self.batch_size,
-        num_parallel_batches=1
+        num_parallel_batches=2
       )
     )
     # dataset = dataset.map(
