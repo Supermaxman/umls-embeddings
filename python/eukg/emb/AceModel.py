@@ -9,6 +9,12 @@ class ACEModel(object):
 
   def encode(self, encoder_seq_out, token_lengths, emb_type):
     assert emb_type is not None
+
+    max_seq_length = tf.reduce_max(token_lengths)
+    # if the max batch length is less than the padded length then we can save computation here
+    # by indexing up to the max seq length
+    encoder_seq_out = encoder_seq_out[:, :max_seq_length]
+
     with tf.variable_scope('ace_encoder'):
       with tf.variable_scope(f'rnn_{emb_type}_encoder', reuse=tf.AUTO_REUSE):
         encoder_out = rnn_encoder(
