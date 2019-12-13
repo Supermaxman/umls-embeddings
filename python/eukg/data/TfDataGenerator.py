@@ -189,7 +189,7 @@ class TfDataGenerator:
       tf.data.experimental.map_and_batch(
         parse_example,
         self.batch_size,
-        num_parallel_batches=8
+        num_parallel_batches=2
       )
     )
     # dataset = dataset.map(
@@ -203,7 +203,7 @@ class TfDataGenerator:
     dataset = dataset.apply(
       tf.data.experimental.prefetch_to_device(
         device='gpu:0',
-        buffer_size=8
+        buffer_size=16
       )
     )
     #
