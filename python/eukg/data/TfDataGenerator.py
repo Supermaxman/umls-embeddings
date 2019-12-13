@@ -97,14 +97,15 @@ class TfDataGenerator:
       b_concept_count = 3 + subj_sample_count + obj_sample_count
 
       # convert concept ids to paths and read features
-      b_concepts = []
       b_concept_ids = tf.concat([tf.stack([b_subj, b_rel, b_obj], axis=0), b_nsubjs_samples, b_nobjs_samples], axis=0)
-
       b_paths = transform_to_path(b_concept_ids)
-      for i in range(3 + subj_sample_count + obj_sample_count):
-        b_ex = read_file(b_paths[i])
-        b_concepts.append(b_ex)
-      b_concepts = tf.stack(b_concepts, axis=0)
+
+      b_concepts = tf.map_fn(
+        fn=read_file,
+        elems=b_paths,
+        dtype=tf.string,
+        parallel_iterations=self.num_workers
+      )
 
       # b_concepts = tf.py_func(
       #   func=read_offsets,
@@ -138,7 +139,6 @@ class TfDataGenerator:
       b_objs_emb = b_concept_embs[2]
       b_objs_lengths = b_concept_lengths[2]
 
-      # TODO need to extract b_concept_lengths
       b_sample_embs = b_concept_embs[3:]
       b_sample_lengths = b_concept_lengths[3:]
       b_nsubjs_samples_embs = b_sample_embs[:subj_sample_count]
