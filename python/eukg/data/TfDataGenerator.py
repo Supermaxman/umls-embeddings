@@ -203,7 +203,7 @@ class TfDataGenerator:
     dataset = dataset.apply(
       tf.data.experimental.prefetch_to_device(
         device='gpu:0',
-        buffer_size=32
+        buffer_size=1
       )
     )
     #
