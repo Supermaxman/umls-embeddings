@@ -94,10 +94,10 @@ python -m python.eukg.train \
 --val_batch_size=32 \
 --num_epochs=100 \
 --data_dir=/users/max/data/artifacts/umls-embeddings \
---secondary_data_dir=/users/max/data/artifacts/umls-embeddings \
+--secondary_data_dir=/users/max/data/artifacts/umls-embeddings-compressed \
 --model_dir=/users/max/data/models/umls-embeddings \
 --summaries_dir=/shared/hltdir4/disk1/max/logs \
---num_workers=1 \
+--num_workers=6 \
 --buffer_size=1 \
 --load=True
 
@@ -119,7 +119,7 @@ python -m python.eukg.train \
 --baseline_momentum=0.99 \
 --num_epochs=100 \
 --data_dir=/users/max/data/artifacts/umls-embeddings \
---secondary_data_dir=/users/max/data/artifacts/umls-embeddings \
+--secondary_data_dir=/users/max/data/artifacts/umls-embeddings-compressed \
 --model_dir=/users/max/data/models/umls-embeddings \
 --summaries_dir=/shared/hltdir4/disk1/max/logs \
 --num_workers=2 \

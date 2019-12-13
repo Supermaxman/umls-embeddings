@@ -99,9 +99,7 @@ def create_lm_embeddings():
           'entity_id': _int64_feature(e_idx)
         }
 
-        # with open(e_file, 'wb') as f:
-        options = tf.python_io.TFRecordOptions(tf.io.TFRecordCompressionType.GZIP)
-        with tf.io.TFRecordWriter(e_file, options=options) as f:
+        with open(e_file, 'wb') as f:
           example_proto_str = tf.train.Example(
             features=tf.train.Features(feature=feature)
           ).SerializeToString()
