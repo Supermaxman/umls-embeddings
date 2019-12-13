@@ -97,8 +97,8 @@ python -m python.eukg.train \
 --secondary_data_dir=/users/max/data/artifacts/umls-embeddings \
 --model_dir=/users/max/data/models/umls-embeddings \
 --summaries_dir=/shared/hltdir4/disk1/max/logs \
---num_workers=8 \
---buffer_size=8 \
+--num_workers=1 \
+--buffer_size=1 \
 --load=True
 
 
