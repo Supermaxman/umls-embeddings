@@ -77,7 +77,7 @@ def create_lm_embeddings():
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()
 
-    embedding_dir = os.path.join(config.data_dir, 'lm_embeddings')
+    embedding_dir = os.path.join(config.secondary_data_dir, 'lm_embeddings')
     if not os.path.exists(embedding_dir):
       os.mkdir(embedding_dir)
 
