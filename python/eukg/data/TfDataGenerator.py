@@ -49,7 +49,7 @@ class TfDataGenerator:
     features = {
       'lm_embedding': tf.io.VarLenFeature(tf.float32),
       'lm_embedding_size': tf.io.FixedLenFeature([], tf.int64),
-      'token_ids': tf.io.VarLenFeature(tf.int64),
+      # 'token_ids': tf.io.VarLenFeature(tf.int64),
       'token_length': tf.io.FixedLenFeature([], tf.int64),
       'entity_id': tf.io.FixedLenFeature([], tf.int64)
     }
@@ -59,6 +59,14 @@ class TfDataGenerator:
     subjs = tf.constant(self.data['subj'])
     objs = tf.constant(self.data['obj'])
     rels = tf.constant(self.data['rel'])
+
+    def transform_to_path(x):
+      return tf.strings.join([lm_embedding_dir, '/', tf.strings.as_string(x), '.tfexample'])
+
+    def read_file(file_path):
+      results = tf.io.read_file(file_path)
+      results = tf.io.decode_compressed(results, compression_type='ZLIB')
+      return results
 
     def parse_example(example_idx):
       # go from index to concept id
@@ -73,9 +81,6 @@ class TfDataGenerator:
       b_nsubjs_samples = tf.random.uniform(shape=[subj_sample_count], maxval=subj_count, dtype=tf.int32)
       b_nobjs_samples = tf.random.uniform(shape=[obj_sample_count], maxval=obj_count, dtype=tf.int32)
 
-      def transform_to_path(x):
-        return tf.strings.join([lm_embedding_dir, '/', tf.strings.as_string(x), '.tfexample'])
-
       # convert concept ids to paths and read features
       b_subj_path = transform_to_path(b_subj)
       b_rel_path = transform_to_path(b_rel)
@@ -84,21 +89,21 @@ class TfDataGenerator:
       b_nobj_samples_paths = transform_to_path(b_nobjs_samples)
 
       b_concepts = []
-      b_subj_ex = tf.io.read_file(b_subj_path)
+      b_subj_ex = read_file(b_subj_path)
       b_concepts.append(b_subj_ex)
-      b_rel_ex = tf.io.read_file(b_rel_path)
+      b_rel_ex = read_file(b_rel_path)
       b_concepts.append(b_rel_ex)
-      b_obj_ex = tf.io.read_file(b_obj_path)
+      b_obj_ex = read_file(b_obj_path)
       b_concepts.append(b_obj_ex)
       b_nsubj_exs = []
       for i in range(subj_sample_count):
-        b_nsubj_ex = tf.io.read_file(b_nsubj_samples_paths[i])
+        b_nsubj_ex = read_file(b_nsubj_samples_paths[i])
         b_nsubj_exs.append(b_nsubj_ex)
         b_concepts.append(b_nsubj_ex)
 
       b_nobj_exs = []
       for i in range(obj_sample_count):
-        b_nobj_ex = tf.io.read_file(b_nobj_samples_paths[i])
+        b_nobj_ex = read_file(b_nobj_samples_paths[i])
         b_nobj_exs.append(b_nobj_ex)
         b_concepts.append(b_nobj_ex)
 

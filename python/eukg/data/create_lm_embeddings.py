@@ -10,6 +10,7 @@ from ..emb import LanguageModel
 from . import data_util
 from ..tf_util import checkpoint_utils
 from .. import train
+import zlib
 
 def _bytes_feature(value):
   """Returns a bytes_list from a string / byte."""
@@ -93,15 +94,18 @@ def create_lm_embeddings():
         feature = {
           'lm_embedding': tf.train.Feature(float_list=tf.train.FloatList(value=np.reshape(e_emb[:e_b_t_l], e_b_t_l * e_emb.shape[1]))),
           'lm_embedding_size': _int64_feature(e_emb.shape[1]),
-          'token_ids': tf.train.Feature(int64_list=tf.train.Int64List(value=e_b_t_ids[:e_b_t_l])),
+          # 'token_ids': tf.train.Feature(int64_list=tf.train.Int64List(value=e_b_t_ids[:e_b_t_l])),
           'token_length': _int64_feature(e_b_t_l),
           'entity_id': _int64_feature(e_idx)
         }
 
-        with open(e_file, 'wb') as f:
+        # with open(e_file, 'wb') as f:
+        options = tf.python_io.TFRecordOptions(tf.io.TFRecordCompressionType.GZIP)
+        with tf.io.TFRecordWriter(e_file, options=options) as f:
           example_proto_str = tf.train.Example(
             features=tf.train.Features(feature=feature)
           ).SerializeToString()
+          example_proto_str = zlib.compress(example_proto_str)
           f.write(example_proto_str)
 
 
