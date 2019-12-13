@@ -116,7 +116,7 @@ python -m python.eukg.train \
 --baseline_momentum=0.99 \
 --num_epochs=100 \
 --data_dir=/users/max/data/artifacts/umls-embeddings \
---secondary_data_dir=/max/umls \
+--secondary_data_dir=/users/max/data/artifacts/umls-embeddings \
 --model_dir=/users/max/data/models/umls-embeddings \
 --summaries_dir=/shared/hltdir4/disk1/max/logs
 
