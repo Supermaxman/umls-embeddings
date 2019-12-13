@@ -179,12 +179,14 @@ class TfDataGenerator:
       return b_subj_emb, b_rels_emb, b_objs_emb, b_nsubjs_embs, b_nobjs_embs, \
         b_subj_lengths, b_rels_lengths, b_objs_lengths, b_nsubjs_lengths, b_nobjs_lengths
 
-    dataset = dataset.shuffle(
-      buffer_size=10240
-    )
+    # Shuffling is done every epoch, no need to do it here
+    # dataset = dataset.shuffle(
+    #   buffer_size=10240
+    # )
+
     dataset = dataset.map(
       map_func=parse_example,
-      num_parallel_calls=8
+      num_parallel_calls=16
     )
     dataset = dataset.batch(
       batch_size=self.batch_size
