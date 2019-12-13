@@ -80,3 +80,42 @@ python -m python.eukg.train \
 --model_dir=/users/max/data/models/umls-embeddings \
 --summaries_dir=/shared/hltdir4/disk1/max/logs \
 --load=False
+
+
+python -m python.eukg.train \
+--mode=disgen \
+--model=transd-distmult \
+--run_name=transd-dm-disgen-ace-5 \
+--ace_model \
+--no_semantic_network \
+--learning_rate=1e-5 \
+--batch_size=8 \
+--num_generator_samples=4 \
+--val_batch_size=32 \
+--num_epochs=100 \
+--data_dir=/users/max/data/artifacts/umls-embeddings \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs \
+--load=False
+
+
+
+python -m python.eukg.train \
+--mode=gan-joint \
+--model=transd-distmult \
+--run_name=gan-ace-2 \
+--pre_run_name=transd-dm-disgen-ace-5 \
+--ace_model \
+--no_semantic_network \
+--train_bert=False \
+--learning_rate=1e-5 \
+--batch_size=8 \
+--num_generator_samples=32 \
+--val_batch_size=8 \
+--baseline_type=avg_prev_batch_momentum \
+--baseline_momentum=0.99 \
+--num_epochs=100 \
+--data_dir=/users/max/data/artifacts/umls-embeddings \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs
+

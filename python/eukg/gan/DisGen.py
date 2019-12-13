@@ -270,7 +270,7 @@ class DisGen(BaseModel):
 
   def _un_flatten_dis(self, e_concepts, g_sampls=None):
     if g_sampls is None:
-      g_sampls = tf.zeros(shape=[self.bsize], dtype=tf.int64)
+      g_sampls = tf.zeros(shape=[self.bsize, 1], dtype=tf.int64)
     if isinstance(e_concepts, tuple):
       e_concepts, e_concepts_proj = e_concepts
       e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj = self._un_flatten_gen(e_concepts)
