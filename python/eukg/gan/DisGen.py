@@ -249,6 +249,7 @@ class DisGen(BaseModel):
     rel_encodes = self.ace_model.encode(self.rels_emb, self.rels_lengths, 'rel')
 
     self.g_e_concepts = self.gen_embedding_model.embed(concept_encodes, 'concept')
+    # TODO can be more efficient, not all concept dis embeddings are needed, only gen sampled and [0] for random.
     self.d_e_concepts = self.dis_embedding_model.embed(concept_encodes, 'concept')
 
     self.g_e_rels = self.gen_embedding_model.embed(rel_encodes, 'rel')

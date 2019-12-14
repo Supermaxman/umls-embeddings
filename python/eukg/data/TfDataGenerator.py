@@ -61,6 +61,9 @@ class TfDataGenerator:
     objs = tf.constant(self.data['obj'])
     rels = tf.constant(self.data['rel'])
 
+    subj_lookup = tf.constant(total_subj)
+    obj_lookup = tf.constant(total_objs)
+
     def transform_to_path(x):
       return tf.strings.join([lm_embedding_dir + '/', tf.strings.as_string(x), '.tfexample'])
 
@@ -91,8 +94,11 @@ class TfDataGenerator:
       subj_sample_count = self.num_generator_samples // 2
       obj_sample_count = self.num_generator_samples - subj_sample_count
       # TODO consider validating or not validating these
-      b_nsubjs_samples = tf.random.uniform(shape=[subj_sample_count], maxval=subj_count, dtype=tf.int32)
-      b_nobjs_samples = tf.random.uniform(shape=[obj_sample_count], maxval=obj_count, dtype=tf.int32)
+      b_nsubjs_sample_idxs = tf.random.uniform(shape=[subj_sample_count], maxval=subj_count, dtype=tf.int32)
+      b_nobjs_sample_idxs = tf.random.uniform(shape=[obj_sample_count], maxval=obj_count, dtype=tf.int32)
+
+      b_nsubjs_samples = tf.nn.embedding_lookup(subj_lookup, b_nsubjs_sample_idxs)
+      b_nobjs_samples = tf.nn.embedding_lookup(obj_lookup, b_nobjs_sample_idxs)
 
       b_concept_count = 3 + subj_sample_count + obj_sample_count
 
@@ -125,6 +131,7 @@ class TfDataGenerator:
         shape=[b_concept_count, b_max_token_length, b_emb_size]
       )
       # TODO dynamic batch seq_len padding
+      # TODO read this from somewhere.
       max_seq_len = 31
       # transform [concept_count, max_token_length, emb_size] to
       # [concept_count, max_seq_len, emb_size]
@@ -186,7 +193,7 @@ class TfDataGenerator:
         ],
         axis=0
       )
-
+      # TODO convert this to a dict for easier lookup.
       # emb_size, emb_size, emb_size, [sample_size, emb_size], [sample_size, emb_size]
       return b_subj_emb, b_rels_emb, b_objs_emb, b_nsubjs_embs, b_nobjs_embs, \
         b_subj_lengths, b_rels_lengths, b_objs_lengths, b_nsubjs_lengths, b_nobjs_lengths
@@ -226,7 +233,7 @@ class TfDataGenerator:
 
     self.data_indices_placeholder = data_indices_placeholder
     self.iterator = iterator
-
+    # TODO convert this to a dict for easier lookup.
     batch = iterator.get_next()
     subjs_emb, rels_emb, objs_emb, nsubjs_embs, nobjs_embs = batch[:5]
     subjs_lengths, rels_lengths, objs_lengths, nsubjs_lengths, nobjs_lengths = batch[5:]
