@@ -25,7 +25,27 @@ class TfDataGenerator:
     self.num_workers = num_workers
     self.buffer_size = buffer_size
 
-  # must include test data in negative sampler
+  def load_train(self, session):
+    np.random.shuffle(self.train_idx)
+    session.run(
+      self.iterator.initializer,
+      feed_dict={
+        self.subjs_placeholder: self.data['subj'][self.train_idx],
+        self.rels_placeholder: self.data['rel'][self.train_idx],
+        self.objs_placeholder: self.data['obj'][self.train_idx]
+      }
+    )
+
+  def load_val(self, session):
+    session.run(
+      self.iterator.initializer,
+      feed_dict={
+        self.subjs_placeholder: self.data['subj'][self.val_idx],
+        self.rels_placeholder: self.data['rel'][self.val_idx],
+        self.objs_placeholder: self.data['obj'][self.val_idx]
+      }
+    )
+
   def create_iterator(self):
     if self.test_mode:
       _, test_data, _, _ = data_util.load_metathesaurus_data(self.data_dir, 0.)
@@ -36,15 +56,21 @@ class TfDataGenerator:
     #   valid_triples.add((s, r, o))
     # for s, r, o in zip(test_data['subj'], test_data['rel'], test_data['obj']):
     #   valid_triples.add((s, r, o))
-    total_objs = np.unique(np.concatenate([self.data['obj'], test_data['obj']]))
-    total_subj = np.unique(np.concatenate([self.data['subj'], test_data['subj']]))
-    total_rels = np.unique(np.concatenate([self.data['rel'], test_data['rel']]))
-    obj_count = len(total_objs)
-    subj_count = len(total_subj)
-    rel_count = len(total_rels)
-    # TODO make this into initializable system so we can swap train/val data
-    data_indices_placeholder = tf.placeholder(tf.int32, [None])
-    dataset = tf.data.Dataset.from_tensor_slices(data_indices_placeholder)
+
+    # Get all concepts which have some relation for negative sampling (these should be dense
+    total_concepts = np.unique(
+      np.concatenate(
+        [self.data['obj'], test_data['obj'], self.data['subj'], test_data['subj']]
+      )
+    )
+    concept_count = len(total_concepts)
+    concept_lookup = tf.constant(total_concepts)
+
+    self.subjs_placeholder = tf.placeholder(tf.int32, [None])
+    self.rels_placeholder = tf.placeholder(tf.int32, [None])
+    self.objs_placeholder = tf.placeholder(tf.int32, [None])
+
+    dataset = tf.data.Dataset.from_tensor_slices((self.subjs_placeholder, self.rels_placeholder, self.objs_placeholder))
     lm_embedding_dir = os.path.join(self.secondary_data_dir, 'lm_embeddings')
 
     features = {
@@ -54,15 +80,6 @@ class TfDataGenerator:
       'token_length': tf.io.FixedLenFeature([], tf.int64),
       'entity_id': tf.io.FixedLenFeature([], tf.int64)
     }
-
-    # TODO make this initializable
-    triple_count = len(self.data['subj'])
-    subjs = tf.constant(self.data['subj'])
-    objs = tf.constant(self.data['obj'])
-    rels = tf.constant(self.data['rel'])
-
-    subj_lookup = tf.constant(total_subj)
-    obj_lookup = tf.constant(total_objs)
 
     def transform_to_path(x):
       return tf.strings.join([lm_embedding_dir + '/', tf.strings.as_string(x), '.tfexample'])
@@ -84,22 +101,21 @@ class TfDataGenerator:
     #       c_list[idx] = c_bytes
     #   return c_list
 
-    def parse_example(example_idx):
-      # go from index to concept id
-      b_subj = tf.nn.embedding_lookup(subjs, example_idx)
-      b_obj = tf.nn.embedding_lookup(objs, example_idx)
-      b_rel = tf.nn.embedding_lookup(rels, example_idx)
+    def parse_example(b_subj, b_rel, b_obj):
 
       # sample 50/50 subjects and objects
       subj_sample_count = self.num_generator_samples // 2
       obj_sample_count = self.num_generator_samples - subj_sample_count
-      # TODO consider validating or not validating these
-      b_nsubjs_sample_idxs = tf.random.uniform(shape=[subj_sample_count], maxval=subj_count, dtype=tf.int32)
-      b_nobjs_sample_idxs = tf.random.uniform(shape=[obj_sample_count], maxval=obj_count, dtype=tf.int32)
 
-      b_nsubjs_samples = tf.nn.embedding_lookup(subj_lookup, b_nsubjs_sample_idxs)
-      b_nobjs_samples = tf.nn.embedding_lookup(obj_lookup, b_nobjs_sample_idxs)
+      # Very low probability that I sample a correct triple (0.03% chance)
+      b_nsubjs_sample_idxs = tf.random.uniform(shape=[subj_sample_count], maxval=concept_count, dtype=tf.int32)
+      b_nobjs_sample_idxs = tf.random.uniform(shape=[obj_sample_count], maxval=concept_count, dtype=tf.int32)
 
+      # this is necessary because rel ids are shared with concept ids, so we only want to sample concepts, not rels
+      b_nsubjs_samples = tf.nn.embedding_lookup(concept_lookup, b_nsubjs_sample_idxs)
+      b_nobjs_samples = tf.nn.embedding_lookup(concept_lookup, b_nobjs_sample_idxs)
+
+      # get total number of concepts
       b_concept_count = 3 + subj_sample_count + obj_sample_count
 
       # convert concept ids to paths and read features
@@ -122,13 +138,12 @@ class TfDataGenerator:
       b_concept_exs = tf.io.parse_example(b_concepts, features=features)
       b_concept_lengths = b_concept_exs['token_length']
       b_max_token_length = tf.reduce_max(b_concept_lengths)
-      b_emb_size = b_concept_exs['lm_embedding_size'][0]
       b_concept_embs = tf.reshape(
         tf.sparse_tensor_to_dense(
           b_concept_exs['lm_embedding'],
           default_value=0
         ),
-        shape=[b_concept_count, b_max_token_length, b_emb_size]
+        shape=[b_concept_count, b_max_token_length, self.lm_encoder_size]
       )
       # TODO dynamic batch seq_len padding
       # TODO read this from somewhere.
@@ -136,7 +151,7 @@ class TfDataGenerator:
       # transform [concept_count, max_token_length, emb_size] to
       # [concept_count, max_seq_len, emb_size]
       # and pad with zeros.
-      b_s_padding = tf.zeros(shape=[b_concept_count, max_seq_len - b_max_token_length, b_emb_size])
+      b_s_padding = tf.zeros(shape=[b_concept_count, max_seq_len - b_max_token_length, self.lm_encoder_size])
       b_concept_embs = tf.concat([b_concept_embs, b_s_padding], axis=1)
 
       b_subj_emb = b_concept_embs[0]
@@ -231,7 +246,6 @@ class TfDataGenerator:
 
     iterator = dataset.make_initializable_iterator()
 
-    self.data_indices_placeholder = data_indices_placeholder
     self.iterator = iterator
     # TODO convert this to a dict for easier lookup.
     batch = iterator.get_next()

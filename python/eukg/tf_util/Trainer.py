@@ -60,13 +60,7 @@ def train_epoch(config, session, model, summary_writer, post_step, global_step, 
   console_update_interval = config['progress_update_interval']
   pbar = tqdm(total=console_update_interval)
   start = time.time()
-  np.random.shuffle(model.data_provider.train_idx)
-  session.run(
-    model.data_provider.iterator.initializer,
-    feed_dict={
-      model.data_provider.data_indices_placeholder: model.data_provider.train_idx
-    }
-  )
+  model.data_provider.load_train(session)
 
   b = 0
   try:
@@ -104,13 +98,8 @@ def train_epoch(config, session, model, summary_writer, post_step, global_step, 
 def validate(config, session, model, summary_writer, post_step, global_step):
   console_update_interval = config['val_progress_update_interval']
   pbar = tqdm(total=console_update_interval)
+  model.data_provider.load_val(session)
 
-  session.run(
-    model.data_provider.iterator.initializer,
-    feed_dict={
-      model.data_provider.data_indices_placeholder: model.data_provider.val_idx
-    }
-  )
   # validation epoch
   b = 0
   try:
