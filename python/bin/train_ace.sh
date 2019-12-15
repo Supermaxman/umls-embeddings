@@ -85,21 +85,20 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=disgen \
 --model=transd-distmult \
---run_name=transd-dm-disgen-ace-5 \
+--run_name=transd-dm-disgen-ace-7 \
 --ace_model \
 --no_semantic_network \
 --learning_rate=1e-5 \
---batch_size=8 \
---num_generator_samples=4 \
---val_batch_size=32 \
+--batch_size=16 \
+--val_batch_size=16 \
 --num_epochs=100 \
 --data_dir=/users/max/data/artifacts/umls-embeddings \
---secondary_data_dir=/run/media/max/ssd01/umls-embeddings-compressed \
+--secondary_data_dir=/users/max/data/artifacts/umls-embeddings-compressed \
 --model_dir=/users/max/data/models/umls-embeddings \
 --summaries_dir=/shared/hltdir4/disk1/max/logs \
 --num_workers=6 \
 --buffer_size=1 \
---load=True
+--load=False
 
 
 

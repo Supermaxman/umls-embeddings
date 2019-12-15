@@ -7,6 +7,8 @@ import numpy as np
 from .Trainable import Trainable
 from .ModelSaver import ModelSaver, Policy
 
+from tensorflow.python.client import timeline
+
 
 def train(config, session, model, saver,
           train_post_step=None,
@@ -62,14 +64,27 @@ def train_epoch(config, session, model, summary_writer, post_step, global_step, 
   start = time.time()
   model.data_provider.load_train(session)
 
+  profiled = False
   b = 0
   try:
     while True:
       verbose_batch = b > 0 and b % console_update_interval == 0
       # training batch
-      fetched = session.run(model.fetches(True, verbose=verbose_batch))
+      options = None
+      run_metadata = None
+      if verbose_batch and not profiled:
+        options = tf.RunOptions(trace_level=tf.RunOptions.FULL_TRACE)
+        run_metadata = tf.RunMetadata()
+      fetched = session.run(model.fetches(True, verbose=verbose_batch), options=options, run_metadata=run_metadata)
       # update tensorboard summary
       summary_writer.add_summary(fetched[0], global_step)
+      if verbose_batch and not profiled:
+        fetched_timeline = timeline.Timeline(run_metadata.step_stats)
+        chrome_trace = fetched_timeline.generate_chrome_trace_format()
+        with open(os.path.join(config['summaries_dir'], 'train', f'timeline_{global_step}.json'), 'w') as f:
+          f.write(chrome_trace)
+        profiled = True
+
       global_step += 1
 
       # perform post steps
