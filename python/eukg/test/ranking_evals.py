@@ -60,6 +60,9 @@ def save_ranks():
           b_energy, b_subjs, b_rels, b_objs = session.run([model.pos_energy, model.b_subjs, model.b_rels, model.b_objs])
           bsize = len(b_subjs)
           print(b_energy.shape)
+          print(b_subjs.shape)
+          print(b_rels.shape)
+          print(b_objs.shape)
           exit()
           # bsubj, brel, vs all concepts as bobjs
           subj_rel_energy = b_energy[:bsize]
