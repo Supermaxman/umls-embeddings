@@ -615,6 +615,16 @@ class TfEvalDataGenerator:
     self.buffer_size = buffer_size
 
   def load_eval(self, session):
+    session.run(
+      self.eval_iterator.initializer,
+      feed_dict={
+        self.subjs: self.test_data['subj'],
+        self.rels: self.test_data['rel'],
+        self.objs: self.test_data['obj'],
+      }
+    )
+
+  def create_eval_iterator(self):
     cui2id, train_data, _, _ = data_util.load_metathesaurus_data(self.data_dir, 0.0)
     id2cui = {v: k for k, v in cui2id.items()}
     test_data = data_util.load_metathesaurus_test_data(self.data_dir)
@@ -634,16 +644,8 @@ class TfEvalDataGenerator:
       self.concepts.update([s, o])
     self.concepts = np.asarray(list(self.concepts), dtype=np.int32)
     self.nrof_triples = len(test_data['subj'])
-    session.run(
-      self.eval_iterator.initializer,
-      feed_dict={
-        self.subjs: test_data['subj'],
-        self.rels: test_data['rel'],
-        self.objs: test_data['obj'],
-      }
-    )
+    self.test_data = test_data
 
-  def create_eval_iterator(self):
     self.subjs = tf.placeholder(tf.int32, [None])
     self.rels = tf.placeholder(tf.int32, [None])
     self.objs = tf.placeholder(tf.int32, [None])
