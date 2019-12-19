@@ -52,10 +52,10 @@ class DisGen(BaseModel):
 
   def build_eval(self):
     self.data_generator.create_eval_iterator()
-    self.b_subjs = self.data_generator.subjs
-    self.b_rels = self.data_generator.rels
-    self.b_objs = self.data_generator.objs
-    self.b_all_concepts = self.data_generator.all_concepts
+    self.b_subjs = self.data_generator.b_subjs
+    self.b_rels = self.data_generator.b_rels
+    self.b_objs = self.data_generator.b_objs
+    self.b_all_concepts = self.data_generator.b_all_concepts
 
     with tf.variable_scope('dis_energy'):
 
