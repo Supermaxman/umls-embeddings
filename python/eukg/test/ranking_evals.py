@@ -7,7 +7,7 @@ import json
 from tqdm import tqdm
 from collections import defaultdict
 
-from ..data import data_util, DataGenerator
+from ..data import data_util, TfDataGenerator
 from .. import Config, train
 from ..threading_util import synchronized, parallel_stream
 
@@ -20,18 +20,6 @@ def save_ranks():
   np.random.seed(1337)
   # config.batch_size = 4096
 
-  cui2id, train_data, _, _ = data_util.load_metathesaurus_data(config.data_dir, config.val_proportion)
-  id2cui = {v: k for k, v in cui2id.items()}
-  test_data = data_util.load_metathesaurus_test_data(config.data_dir)
-  print('Loaded %d test triples from %s' % (len(test_data['rel']), config.data_dir))
-
-  valid_triples = set()
-  for s, r, o in zip(train_data['subj'], train_data['rel'], train_data['obj']):
-    valid_triples.add((s, r, o))
-  for s, r, o in zip(test_data['subj'], test_data['rel'], test_data['obj']):
-    valid_triples.add((s, r, o))
-  print('%d valid triples' % len(valid_triples))
-
   if config.gpu_memory_growth:
     gpu_config = tf.ConfigProto()
     gpu_config.gpu_options.allow_growth = True
@@ -42,113 +30,45 @@ def save_ranks():
     tf.set_random_seed(config.seed)
 
     #  embedding_file=, load_embeddings=True, transd
-
+    data_generator = TfDataGenerator.TfEvalDataGenerator(
+      config.data_dir,
+      config.batch_size,
+      config.num_workers,
+      config.buffer_size
+    )
     # init model
-    model = train.init_model(config, None, eval=True)
+    model = train.init_model(config, data_generator, eval=True)
 
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()
 
     tf.get_default_graph().finalize()
 
-    if not config.save_ranks:
-      print('WARNING: ranks will not be saved! This run should only be for debugging purposes!')
-
     outdir = os.path.join(config.eval_dir, config.run_name)
     if not os.path.exists(outdir):
       os.makedirs(outdir)
 
-    chunk_size = (1. / config.num_shards) * len(test_data['rel'])
-    print('Chunk size: %f' % chunk_size)
-    start = int((config.shard - 1) * chunk_size)
-    end = (len(test_data['rel']) if config.shard == int(config.num_shards) else int(config.shard * chunk_size)) \
-          if config.save_ranks else start + 1000
-    print('Processing data from idx %d to %d' % (start, end))
+    model.data_generator.load_eval(session)
 
-    sampler = DataGenerator.NegativeSampler(valid_triples=valid_triples, name='gan')
-    global ranks
-    global first
-    ranks = []
-    first = True
-    open_file = lambda: open(os.path.join(outdir, 'ranks_%d.json' % config.shard), 'w+') \
-      if config.save_ranks else open("/dev/null")
-    with open_file() as f, tqdm(total=(end-start)) as pbar:
+    with open(os.path.join(outdir, 'energies.json'), 'w+') as f:
       if config.save_ranks:
         f.write('[')
 
-      # define thread function
-      def calculate(triple):
-        s, r, o = triple
-        # subj
-        invalid_concepts = [s] + sampler.invalid_concepts(s, r, o, True)
-        subj_scores, subj_ranking = calculate_scores(s, r, o, True, invalid_concepts, session, model, config.batch_size)
-        srank = subj_ranking[s] if s in subj_ranking else -1
+      pbar = tqdm(total=model.data_generator.nrof_triples)
+      try:
+        while True:
+          b_energy, b_subjs, b_rels, b_objs = session.run([model.pos_energy, model.b_subjs, model.b_rels, model.b_objs])
+          bsize = len(b_subjs)
+          # bsubj, brel, vs all concepts as bobjs
+          subj_rel_energy = b_energy[:bsize]
+          # bobj, brel, vs all concepts as bsubj
+          obj_rel_energy = b_energy[bsize:]
+          pbar.update(bsize)
+      except tf.errors.OutOfRangeError:
+        pass
 
-        # obj
-        invalid_concepts = [o] + sampler.invalid_concepts(s, r, o, False)
-        obj_scores, obj_ranking = calculate_scores(s, r, o, False, invalid_concepts, session, model, config.batch_size)
-        orank = obj_ranking[o] if o in obj_ranking else -1
-        json_string = json.dumps([str(srank),
-                                  str(orank),
-                                  str(obj_scores[o]),
-                                  id2cui[s], id2cui[r], id2cui[o]])
-        return srank, orank, json_string
-
-      # define save function
-      # def save(future):
-      #   global ranks
-      #   global first
-      #
-      #   srank, orank, json_string = future.result()
-      #   ranks += [srank, orank]
-      #   if config.save_ranks:
-      #     if not first:
-      #       f.write(',')
-      #     first = False
-      #     f.write(json_string)
-      #   npr = np.asarray(ranks, dtype=np.float)
-      #   if config.save_ranks:
-      #     pbar.set_description('Srank: %5d. Orank: %5d.' % (srank, orank))
-      #   else:
-      #     pbar.set_description('Srank: %5d. Orank: %5d. MRR: %.4f. H@10: %.4f' %
-      #                          (srank, orank, mrr(npr), hits_at_10(npr)))
-      #   pbar.update()
-
-      def save(result):
-        global ranks
-        global first
-        srank, orank, json_string = result
-        ranks += [srank, orank]
-        if config.save_ranks:
-          if not first:
-            f.write(',')
-          first = False
-          f.write(json_string)
-        npr = np.asarray(ranks, dtype=np.float)
-        if config.save_ranks:
-          pbar.set_description('Srank: %5d. Orank: %5d.' % (srank, orank))
-        else:
-          pbar.set_description('Srank: %5d. Orank: %5d. MRR: %.4f. H@10: %.4f' %
-                               (srank, orank, mrr(npr), hits_at_10(npr)))
-        pbar.update()
-
-      for triple in zip(test_data['subj'][start:end], test_data['rel'][start:end], test_data['obj'][start:end]):
-        result = calculate(triple)
-        save(result)
-
-      # parallel_stream(zip(test_data['subj'][start:end], test_data['rel'][start:end], test_data['obj'][start:end]),
-      #                 parallelizable_fn=calculate,
-      #                 future_consumer=save,
-      #                 num_threads=config.num_eval_threads)
-
-      # finish json
       if config.save_ranks:
         f.write(']')
-
-  ranks_np = np.asarray(ranks, dtype=np.float)
-  print('Mean Reciprocal Rank of shard %d: %.4f' % (config.shard, mrr(ranks_np)))
-  print('Mean Rank of shard %d: %.2f' % (config.shard, mr(ranks_np)))
-  print('Hits @ 10 of shard %d: %.4f' % (config.shard, hits_at_10(ranks_np)))
 
 
 def calculate_scores(subj, rel, obj, replace_subject, concept_ids, session, model, batch_size):

@@ -5,6 +5,9 @@ import numpy as np
 import zlib
 
 from . import data_util
+from tqdm import tqdm
+
+from collections import defaultdict
 
 
 class TfDataGenerator:
@@ -601,5 +604,78 @@ class TfTestDataGenerator:
     self.b_rel_lengths = b_concept_lengths
     self.b_rel_ids = b_concept_ids
 
+
+
+
+class TfEvalDataGenerator:
+  def __init__(self, data_dir, batch_size, num_workers, buffer_size):
+    self.data_dir = data_dir
+    self.batch_size = batch_size
+    self.num_workers = num_workers
+    self.buffer_size = buffer_size
+
+  def load_eval(self, session):
+    cui2id, train_data, _, _ = data_util.load_metathesaurus_data(self.data_dir, 0.0)
+    id2cui = {v: k for k, v in cui2id.items()}
+    test_data = data_util.load_metathesaurus_test_data(self.data_dir)
+
+    valid_triples = set()
+    for s, r, o in zip(train_data['subj'], train_data['rel'], train_data['obj']):
+      valid_triples.add((s, r, o))
+    for s, r, o in zip(test_data['subj'], test_data['rel'], test_data['obj']):
+      valid_triples.add((s, r, o))
+
+    self.sr2o = defaultdict(set)
+    self.or2s = defaultdict(set)
+    self.concepts = set()
+    for s, r, o in tqdm(valid_triples, desc='building triple maps', total=len(valid_triples)):
+      self.sr2o[(s, r)].add(o)
+      self.or2s[(o, r)].add(s)
+      self.concepts.update([s, o])
+    self.concepts = np.asarray(list(self.concepts), dtype=np.int32)
+    self.nrof_triples = len(test_data['subj'])
+    session.run(
+      self.eval_iterator.initializer,
+      feed_dict={
+        self.subjs: test_data['subj'],
+        self.rels: test_data['rel'],
+        self.objs: test_data['obj'],
+      }
+    )
+
+  def create_eval_iterator(self):
+    self.subjs = tf.placeholder(tf.int32, [None])
+    self.rels = tf.placeholder(tf.int32, [None])
+    self.objs = tf.placeholder(tf.int32, [None])
+
+    all_concepts = tf.constant(self.concepts, dtype=tf.int32)
+
+    dataset = tf.data.Dataset.from_tensor_slices((self.subjs, self.rels, self.objs))
+
+    def parse_batch_example(subjs, rels, objs):
+      return subjs, rels, objs, all_concepts
+
+    dataset = dataset.batch(
+      batch_size=self.batch_size
+    )
+    dataset = dataset.map(
+      map_func=parse_batch_example,
+      num_parallel_calls=self.num_workers
+    )
+
+    dataset = dataset.prefetch(
+      buffer_size=self.buffer_size
+    )
+
+    iterator = dataset.make_initializable_iterator()
+
+    self.eval_iterator = iterator
+    batch = iterator.get_next()
+    subjs, rels, objs, all_concepts = batch
+
+    self.b_subjs = subjs
+    self.b_rels = rels
+    self.b_objs = objs
+    self.b_all_concepts = all_concepts
 
 
