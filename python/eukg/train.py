@@ -94,18 +94,8 @@ def train():
     else:
       ace_model = None
 
-    # with tf.variable_scope(config.run_name):
     model = init_model(config, data_generator, ace_model)
-    # session.run(model.train_init_op)
 
-    # init models
-    # if config.ace_model:
-    #   if config.pre_run_name is not None:
-    #     pre_model_ckpt = tf.train.latest_checkpoint(
-    #       os.path.join(all_models_dir, config.model, config.pre_run_name))
-    #     ace_model.init_from_checkpoint(pre_model_ckpt)
-    #   else:
-    #     ace_model.init_from_checkpoint(config.encoder_checkpoint)
     if config.pre_run_name is not None:
       pre_model_ckpt = tf.train.latest_checkpoint(
         os.path.join(all_models_dir, config.model, config.pre_run_name))
@@ -155,7 +145,7 @@ def train():
                   max_batches_per_epoch=config_map['max_batches_per_epoch'])
 
 
-def init_model(config, data_generator, ace_model=None, eval=False, emb_mode=False):
+def init_model(config, data_generator, ace_model=None, eval=False, test=False):
   print('Initializing %s embedding model in %s mode...' % (config.model, config.mode))
   npz = np.load(config.embedding_file) if config.load_embeddings else None
 
@@ -176,10 +166,16 @@ def init_model(config, data_generator, ace_model=None, eval=False, emb_mode=Fals
     elif config.model == 'distmult':
       em = EmbeddingModel.DistMultACE(config)
     elif config.model == 'transd-distmult':
-      g_em = EmbeddingModel.DistMultACE(config)
-      config.embedding_size = config.embedding_size // 2
-      d_em = EmbeddingModel.TransDACE(config)
-      em = d_em, g_em
+      if eval:
+        g_em = None
+        config.embedding_size = config.embedding_size // 2
+        d_em = EmbeddingModel.TransD(config, npz)
+        em = d_em, g_em
+      else:
+        g_em = EmbeddingModel.DistMultACE(config)
+        config.embedding_size = config.embedding_size // 2
+        d_em = EmbeddingModel.TransDACE(config)
+        em = d_em, g_em
     else:
       raise ValueError('Unrecognized model type: %s' % config.model)
 
@@ -202,9 +198,9 @@ def init_model(config, data_generator, ace_model=None, eval=False, emb_mode=Fals
   if eval:
     model.build_eval()
     print('Built eval model.')
-  elif emb_mode:
-    model.build_emb()
-    print('Built emb model.')
+  elif test:
+    model.build_test()
+    print('Built test model.')
   else:
     model.build()
     print('Built model.')

@@ -23,7 +23,8 @@ class BaseModel:
     :param norm_ord: order of the normalization function
     :return: [batch_size] vector of energies of the passed triples
     """
-    raise NotImplementedError("subclass should implement")
+    pass
+    # raise NotImplementedError("subclass should implement")
 
   def embed(self, ids, emb_type=None):
     """
@@ -32,14 +33,16 @@ class BaseModel:
     :param emb_type: embedding type of ids
     :return: embedding vectors or tuple of embedding vectors for the passed ids
     """
-    raise NotImplementedError("subclass should implement")
+    pass
+    # raise NotImplementedError("subclass should implement")
 
   def normalize_parameters(self):
     """
     Returns the op that enforces the constraint that each embedding vector have a norm <= 1
     :return: the op that enforces the constraint that each embedding vector have a norm <= 1
     """
-    raise NotImplementedError("subclass should implement")
+    pass
+    # raise NotImplementedError("subclass should implement")
 
   # noinspection PyMethodMayBeStatic
   def normalize(self, rows, mat, ids):

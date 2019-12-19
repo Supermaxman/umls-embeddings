@@ -414,3 +414,192 @@ class TfDataGenerator:
     self.nobjs_lengths = nobjs_lengths
 
 
+class TfTestDataGenerator:
+  def __init__(self, data, data_dir, secondary_data_dir, batch_size,
+               lm_encoder_size, num_workers, buffer_size):
+    self.data = data
+    self.data_dir = data_dir
+    self.secondary_data_dir = secondary_data_dir
+    self.batch_size = batch_size
+
+    self.lm_encoder_size = lm_encoder_size
+    self.num_workers = num_workers
+    self.buffer_size = buffer_size
+
+  def load_concepts(self, session):
+    test_data = data_util.load_metathesaurus_test_data(self.data_dir)
+    concepts = np.unique(
+      np.concatenate(
+        [self.data['obj'], test_data['obj'], self.data['subj'], test_data['subj']]
+      )
+    )
+    session.run(
+      self.concept_iterator.initializer,
+      feed_dict={
+        self.concepts_placeholder: concepts
+      }
+    )
+
+  def load_rels(self, session):
+    test_data = data_util.load_metathesaurus_test_data(self.data_dir)
+    rels = np.unique(
+      np.concatenate(
+        [self.data['rel'], test_data['rel']]
+      )
+    )
+    session.run(
+      self.rel_iterator.initializer,
+      feed_dict={
+        self.rels_placeholder: rels
+      }
+    )
+
+  def create_concept_iterator(self):
+
+    self.concepts_placeholder = tf.placeholder(tf.int32, [None])
+
+    dataset = tf.data.Dataset.from_tensor_slices(self.concepts_placeholder)
+    lm_embedding_dir = os.path.join(self.secondary_data_dir, 'lm_embeddings')
+
+    features = {
+      'lm_embedding': tf.io.VarLenFeature(tf.float32),
+      'lm_embedding_size': tf.io.FixedLenFeature([], tf.int64),
+      # 'token_ids': tf.io.VarLenFeature(tf.int64),
+      'token_length': tf.io.FixedLenFeature([], tf.int64),
+      'entity_id': tf.io.FixedLenFeature([], tf.int64)
+    }
+
+    def transform_to_path(x):
+      return tf.strings.join([lm_embedding_dir + '/', tf.strings.as_string(x), '.tfexample'])
+
+    def read_file(file_path):
+      results = tf.io.read_file(file_path)
+      results = tf.io.decode_compressed(results, compression_type='ZLIB')
+      return results
+
+    def parse_batch_example(b_concept_ids):
+      bsize = tf.shape(b_concept_ids)[0]
+
+      b_paths = transform_to_path(b_concept_ids)
+
+      b_concepts = tf.map_fn(
+        fn=read_file,
+        elems=b_paths,
+        dtype=tf.string,
+        parallel_iterations=self.num_workers
+      )
+      b_concept_exs = tf.io.parse_example(b_concepts, features=features)
+      b_concept_lengths = tf.reshape(
+        b_concept_exs['token_length'],
+        shape=[bsize]
+      )
+      b_max_token_length = tf.cast(tf.reduce_max(b_concept_lengths), tf.int32)
+      b_concept_embs = tf.reshape(
+        tf.sparse_tensor_to_dense(
+          b_concept_exs['lm_embedding'],
+          default_value=0
+        ),
+        shape=[bsize, b_max_token_length, self.lm_encoder_size]
+      )
+
+      return b_concept_embs, b_concept_lengths, b_concept_ids
+
+    dataset = dataset.batch(
+      batch_size=self.batch_size
+    )
+    dataset = dataset.map(
+      map_func=parse_batch_example,
+      num_parallel_calls=self.num_workers
+    )
+
+    dataset = dataset.prefetch(
+      buffer_size=self.buffer_size
+    )
+
+    iterator = dataset.make_initializable_iterator()
+
+    self.concept_iterator = iterator
+    batch = iterator.get_next()
+    b_concept_embs, b_concept_lengths, b_concept_ids = batch
+
+    b_concept_embs.set_shape([None, None, self.lm_encoder_size])
+
+    self.b_concept_embs = b_concept_embs
+    self.b_concept_lengths = b_concept_lengths
+    self.b_concept_ids = b_concept_ids
+
+  def create_rel_iterator(self):
+    self.rels_placeholder = tf.placeholder(tf.int32, [None])
+
+    dataset = tf.data.Dataset.from_tensor_slices(self.rels_placeholder)
+    lm_embedding_dir = os.path.join(self.secondary_data_dir, 'lm_embeddings')
+
+    features = {
+      'lm_embedding': tf.io.VarLenFeature(tf.float32),
+      'lm_embedding_size': tf.io.FixedLenFeature([], tf.int64),
+      # 'token_ids': tf.io.VarLenFeature(tf.int64),
+      'token_length': tf.io.FixedLenFeature([], tf.int64),
+      'entity_id': tf.io.FixedLenFeature([], tf.int64)
+    }
+
+    def transform_to_path(x):
+      return tf.strings.join([lm_embedding_dir + '/', tf.strings.as_string(x), '.tfexample'])
+
+    def read_file(file_path):
+      results = tf.io.read_file(file_path)
+      results = tf.io.decode_compressed(results, compression_type='ZLIB')
+      return results
+
+    def parse_batch_example(b_concept_ids):
+      bsize = tf.shape(b_concept_ids)[0]
+
+      b_paths = transform_to_path(b_concept_ids)
+
+      b_concepts = tf.map_fn(
+        fn=read_file,
+        elems=b_paths,
+        dtype=tf.string,
+        parallel_iterations=self.num_workers
+      )
+      b_concept_exs = tf.io.parse_example(b_concepts, features=features)
+      b_concept_lengths = tf.reshape(
+        b_concept_exs['token_length'],
+        shape=[bsize]
+      )
+      b_max_token_length = tf.cast(tf.reduce_max(b_concept_lengths), tf.int32)
+      b_concept_embs = tf.reshape(
+        tf.sparse_tensor_to_dense(
+          b_concept_exs['lm_embedding'],
+          default_value=0
+        ),
+        shape=[bsize, b_max_token_length, self.lm_encoder_size]
+      )
+
+      return b_concept_embs, b_concept_lengths, b_concept_ids
+
+    dataset = dataset.batch(
+      batch_size=self.batch_size
+    )
+    dataset = dataset.map(
+      map_func=parse_batch_example,
+      num_parallel_calls=self.num_workers
+    )
+
+    dataset = dataset.prefetch(
+      buffer_size=self.buffer_size
+    )
+
+    iterator = dataset.make_initializable_iterator()
+
+    self.rel_iterator = iterator
+    batch = iterator.get_next()
+    b_concept_embs, b_concept_lengths, b_concept_ids = batch
+
+    b_concept_embs.set_shape([None, None, self.lm_encoder_size])
+
+    self.b_rel_embs = b_concept_embs
+    self.b_rel_lengths = b_concept_lengths
+    self.b_rel_ids = b_concept_ids
+
+
+

@@ -27,71 +27,37 @@ class DisGen(BaseModel):
     self.ace_model = ace_model
     self.lm_encoder_size = config.lm_encoder_size
 
+  def build_test(self):
+    self.build_test_concepts()
+    self.build_test_rels()
+
+  def build_test_concepts(self):
+
+    self.data_generator.create_concept_iterator()
+
+    self.b_concept_embs = self.data_generator.b_concept_embs
+    self.b_concept_lengths = self.data_generator.b_concept_lengths
+    self.concept_ids = self.data_generator.b_concept_ids
+
+    self.concept_embeddings = self.dis_embedding_model.embed(self.ace_model.encode(self.b_concept_embs, self.b_concept_lengths, 'concept'), 'concept')
+
+  def build_test_rels(self):
+    self.data_generator.create_rel_iterator()
+
+    self.b_rel_embs = self.data_generator.b_rel_embs
+    self.b_rel_lengths = self.data_generator.b_rel_lengths
+    self.rel_ids = self.data_generator.b_rel_ids
+
+    self.relation_embeddings = self.dis_embedding_model.embed(self.ace_model.encode(self.b_rel_embs, self.b_rel_lengths, 'rel'), 'rel')
+
   def build_eval(self):
-    pos_shape = tf.shape(self.pos_subj)
-
-    bsize = pos_shape[0]
-
-    concepts = tf.concat([self.pos_subj, self.pos_obj], axis=0)
-    d_e_concepts = self.dis_embedding_model.embedding_lookup(concepts, 'concept')
-    g_e_concepts = self.gen_embedding_model.embedding_lookup(concepts, 'concept')
-    d_e_rels = self.dis_embedding_model.embedding_lookup(self.relations, 'rel')
-    g_e_rels = self.gen_embedding_model.embedding_lookup(self.relations, 'rel')
-
-    def un_flatten_gen(e_concepts):
-      # bsize
-      e_pos_subj = e_concepts[:bsize]
-      # bsize
-      e_pos_obj = e_concepts[bsize:]
-
-      return e_pos_subj, e_pos_obj
-
-    def un_flatten_dis(e_concepts):
-      if isinstance(e_concepts, tuple):
-        e_concepts, e_concepts_proj = e_concepts
-        e_pos_subj, e_pos_obj = un_flatten_gen(e_concepts)
-        e_pos_subj_proj, e_pos_obj_proj = un_flatten_gen(e_concepts_proj)
-        e_pos_subj = e_pos_subj, e_pos_subj_proj
-        e_pos_obj = e_pos_obj, e_pos_obj_proj
-      else:
-        e_pos_subj, e_pos_obj = un_flatten_gen(e_concepts)
-      return e_pos_subj, e_pos_obj
-
-    d_e_pos_subj, d_e_pos_obj = un_flatten_dis(
-      d_e_concepts
-    )
-
-    g_e_pos_subj, g_e_pos_obj = un_flatten_gen(
-      g_e_concepts
-    )
-    self.pos_subj_embs = d_e_pos_subj
-    self.relation_embs = d_e_rels
-    self.pos_obj_embs = d_e_pos_obj
-
     with tf.variable_scope('dis_energy'):
-      with tf.device('gpu:0'):
-        self.dis_energy = self.dis_embedding_model.energy_from_embeddings(
-          d_e_pos_subj,
-          d_e_rels,
-          d_e_pos_obj,
-          norm_ord=self.energy_norm
-        )
-      self.pos_energy = self.dis_energy
-
-    with tf.variable_scope('gen_energy'):
-      with tf.device('gpu:0'):
-        self.gen_energy = self.gen_embedding_model.energy_from_embeddings(
-          g_e_pos_subj,
-          g_e_rels,
-          g_e_pos_obj
-        )
-
-  def build_emb(self):
-    d_e_concepts = self.dis_embedding_model.embedding_lookup(self.concepts, 'concept')
-    d_e_rels = self.dis_embedding_model.embedding_lookup(self.relations, 'rel')
-
-    self.concept_embeddings = d_e_concepts
-    self.relation_embeddings = d_e_rels
+      self.pos_energy = self.dis_embedding_model.energy(
+        self.pos_subj,
+        self.relations,
+        self.pos_obj,
+        norm_ord=self.energy_norm
+      )
 
   def build(self):
 

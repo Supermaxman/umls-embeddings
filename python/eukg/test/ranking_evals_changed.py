@@ -10,20 +10,32 @@ from collections import defaultdict
 from ..data import data_util, DataGenerator
 from .. import Config, train
 from ..threading_util import synchronized, parallel_stream
+from ..emb import AceModel
 
 
 config = Config.flags
 
 
 def save_ranks():
-  random.seed(1337)
-  np.random.seed(1337)
-  # config.batch_size = 4096
+  random.seed(config.seed)
+  np.random.seed(config.seed)
+  all_models_dir = config.model_dir
 
   cui2id, train_data, _, _ = data_util.load_metathesaurus_data(config.data_dir, config.val_proportion)
   id2cui = {v: k for k, v in cui2id.items()}
   test_data = data_util.load_metathesaurus_test_data(config.data_dir)
   print('Loaded %d test triples from %s' % (len(test_data['rel']), config.data_dir))
+
+  outdir = os.path.join(config.eval_dir, config.run_name)
+
+  npz = np.load(os.path.join(outdir, 'test_embeddings.npz'))
+  embeddings = dict(npz.items())
+  npz.close()
+
+  c_emb_lookup = {c_id: idx for idx, c_id in enumerate(embeddings['concept_ids'])}
+  r_emb_lookup = {r_id: idx for idx, r_id in enumerate(embeddings['rel_ids'])}
+  c_embs = embeddings['concept_embeddings']
+  r_embs = embeddings['rel_embeddings']
 
   valid_triples = set()
   for s, r, o in zip(train_data['subj'], train_data['rel'], train_data['obj']):
@@ -31,6 +43,8 @@ def save_ranks():
   for s, r, o in zip(test_data['subj'], test_data['rel'], test_data['obj']):
     valid_triples.add((s, r, o))
   print('%d valid triples' % len(valid_triples))
+
+  model_name = config.run_name
 
   if config.gpu_memory_growth:
     gpu_config = tf.ConfigProto()
@@ -41,14 +55,32 @@ def save_ranks():
   with tf.Graph().as_default(), tf.Session(config=gpu_config) as session:
     tf.set_random_seed(config.seed)
 
-    #  embedding_file=, load_embeddings=True, transd
+    if config.ace_model:
+      t_data = data_util.load_metathesaurus_token_data(config.data_dir)
+      ace_model = AceModel.ACEModel(config, t_data)
+    else:
+      ace_model = None
+    model = train.init_model(config, None, ace_model, eval=True)
 
-    # init model
-    model = train.init_model(config, None, eval=True)
+    if config.ace_model and not config.load and config.pre_run_name is not None:
+      pre_model_ckpt = tf.train.latest_checkpoint(
+        os.path.join(all_models_dir, config.model, config.pre_run_name))
+      ace_model.init_from_checkpoint(pre_model_ckpt)
 
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()
 
+    if config.ace_model:
+      ace_model.initialize_tokens(session)
+
+    if config.load:
+      # init saver
+      tf_saver = tf.train.Saver(max_to_keep=10)
+
+      # load model
+      ckpt = tf.train.latest_checkpoint(os.path.join(config.model_dir, config.model, model_name))
+      print('Loading checkpoint: %s' % ckpt)
+      tf_saver.restore(session, ckpt)
     tf.get_default_graph().finalize()
 
     if not config.save_ranks:
@@ -81,12 +113,12 @@ def save_ranks():
         s, r, o = triple
         # subj
         invalid_concepts = [s] + sampler.invalid_concepts(s, r, o, True)
-        subj_scores, subj_ranking = calculate_scores(s, r, o, True, invalid_concepts, session, model, config.batch_size)
+        subj_scores, subj_ranking = calculate_scores(s, r, o, True, invalid_concepts, session, model, config.batch_size, c_emb_lookup, c_embs, r_emb_lookup, r_embs)
         srank = subj_ranking[s] if s in subj_ranking else -1
 
         # obj
         invalid_concepts = [o] + sampler.invalid_concepts(s, r, o, False)
-        obj_scores, obj_ranking = calculate_scores(s, r, o, False, invalid_concepts, session, model, config.batch_size)
+        obj_scores, obj_ranking = calculate_scores(s, r, o, False, invalid_concepts, session, model, config.batch_size, c_emb_lookup, c_embs, r_emb_lookup, r_embs)
         orank = obj_ranking[o] if o in obj_ranking else -1
         json_string = json.dumps([str(srank),
                                   str(orank),
@@ -95,29 +127,11 @@ def save_ranks():
         return srank, orank, json_string
 
       # define save function
-      # def save(future):
-      #   global ranks
-      #   global first
-      #
-      #   srank, orank, json_string = future.result()
-      #   ranks += [srank, orank]
-      #   if config.save_ranks:
-      #     if not first:
-      #       f.write(',')
-      #     first = False
-      #     f.write(json_string)
-      #   npr = np.asarray(ranks, dtype=np.float)
-      #   if config.save_ranks:
-      #     pbar.set_description('Srank: %5d. Orank: %5d.' % (srank, orank))
-      #   else:
-      #     pbar.set_description('Srank: %5d. Orank: %5d. MRR: %.4f. H@10: %.4f' %
-      #                          (srank, orank, mrr(npr), hits_at_10(npr)))
-      #   pbar.update()
-
-      def save(result):
+      def save(future):
         global ranks
         global first
-        srank, orank, json_string = result
+
+        srank, orank, json_string = future.result()
         ranks += [srank, orank]
         if config.save_ranks:
           if not first:
@@ -132,14 +146,10 @@ def save_ranks():
                                (srank, orank, mrr(npr), hits_at_10(npr)))
         pbar.update()
 
-      for triple in zip(test_data['subj'][start:end], test_data['rel'][start:end], test_data['obj'][start:end]):
-        result = calculate(triple)
-        save(result)
-
-      # parallel_stream(zip(test_data['subj'][start:end], test_data['rel'][start:end], test_data['obj'][start:end]),
-      #                 parallelizable_fn=calculate,
-      #                 future_consumer=save,
-      #                 num_threads=config.num_eval_threads)
+      parallel_stream(zip(test_data['subj'][start:end], test_data['rel'][start:end], test_data['obj'][start:end]),
+                      parallelizable_fn=calculate,
+                      future_consumer=save,
+                      num_threads=config.num_eval_threads)
 
       # finish json
       if config.save_ranks:
@@ -151,49 +161,54 @@ def save_ranks():
   print('Hits @ 10 of shard %d: %.4f' % (config.shard, hits_at_10(ranks_np)))
 
 
-def calculate_scores(subj, rel, obj, replace_subject, concept_ids, session, model, batch_size):
+def calculate_scores(subj, rel, obj, replace_subject, concept_ids, session, model, batch_size, c_emb_l, c_embs, r_emb_l, r_embs):
   num_batches = int(math.ceil(float(len(concept_ids))/batch_size))
-  subjects = np.full(batch_size, subj, dtype=np.int32)
-  relations = np.full(batch_size, rel, dtype=np.int32)
-  objects = np.full(batch_size, obj, dtype=np.int32)
-  scores = {}
+  subj_embs = np.repeat(c_embs[c_emb_l[subj]][np.newaxis, :, :], batch_size, axis=0)
+  rel_embs = np.repeat(r_embs[r_emb_l[rel]][np.newaxis, :, :], batch_size, axis=0)
+  obj_embs = np.repeat(c_embs[c_emb_l[obj]][np.newaxis, :, :], batch_size, axis=0)
 
+  concept_embs_idxs = np.array([c_emb_l[c] for c in concept_ids])
+  concept_embs = c_embs[concept_embs_idxs]
+
+  scores = {}
   for b in range(num_batches):
     concepts = concept_ids[b*batch_size:(b+1)*batch_size]
-    feed_dict = {model.pos_subj: subjects,
-                 model.relations: relations,
-                 model.pos_obj: objects}
+    batch_concept_embs = concept_embs[b*batch_size:(b+1)*batch_size]
 
-    # pad concepts if necessary
     if len(concepts) < batch_size:
-      concepts = np.pad(concepts, (0, batch_size - len(concepts)), mode='constant', constant_values=0)
+      subj_embs = subj_embs[:len(concepts)]
+      rel_embs = rel_embs[:len(concepts)]
+      obj_embs = obj_embs[:len(concepts)]
+
+    feed_dict = {model.pos_subj_embs: (subj_embs[:, 0], subj_embs[:, 1]),
+                 model.relation_embs: (rel_embs[:, 0], rel_embs[:, 1]),
+                 model.pos_obj_embs: (obj_embs[:, 0], obj_embs[:, 1])}
 
     # replace subj/obj in feed dict
     if replace_subject:
-      feed_dict[model.pos_subj] = concepts
+      feed_dict[model.pos_subj_embs] = (batch_concept_embs[:, 0], batch_concept_embs[:, 1])
     else:
-      feed_dict[model.pos_obj] = concepts
+      feed_dict[model.pos_obj_embs] = (batch_concept_embs[:, 0], batch_concept_embs[:, 1])
 
     # calculate energies
     energies = session.run(model.pos_energy, feed_dict)
-
     # store scores
     for i, cid in enumerate(concept_ids[b*batch_size:(b+1)*batch_size]):
       scores[cid] = energies[i]
 
-  ranking = sorted(scores.items(), key=lambda k: k[1])
+  ranking = sorted(scores.keys(), key=lambda k: scores[k])
 
   rank_map = {}
   prev_rank = 0
   prev_score = -1
   total = 1
-  for c, v in ranking:
+  for c in ranking:
     # if c has a lower score than prev
-    if v > prev_score:
+    if scores[c] > prev_score:
       # increment the rank
       prev_rank = total
       # update score
-      prev_score = v
+      prev_score = scores[c]
     total += 1
     rank_map[c] = prev_rank
 
@@ -255,7 +270,7 @@ def calculate_ranking_evals_per_rel():
     ranks[rel] = [mrr(ranks_np), mr(ranks_np), hits_at_10(ranks_np), len(rl)]
 
   relations = ranks.keys()
-  sorted(relations, key=lambda x: ranks[x][1])
+  relations.sort(key=lambda x: ranks[x][1])
 
   with open(os.path.join(outdir, 'ranking_evals_per_rel.tsv'), 'w+') as f:
     for rel in relations:
