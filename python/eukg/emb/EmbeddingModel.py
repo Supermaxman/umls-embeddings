@@ -157,7 +157,7 @@ class TransD(BaseModel):
 
     return tf.norm(self.project(h, h_proj, r_proj) + r - self.project(t, t_proj, r_proj),
             ord=norm_ord,
-            axis=1,
+            axis=-1,
             keepdims=False,
             name="energy")
 

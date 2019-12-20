@@ -60,16 +60,16 @@ class DisGen(BaseModel):
     with tf.variable_scope('dis_energy'):
 
       subj_rel_all = self.dis_embedding_model.energy(
-        self.b_subjs,
-        self.b_rels,
-        tf.expand_dims(self.b_all_concepts, axis=0),
+        tf.expand_dims(self.b_subjs, axis=1),
+        tf.expand_dims(self.b_rels, axis=1),
+        self.b_all_concepts,
         norm_ord=self.energy_norm
       )
 
       obj_rel_all = self.dis_embedding_model.energy(
-        tf.expand_dims(self.b_all_concepts, axis=0),
-        self.b_rels,
-        self.b_objs,
+        self.b_all_concepts,
+        tf.expand_dims(self.b_rels, axis=1),
+        tf.expand_dims(self.b_objs, axis=1),
         norm_ord=self.energy_norm
       )
 
