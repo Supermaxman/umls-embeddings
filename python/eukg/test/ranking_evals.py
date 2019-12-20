@@ -52,7 +52,7 @@ def save_ranks():
       if config.save_ranks:
         f.write('[')
 
-      model.data_generator.load_sub_rel_eval()
+      model.data_generator.load_sub_rel_eval(session)
       pbar = tqdm(total=model.data_generator.nrof_sr)
       try:
         while True:
@@ -62,7 +62,7 @@ def save_ranks():
       except tf.errors.OutOfRangeError:
         pass
 
-      model.data_generator.load_obj_rel_eval()
+      model.data_generator.load_obj_rel_eval(session)
       pbar = tqdm(total=model.data_generator.nrof_or)
       try:
         while True:
