@@ -62,14 +62,14 @@ def save_ranks():
           bsize = len(b_rels)
           # TODO can be parallelized
           for b_subj, b_rel, b_obj_energies in zip(b_subjs, b_rels, subj_rel_energy):
-            b_real_objs = model.data_generator.sr2o[(b_subj, b_rel)]
+            b_real_objs = model.data_generator.test_sr2o[(b_subj, b_rel)]
             rank = 0
             for b_obj, b_obj_energy in sorted(zip(model.data_generator.concepts, b_obj_energies), key=lambda x: x[1]):
               if b_obj in b_real_objs:
                 obj_ranks.append(rank)
                 if len(obj_ranks) == len(b_real_objs):
                   break
-              else:
+              elif (b_subj, b_rel, b_obj) not in model.data_generator.valid_triples:
                 rank += 1
           pbar.update(bsize)
       except tf.errors.OutOfRangeError:

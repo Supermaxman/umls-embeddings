@@ -618,22 +618,27 @@ class TfEvalDataGenerator:
     cui2id, train_data, _, _ = data_util.load_metathesaurus_data(self.data_dir, 0.0)
     test_data = data_util.load_metathesaurus_test_data(self.data_dir)
 
-    valid_triples = set()
-    for s, r, o in zip(train_data['subj'], train_data['rel'], train_data['obj']):
-      valid_triples.add((s, r, o))
-    for s, r, o in zip(test_data['subj'], test_data['rel'], test_data['obj']):
-      valid_triples.add((s, r, o))
-
-    self.sr2o = defaultdict(set)
-    self.or2s = defaultdict(set)
     self.concepts = set()
-    for s, r, o in tqdm(valid_triples, desc='building triple maps', total=len(valid_triples)):
-      self.sr2o[(s, r)].add(o)
-      self.or2s[(o, r)].add(s)
-      self.concepts.update([s, o])
-    self.nrof_sr = len(self.sr2o)
-    self.nrof_or = len(self.or2s)
+    self.valid_triples = set()
+    for s, r, o in zip(train_data['subj'], train_data['rel'], train_data['obj']):
+      self.valid_triples.add((s, r, o))
+      self.concepts.add(s)
+      self.concepts.add(o)
+    for s, r, o in zip(test_data['subj'], test_data['rel'], test_data['obj']):
+      self.valid_triples.add((s, r, o))
+      self.concepts.add(s)
+      self.concepts.add(o)
+
     self.concepts = np.asarray(list(self.concepts), dtype=np.int32)
+
+    self.test_sr2o = defaultdict(set)
+    self.test_or2s = defaultdict(set)
+    for s, r, o in zip(test_data['subj'], test_data['rel'], test_data['obj']):
+      self.test_sr2o[(s, r)].add(o)
+      self.test_or2s[(o, r)].add(s)
+    self.nrof_sr = len(self.test_sr2o)
+    self.nrof_or = len(self.test_or2s)
+
     self.nrof_triples = len(test_data['subj'])
     self.test_data = test_data
 
@@ -644,7 +649,7 @@ class TfEvalDataGenerator:
     self.all_concepts = tf.constant(self.concepts, dtype=tf.int32)
 
   def load_sub_rel_eval(self, session):
-    subj_rels = np.array([(s, r) for (s, r) in self.sr2o.keys()], dtype=np.int32)
+    subj_rels = np.array([(s, r) for (s, r) in self.test_sr2o.keys()], dtype=np.int32)
     session.run(
       self.eval_sr_iterator.initializer,
       feed_dict={
@@ -654,7 +659,7 @@ class TfEvalDataGenerator:
     )
 
   def load_obj_rel_eval(self, session):
-    obj_rels = np.array([(o, r) for (o, r) in self.or2s.keys()], dtype=np.int32)
+    obj_rels = np.array([(o, r) for (o, r) in self.test_or2s.keys()], dtype=np.int32)
     session.run(
       self.eval_or_iterator.initializer,
       feed_dict={
