@@ -91,28 +91,30 @@ def save_ranks():
       print(f'(o, r): {model.data_generator.nrof_or}')
       model.data_generator.load_sub_rel_eval(session)
       pbar = tqdm(total=model.data_generator.nrof_sr)
-      promises = []
+      obj_ranks = {}
       try:
         while True:
           subj_rel_energy, b_subjs, b_rels = session.run([model.subj_rel_all_energy, model.b_sr_subjs, model.b_sr_rels])
           bsize = len(b_rels)
           # TODO can be parallelized
+          promises = []
           for b_subj, b_rel, b_obj_energies in zip(b_subjs, b_rels, subj_rel_energy):
             b_real_objs = model.data_generator.test_sr2o[(b_subj, b_rel)]
             b_valid_objs = model.data_generator.sr2o[(b_subj, b_rel)]
             b_objs = model.data_generator.concepts
             # iqueue.put((b_subj, b_rel, b_objs, b_obj_energies, b_real_objs, b_valid_objs))
-            promise = pool.apply_async(sort_and_rank, [(b_subj, b_rel, b_objs, b_obj_energies, b_real_objs, b_valid_objs)])
+            promise = pool.apply_async(sort_and_rank, ((b_subj, b_rel, b_objs, b_obj_energies, b_real_objs, b_valid_objs),))
             promises.append(promise)
+          pool.join()
+          for promise in promises:
+            ranks = promise.get()
+            for (b_subj, b_rel, b_obj), rank in ranks:
+              obj_ranks[(b_subj, b_rel, b_obj)] = rank
           pbar.update(bsize)
       except tf.errors.OutOfRangeError:
         pass
 
-      pool.join()
-      for promise in promises:
-        ranks = promise.get()
-        for (b_subj, b_rel, b_obj), rank in ranks:
-          pass # TODO
+
       # iqueue.join()
       # while not oqueue.empty():
       #   msg = oqueue.get()
