@@ -51,7 +51,8 @@ def save_ranks():
     with open(os.path.join(outdir, 'energies.json'), 'w+') as f:
       if config.save_ranks:
         f.write('[')
-
+      print(f'(s, r): {model.data_generator.nrof_sr}')
+      print(f'(o, r): {model.data_generator.nrof_sr}')
       model.data_generator.load_sub_rel_eval(session)
       pbar = tqdm(total=model.data_generator.nrof_sr)
       try:
