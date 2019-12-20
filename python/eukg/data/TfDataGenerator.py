@@ -619,23 +619,25 @@ class TfEvalDataGenerator:
     test_data = data_util.load_metathesaurus_test_data(self.data_dir)
 
     self.concepts = set()
-    self.valid_triples = set()
+    self.sr2o = defaultdict(set)
+    self.or2s = defaultdict(set)
     for s, r, o in zip(train_data['subj'], train_data['rel'], train_data['obj']):
-      self.valid_triples.add((s, r, o))
       self.concepts.add(s)
       self.concepts.add(o)
-    for s, r, o in zip(test_data['subj'], test_data['rel'], test_data['obj']):
-      self.valid_triples.add((s, r, o))
-      self.concepts.add(s)
-      self.concepts.add(o)
-
-    self.concepts = np.asarray(list(self.concepts), dtype=np.int32)
+      self.sr2o[(s, r)].add(o)
+      self.or2s[(o, r)].add(s)
 
     self.test_sr2o = defaultdict(set)
     self.test_or2s = defaultdict(set)
     for s, r, o in zip(test_data['subj'], test_data['rel'], test_data['obj']):
+      self.concepts.add(s)
+      self.concepts.add(o)
       self.test_sr2o[(s, r)].add(o)
       self.test_or2s[(o, r)].add(s)
+      self.sr2o[(s, r)].add(o)
+      self.or2s[(o, r)].add(s)
+
+    self.concepts = np.asarray(list(self.concepts), dtype=np.int32)
     self.nrof_sr = len(self.test_sr2o)
     self.nrof_or = len(self.test_or2s)
 
