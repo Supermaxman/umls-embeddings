@@ -105,7 +105,6 @@ def save_ranks():
             # iqueue.put((b_subj, b_rel, b_objs, b_obj_energies, b_real_objs, b_valid_objs))
             promise = pool.apply_async(sort_and_rank, ((b_subj, b_rel, b_objs, b_obj_energies, b_real_objs, b_valid_objs),))
             b_promises.append(promise)
-          pool.join()
           for promise in b_promises:
             b_ranks = promise.get()
             for (b_subj, b_rel, b_obj), b_rank in b_ranks:
