@@ -51,29 +51,31 @@ class DisGen(BaseModel):
     self.relation_embeddings = self.dis_embedding_model.embed(self.ace_model.encode(self.b_rel_embs, self.b_rel_lengths, 'rel'), 'rel')
 
   def build_eval(self):
-    self.data_generator.create_eval_iterator()
-    self.b_subjs = self.data_generator.b_subjs
-    self.b_rels = self.data_generator.b_rels
-    self.b_objs = self.data_generator.b_objs
-    self.b_all_concepts = self.data_generator.b_all_concepts
+    self.data_generator.load_eval()
+    self.data_generator.create_sub_rel_eval_iterator()
+    self.data_generator.create_obj_rel_eval_iterator()
+
+    self.b_sr_subjs = self.data_generator.b_sr_subjs
+    self.b_sr_rels = self.data_generator.b_sr_rels
+    self.b_or_rels = self.data_generator.b_or_rels
+    self.b_or_objs = self.data_generator.b_or_objs
+    self.all_concepts = self.data_generator.all_concepts
 
     with tf.variable_scope('dis_energy'):
 
-      subj_rel_all = self.dis_embedding_model.energy(
-        tf.expand_dims(self.b_subjs, axis=1),
-        tf.expand_dims(self.b_rels, axis=1),
-        self.b_all_concepts,
+      self.subj_rel_all_energy = self.dis_embedding_model.energy(
+        tf.expand_dims(self.b_sr_subjs, axis=1),
+        tf.expand_dims(self.b_sr_rels, axis=1),
+        self.all_concepts,
         norm_ord=self.energy_norm
       )
 
-      obj_rel_all = self.dis_embedding_model.energy(
-        self.b_all_concepts,
-        tf.expand_dims(self.b_rels, axis=1),
-        tf.expand_dims(self.b_objs, axis=1),
+      self.obj_rel_all_energy = self.dis_embedding_model.energy(
+        self.all_concepts,
+        tf.expand_dims(self.b_or_rels, axis=1),
+        tf.expand_dims(self.b_or_objs, axis=1),
         norm_ord=self.energy_norm
       )
-
-      self.pos_energy = tf.concat([subj_rel_all, obj_rel_all], axis=0)
 
 
   def build(self):

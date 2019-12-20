@@ -48,26 +48,28 @@ def save_ranks():
     if not os.path.exists(outdir):
       os.makedirs(outdir)
 
-    model.data_generator.load_eval(session)
+    model.data_generator.load_eval()
 
     with open(os.path.join(outdir, 'energies.json'), 'w+') as f:
       if config.save_ranks:
         f.write('[')
 
-      pbar = tqdm(total=model.data_generator.nrof_triples)
+      model.data_generator.load_sub_rel_eval()
+      pbar = tqdm(total=model.data_generator.nrof_sr)
       try:
         while True:
-          b_energy, b_subjs, b_rels, b_objs = session.run([model.pos_energy, model.b_subjs, model.b_rels, model.b_objs])
-          bsize = len(b_subjs)
-          print(b_energy.shape)
-          print(b_subjs.shape)
-          print(b_rels.shape)
-          print(b_objs.shape)
-          exit()
-          # bsubj, brel, vs all concepts as bobjs
-          subj_rel_energy = b_energy[:bsize]
-          # bobj, brel, vs all concepts as bsubj
-          obj_rel_energy = b_energy[bsize:]
+          subj_rel_energy, b_subjs, b_rels = session.run([model.subj_rel_all_energy, model.b_sr_subjs, model.b_sr_rels])
+          bsize = len(b_rels)
+          pbar.update(bsize)
+      except tf.errors.OutOfRangeError:
+        pass
+
+      model.data_generator.load_obj_rel_eval()
+      pbar = tqdm(total=model.data_generator.nrof_or)
+      try:
+        while True:
+          obj_rel_energy, b_objs, b_rels = session.run([model.obj_rel_all_energy, model.b_or_objs, model.b_or_rels])
+          bsize = len(b_rels)
           pbar.update(bsize)
       except tf.errors.OutOfRangeError:
         pass

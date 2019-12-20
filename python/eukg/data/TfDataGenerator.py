@@ -614,19 +614,8 @@ class TfEvalDataGenerator:
     self.num_workers = num_workers
     self.buffer_size = buffer_size
 
-  def load_eval(self, session):
-    session.run(
-      self.eval_iterator.initializer,
-      feed_dict={
-        self.subjs: self.test_data['subj'],
-        self.rels: self.test_data['rel'],
-        self.objs: self.test_data['obj'],
-      }
-    )
-
-  def create_eval_iterator(self):
+  def load_eval(self):
     cui2id, train_data, _, _ = data_util.load_metathesaurus_data(self.data_dir, 0.0)
-    id2cui = {v: k for k, v in cui2id.items()}
     test_data = data_util.load_metathesaurus_test_data(self.data_dir)
 
     valid_triples = set()
@@ -642,6 +631,8 @@ class TfEvalDataGenerator:
       self.sr2o[(s, r)].add(o)
       self.or2s[(o, r)].add(s)
       self.concepts.update([s, o])
+    self.nrof_sr = len(self.sr2o)
+    self.nrof_or = len(self.or2s)
     self.concepts = np.asarray(list(self.concepts), dtype=np.int32)
     self.nrof_triples = len(test_data['subj'])
     self.test_data = test_data
@@ -650,19 +641,34 @@ class TfEvalDataGenerator:
     self.rels = tf.placeholder(tf.int32, [None])
     self.objs = tf.placeholder(tf.int32, [None])
 
-    all_concepts = tf.constant(self.concepts, dtype=tf.int32)
+    self.all_concepts = tf.constant(self.concepts, dtype=tf.int32)
 
-    dataset = tf.data.Dataset.from_tensor_slices((self.subjs, self.rels, self.objs))
+  def load_sub_rel_eval(self, session):
+    subj_rels = np.array([(s, r) for (s, r) in self.sr2o.keys()], dtype=np.int32)
+    session.run(
+      self.eval_sr_iterator.initializer,
+      feed_dict={
+        self.subjs: subj_rels[:, 0],
+        self.rels: subj_rels[:, 1],
+      }
+    )
 
-    def parse_batch_example(subjs, rels, objs):
-      return subjs, rels, objs, all_concepts
+  def load_obj_rel_eval(self, session):
+    obj_rels = np.array([(o, r) for (o, r) in self.or2s.keys()], dtype=np.int32)
+    session.run(
+      self.eval_or_iterator.initializer,
+      feed_dict={
+        self.objs: obj_rels[:, 0],
+        self.rels: obj_rels[:, 1],
+      }
+    )
+
+  def create_sub_rel_eval_iterator(self):
+
+    dataset = tf.data.Dataset.from_tensor_slices((self.subjs, self.rels))
 
     dataset = dataset.batch(
       batch_size=self.batch_size
-    )
-    dataset = dataset.map(
-      map_func=parse_batch_example,
-      num_parallel_calls=self.num_workers
     )
 
     dataset = dataset.prefetch(
@@ -671,13 +677,30 @@ class TfEvalDataGenerator:
 
     iterator = dataset.make_initializable_iterator()
 
-    self.eval_iterator = iterator
+    self.eval_sr_iterator = iterator
     batch = iterator.get_next()
-    subjs, rels, objs, all_concepts = batch
+    subjs, rels = batch
 
-    self.b_subjs = subjs
-    self.b_rels = rels
-    self.b_objs = objs
-    self.b_all_concepts = all_concepts
+    self.b_sr_subjs = subjs
+    self.b_sr_rels = rels
 
+  def create_obj_rel_eval_iterator(self):
 
+    dataset = tf.data.Dataset.from_tensor_slices((self.objs, self.rels))
+
+    dataset = dataset.batch(
+      batch_size=self.batch_size
+    )
+
+    dataset = dataset.prefetch(
+      buffer_size=self.buffer_size
+    )
+
+    iterator = dataset.make_initializable_iterator()
+
+    self.eval_or_iterator = iterator
+    batch = iterator.get_next()
+    objs, rels = batch
+
+    self.b_or_subjs = objs
+    self.b_or_rels = rels
