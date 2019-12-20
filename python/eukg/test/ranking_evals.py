@@ -67,6 +67,8 @@ def save_ranks():
             for b_obj, b_obj_energy in sorted(zip(model.data_generator.concepts, b_obj_energies), key=lambda x: x[1]):
               if b_obj in b_real_objs:
                 obj_ranks.append(rank)
+                if len(obj_ranks) == len(b_real_objs):
+                  break
               else:
                 rank += 1
           pbar.update(bsize)
