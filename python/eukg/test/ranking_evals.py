@@ -22,7 +22,7 @@ def sort_and_rank_objs(b_subj, b_rel, b_objs, b_obj_energies, b_real_objs, b_val
   rank = 0
   for b_obj, b_obj_energy in sorted(zip(b_objs, b_obj_energies), key=lambda x: x[1]):
     if b_obj in b_real_objs:
-      ranks.append(((b_subj, b_rel, b_obj), rank))
+      ranks.append(((b_subj, b_rel, b_obj), rank, b_obj_energy))
       obj_ranks += 1
       if obj_ranks == len(b_real_objs):
         break
@@ -37,7 +37,7 @@ def sort_and_rank_subjs(b_obj, b_rel, b_subjs, b_subj_energies, b_real_subjs, b_
   rank = 0
   for b_subj, b_subj_energy in sorted(zip(b_subjs, b_subj_energies), key=lambda x: x[1]):
     if b_subj in b_real_subjs:
-      ranks.append(((b_subj, b_rel, b_obj), rank))
+      ranks.append(((b_subj, b_rel, b_obj), rank, b_subj_energy))
       subj_ranks += 1
       if subj_ranks == len(b_real_subjs):
         break
@@ -101,12 +101,12 @@ def save_ranks():
             b_promises.append(promise)
           for promise in b_promises:
             b_ranks = promise.get()
-            for (b_subj, b_rel, b_obj), b_rank in b_ranks:
-              obj_ranks[(b_subj, b_rel, b_obj)] = b_rank
+            for (b_subj, b_rel, b_obj), b_rank, b_score in b_ranks:
+              obj_ranks[f'({b_subj} {b_rel} {b_obj})'] = [b_rank, b_score]
           pbar.update(bsize)
       except tf.errors.OutOfRangeError:
         pass
-      f.write(json.dumps(obj_ranks))
+      json.dump(obj_ranks, f)
 
     with open(os.path.join(outdir, 'subj_ranks.json'), 'w+') as f:
       model.data_generator.load_obj_rel_eval(session)
@@ -125,12 +125,12 @@ def save_ranks():
             b_promises.append(promise)
           for promise in b_promises:
             b_ranks = promise.get()
-            for (b_subj, b_rel, b_obj), b_rank in b_ranks:
-              subj_ranks[(b_subj, b_rel, b_obj)] = b_rank
+            for (b_subj, b_rel, b_obj), b_rank, b_score in b_ranks:
+              subj_ranks[f'({b_subj} {b_rel} {b_obj})'] = [b_rank, b_score]
           pbar.update(bsize)
       except tf.errors.OutOfRangeError:
         pass
-      f.write(json.dumps(subj_ranks))
+      json.dump(subj_ranks, f)
 
 
 def calculate_scores(subj, rel, obj, replace_subject, concept_ids, session, model, batch_size):
