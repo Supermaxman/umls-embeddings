@@ -52,7 +52,7 @@ def save_ranks():
       if config.save_ranks:
         f.write('[')
       print(f'(s, r): {model.data_generator.nrof_sr}')
-      print(f'(o, r): {model.data_generator.nrof_sr}')
+      print(f'(o, r): {model.data_generator.nrof_or}')
       model.data_generator.load_sub_rel_eval(session)
       pbar = tqdm(total=model.data_generator.nrof_sr)
       try:
