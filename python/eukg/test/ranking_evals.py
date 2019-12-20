@@ -15,27 +15,10 @@ from ..threading_util import synchronized, parallel_stream
 
 config = Config.flags
 
-#
-# def sort_and_rank(iqueue, oqueue):
-#   while True:
-#     msg = iqueue.get()
-#     obj_ranks = 0
-#     b_subj, b_rel, b_objs, b_obj_energies, b_real_objs, b_valid_objs = msg
-#     rank = 0
-#     for b_obj, b_obj_energy in sorted(zip(b_objs, b_obj_energies), key=lambda x: x[1]):
-#       if b_obj in b_real_objs:
-#         oqueue.put(((b_subj, b_rel, b_obj), rank))
-#         obj_ranks += 1
-#         if obj_ranks == len(b_real_objs):
-#           break
-#       elif b_obj not in b_valid_objs:
-#         rank += 1
-#     iqueue.task_done()
 
-def sort_and_rank(msg):
+def sort_and_rank_objs(b_subj, b_rel, b_objs, b_obj_energies, b_real_objs, b_valid_objs):
   ranks = []
   obj_ranks = 0
-  b_subj, b_rel, b_objs, b_obj_energies, b_real_objs, b_valid_objs = msg
   rank = 0
   for b_obj, b_obj_energy in sorted(zip(b_objs, b_obj_energies), key=lambda x: x[1]):
     if b_obj in b_real_objs:
@@ -46,6 +29,22 @@ def sort_and_rank(msg):
     elif b_obj not in b_valid_objs:
       rank += 1
   return ranks
+
+
+def sort_and_rank_subjs(b_obj, b_rel, b_subjs, b_subj_energies, b_real_subjs, b_valid_subjs):
+  ranks = []
+  subj_ranks = 0
+  rank = 0
+  for b_subj, b_subj_energy in sorted(zip(b_subjs, b_subj_energies), key=lambda x: x[1]):
+    if b_subj in b_real_subjs:
+      ranks.append(((b_subj, b_rel, b_obj), rank))
+      subj_ranks += 1
+      if subj_ranks == len(b_real_subjs):
+        break
+    elif b_subj not in b_valid_subjs:
+      rank += 1
+  return ranks
+
 
 def save_ranks():
   random.seed(1337)
@@ -79,16 +78,13 @@ def save_ranks():
     outdir = os.path.join(config.eval_dir, config.run_name)
     if not os.path.exists(outdir):
       os.makedirs(outdir)
-    #
-    # iqueue = Queue()
-    # oqueue = Queue()
-    pool = Pool(processes=6)
 
-    with open(os.path.join(outdir, 'energies.json'), 'w+') as f:
-      if config.save_ranks:
-        f.write('[')
-      print(f'(s, r): {model.data_generator.nrof_sr}')
-      print(f'(o, r): {model.data_generator.nrof_or}')
+    pool = Pool(processes=config.num_workers)
+
+    print(f'(s, r): {model.data_generator.nrof_sr}')
+    print(f'(o, r): {model.data_generator.nrof_or}')
+
+    with open(os.path.join(outdir, 'obj_ranks.json'), 'w+') as f:
       model.data_generator.load_sub_rel_eval(session)
       pbar = tqdm(total=model.data_generator.nrof_sr)
       obj_ranks = {}
@@ -96,45 +92,45 @@ def save_ranks():
         while True:
           subj_rel_energy, b_subjs, b_rels = session.run([model.subj_rel_all_energy, model.b_sr_subjs, model.b_sr_rels])
           bsize = len(b_rels)
-          # TODO can be parallelized
           b_promises = []
           for b_subj, b_rel, b_obj_energies in zip(b_subjs, b_rels, subj_rel_energy):
             b_real_objs = model.data_generator.test_sr2o[(b_subj, b_rel)]
             b_valid_objs = model.data_generator.sr2o[(b_subj, b_rel)]
             b_objs = model.data_generator.concepts
-            # iqueue.put((b_subj, b_rel, b_objs, b_obj_energies, b_real_objs, b_valid_objs))
-            promise = pool.apply_async(sort_and_rank, ((b_subj, b_rel, b_objs, b_obj_energies, b_real_objs, b_valid_objs),))
+            promise = pool.apply_async(sort_and_rank_objs, (b_subj, b_rel, b_objs, b_obj_energies, b_real_objs, b_valid_objs))
             b_promises.append(promise)
           for promise in b_promises:
             b_ranks = promise.get()
             for (b_subj, b_rel, b_obj), b_rank in b_ranks:
               obj_ranks[(b_subj, b_rel, b_obj)] = b_rank
-          print(obj_ranks)
           pbar.update(bsize)
       except tf.errors.OutOfRangeError:
         pass
+      f.write(json.dumps(obj_ranks))
 
-
-      # iqueue.join()
-      # while not oqueue.empty():
-      #   msg = oqueue.get()
-      #   (b_subj, b_rel, b_obj), rank = msg
-      #   # TODO write to file
-      #   oqueue.task_done()
-
-
+    with open(os.path.join(outdir, 'subj_ranks.json'), 'w+') as f:
       model.data_generator.load_obj_rel_eval(session)
       pbar = tqdm(total=model.data_generator.nrof_or)
+      subj_ranks = {}
       try:
         while True:
           obj_rel_energy, b_objs, b_rels = session.run([model.obj_rel_all_energy, model.b_or_objs, model.b_or_rels])
           bsize = len(b_rels)
+          b_promises = []
+          for b_obj, b_rel, b_subj_energies in zip(b_objs, b_rels, obj_rel_energy):
+            b_real_subjs = model.data_generator.test_or2s[(b_obj, b_rel)]
+            b_valid_subjs = model.data_generator.or2s[(b_obj, b_rel)]
+            b_subjs = model.data_generator.concepts
+            promise = pool.apply_async(sort_and_rank_subjs, (b_obj, b_rel, b_subjs, b_subj_energies, b_real_subjs, b_valid_subjs))
+            b_promises.append(promise)
+          for promise in b_promises:
+            b_ranks = promise.get()
+            for (b_subj, b_rel, b_obj), b_rank in b_ranks:
+              subj_ranks[(b_subj, b_rel, b_obj)] = b_rank
           pbar.update(bsize)
       except tf.errors.OutOfRangeError:
         pass
-
-      if config.save_ranks:
-        f.write(']')
+      f.write(json.dumps(subj_ranks))
 
 
 def calculate_scores(subj, rel, obj, replace_subject, concept_ids, session, model, batch_size):
