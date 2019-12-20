@@ -110,6 +110,7 @@ def save_ranks():
             ranks = promise.get()
             for (b_subj, b_rel, b_obj), rank in ranks:
               obj_ranks[(b_subj, b_rel, b_obj)] = rank
+          print(obj_ranks)
           pbar.update(bsize)
       except tf.errors.OutOfRangeError:
         pass
