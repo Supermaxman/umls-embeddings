@@ -48,8 +48,6 @@ def save_ranks():
     if not os.path.exists(outdir):
       os.makedirs(outdir)
 
-    model.data_generator.load_eval()
-
     with open(os.path.join(outdir, 'energies.json'), 'w+') as f:
       if config.save_ranks:
         f.write('[')
