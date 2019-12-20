@@ -702,5 +702,5 @@ class TfEvalDataGenerator:
     batch = iterator.get_next()
     objs, rels = batch
 
-    self.b_or_subjs = objs
+    self.b_or_objs = objs
     self.b_or_rels = rels
