@@ -72,7 +72,7 @@ def evaluate():
                                                                             model.pos_obj: o,
                                                                             model.neg_subj: np.expand_dims(ns, -1),
                                                                             model.neg_obj: np.expand_dims(no, -1)})
-      nscores = nscores[:, 0]
+      # nscores = nscores[:, 0]
       total += len(r)
       for pscore, nscore, rel, subj, obj, nsubj, nobj in zip(pscores, nscores, r, s, o, ns, no):
         if pscore < nscore:
