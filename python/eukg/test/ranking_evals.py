@@ -102,7 +102,7 @@ def save_ranks():
           for promise in b_promises:
             b_ranks = promise.get()
             for (b_subj, b_rel, b_obj), b_rank, b_score in b_ranks:
-              obj_ranks[f'({b_subj} {b_rel} {b_obj})'] = [b_rank, b_score]
+              obj_ranks[f'({b_subj} {b_rel} {b_obj})'] = [int(b_rank), float(b_score)]
           pbar.update(bsize)
       except tf.errors.OutOfRangeError:
         pass
@@ -126,7 +126,7 @@ def save_ranks():
           for promise in b_promises:
             b_ranks = promise.get()
             for (b_subj, b_rel, b_obj), b_rank, b_score in b_ranks:
-              subj_ranks[f'({b_subj} {b_rel} {b_obj})'] = [b_rank, b_score]
+              subj_ranks[f'({b_subj} {b_rel} {b_obj})'] = [int(b_rank), float(b_score)]
           pbar.update(bsize)
       except tf.errors.OutOfRangeError:
         pass
