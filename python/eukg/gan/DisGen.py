@@ -89,7 +89,7 @@ class DisGen(BaseModel):
     bsize, nsamples = neg_shape[0], neg_shape[1]
     neg_subj_flat = tf.reshape(self.neg_subj, [bsize * nsamples])
     neg_obj_flat = tf.reshape(self.neg_obj, [bsize * nsamples])
-    rels_flat = tf.reshape(tf.broadcast_to(self.relations, [bsize, nsamples]), [bsize * nsamples])
+    rels_flat = tf.reshape(tf.broadcast_to(tf.expand_dims(self.relations, axis=-1), [bsize, nsamples]), [bsize * nsamples])
     neg_energy = self.dis_embedding_model.energy(
         neg_subj_flat,
         rels_flat,
