@@ -77,6 +77,7 @@ def save_embeddings():
     emb_size = config.embedding_size
     embeddings = np.zeros((nrof_concepts, emb_size), dtype=np.float32)
     embeddings_proj = np.zeros((nrof_concepts, emb_size), dtype=np.float32)
+    seen_concepts = np.zeros(nrof_concepts, type=np.bool)
     pbar = tqdm(total=nrof_concepts)
     print('Creating concept embeddings...')
     model.data_generator.load_concepts(session)
@@ -86,6 +87,7 @@ def save_embeddings():
         embeddings[c_ids] = c_embs
         embeddings_proj[c_ids] = c_embs_proj
         pbar.update(len(c_ids))
+        seen_concepts[c_ids] = True
     except tf.errors.OutOfRangeError:
       pass
 
@@ -97,9 +99,14 @@ def save_embeddings():
         embeddings[r_ids] = r_embs
         embeddings_proj[r_ids] = r_embs_proj
         pbar.update(len(r_ids))
+        seen_concepts[r_ids] = True
     except tf.errors.OutOfRangeError:
       pass
 
+    seen_count = int(seen_concepts.astype(np.int32).sum())
+    total_count = len(seen_concepts)
+    print(f'Seen concepts: {seen_count}/{total_count}')
+    assert seen_count == total_count, 'Not all concepts have been seen!'
     print('Saving embeddings...')
     np.savez_compressed(
       os.path.join(outdir, 'test_embeddings.npz'),
