@@ -85,11 +85,19 @@ class DisGen(BaseModel):
       self.pos_obj,
       norm_ord=self.energy_norm
     )
-    self.neg_energy = self.dis_embedding_model.energy(
-      self.neg_subj,
-      self.relations,
-      self.neg_obj,
-      norm_ord=self.energy_norm
+    bsize, nsamples = tf.shape(self.neg_subj)
+    neg_subj_flat = tf.reshape(self.neg_subj, [bsize * nsamples])
+    neg_obj_flat = tf.reshape(self.neg_obj, [bsize * nsamples])
+    rels_flat = tf.reshape(tf.broadcast_to(self.relations, [bsize, nsamples]), [bsize * nsamples])
+    neg_energy = self.dis_embedding_model.energy(
+        neg_subj_flat,
+        rels_flat,
+        neg_obj_flat,
+        norm_ord=self.energy_norm
+      )
+    self.neg_energy = tf.reshape(
+      neg_energy,
+      [bsize, nsamples]
     )
 
   def build(self):
@@ -175,7 +183,7 @@ class DisGen(BaseModel):
         d_e_pos_obj,
         norm_ord=self.energy_norm
       )
-      input()
+      # input()
       print(f'neg_subj[{d_e_neg_subj[0].get_shape()}], '
             f'rels[{self.d_e_rels[0].get_shape()}], '
             f'neg_obj[{d_e_neg_obj[0].get_shape()}]')
@@ -185,7 +193,7 @@ class DisGen(BaseModel):
         d_e_neg_obj,
         norm_ord=self.energy_norm
       )
-      input()
+      # input()
       self.pos_energy = self.d_pos_energy
       self.neg_energy = self.d_neg_energy
       self.d_avg_pos_energy = tf.reduce_mean(self.d_pos_energy)
