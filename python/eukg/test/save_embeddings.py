@@ -77,7 +77,7 @@ def save_embeddings():
     emb_size = config.embedding_size
     embeddings = np.zeros((nrof_concepts, emb_size), dtype=np.float32)
     embeddings_proj = np.zeros((nrof_concepts, emb_size), dtype=np.float32)
-    seen_concepts = np.zeros(nrof_concepts, type=np.bool)
+    seen_concepts = np.zeros(nrof_concepts, dtype=np.bool)
     pbar = tqdm(total=nrof_concepts)
     print('Creating concept embeddings...')
     model.data_generator.load_concepts(session)
