@@ -40,6 +40,26 @@ python -m python.eukg.test.ranking_evals \
 --buffer_size=1
 
 
+python -m python.eukg.test.ppa \
+--mode=disgen \
+--model=transd-distmult \
+--run_name=transd-dm-disgen-ace-7 \
+--ace_model \
+--no_semantic_network \
+--batch_size=1024 \
+--data_dir=/users/max/data/artifacts/umls-embeddings \
+--secondary_data_dir=/users/max/data/artifacts/umls-embeddings-compressed \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs \
+--eval_mode=save \
+--eval_dir=/users/max/data/artifacts/umls-embeddings \
+--load=False \
+--load_embeddings=True \
+--embedding_file=/users/max/data/artifacts/umls-embeddings/transd-dm-disgen-ace-7/test_embeddings.npz \
+--num_workers=10 \
+--buffer_size=1
+
+
 python -m python.eukg.test.ranking_evals \
 --mode=disgen \
 --model=transd-distmult \

@@ -15,8 +15,9 @@ class DisGen(BaseModel):
     self.gan_mode = False
 
     # dataset2: s, r, o, ns, no
-    self.neg_subj = tf.placeholder(dtype=tf.int32, shape=[None, self.num_samples], name="neg_subj")
-    self.neg_obj = tf.placeholder(dtype=tf.int32, shape=[None, self.num_samples], name="neg_obj")
+    # self.num_samples
+    self.neg_subj = tf.placeholder(dtype=tf.int32, shape=[None, None], name="neg_subj")
+    self.neg_obj = tf.placeholder(dtype=tf.int32, shape=[None, None], name="neg_obj")
     self.discounted_reward = tf.placeholder(dtype=tf.float32, shape=[], name="discounted_reward")
     self.gan_loss_sample = tf.placeholder(dtype=tf.int32, shape=[None, 2], name="gan_loss_sample")
 
