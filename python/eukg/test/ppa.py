@@ -22,11 +22,11 @@ def evaluate():
   id2cui = {v: k for k, v in cui2id.items()}
   test_data = data_util.load_metathesaurus_test_data(config.data_dir)
   print('Loaded %d test triples from %s' % (len(test_data['rel']), config.data_dir))
-  data_generator = DataGenerator.DataGenerator(train_data,
-                                               train_idx=np.arange(len(train_data['rel'])),
+  data_generator = DataGenerator.DataGenerator(test_data,
+                                               train_idx=np.arange(len(test_data['rel'])),
                                                val_idx=[],
                                                config=config,
-                                               test_mode=False)
+                                               test_mode=True)
 
   # model_name = config.run_name
   # if config.mode == 'gan':
