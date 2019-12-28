@@ -85,7 +85,8 @@ class DisGen(BaseModel):
       self.pos_obj,
       norm_ord=self.energy_norm
     )
-    bsize, nsamples = tf.shape(self.neg_subj)
+    neg_shape = tf.shape(self.neg_subj)
+    bsize, nsamples = neg_shape[0], neg_shape[1]
     neg_subj_flat = tf.reshape(self.neg_subj, [bsize * nsamples])
     neg_obj_flat = tf.reshape(self.neg_obj, [bsize * nsamples])
     rels_flat = tf.reshape(tf.broadcast_to(self.relations, [bsize, nsamples]), [bsize * nsamples])
