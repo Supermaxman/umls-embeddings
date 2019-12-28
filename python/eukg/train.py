@@ -145,7 +145,7 @@ def train():
                   max_batches_per_epoch=config_map['max_batches_per_epoch'])
 
 
-def init_model(config, data_generator, ace_model=None, eval=False, test=False):
+def init_model(config, data_generator, ace_model=None, eval=False, test=False, pairwise=False):
   print('Initializing %s embedding model in %s mode...' % (config.model, config.mode))
   npz = np.load(config.embedding_file) if config.load_embeddings else None
 
@@ -196,7 +196,10 @@ def init_model(config, data_generator, ace_model=None, eval=False, test=False):
     # noinspection PyUnresolvedReferences
     npz.close()
   if eval:
-    model.build_eval()
+    if not pairwise:
+      model.build_eval()
+    else:
+      model.build_pairwise_eval()
     print('Built eval model.')
   elif test:
     model.build_test()

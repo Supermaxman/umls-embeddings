@@ -37,7 +37,7 @@ def evaluate():
     valid_triples.add((s, r, o))
   print('%d valid triples' % len(valid_triples))
 
-  model_name = config.run_name
+  # model_name = config.run_name
   # if config.mode == 'gan':
   #   scope = config.dis_run_name
   #   model_name += '/discriminator'
@@ -57,33 +57,17 @@ def evaluate():
     tf.set_random_seed(config.seed)
     # init model
     # with tf.variable_scope(scope):
-    if config.ace_model:
-      t_data = data_util.load_metathesaurus_token_data(config.data_dir)
-      ace_model = AceModel.ACEModel(config, t_data)
-    else:
-      ace_model = None
-    model = train.init_model(config, data_generator, ace_model)
 
-    if config.ace_model and not config.load and config.pre_run_name is not None:
-      pre_model_ckpt = tf.train.latest_checkpoint(
-        os.path.join(all_models_dir, config.model, config.pre_run_name))
-      ace_model.init_from_checkpoint(pre_model_ckpt)
+    model = train.init_model(config, data_generator, eval=True, pairwise=True)
 
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()
 
-    if config.ace_model:
-      ace_model.initialize_tokens(session)
-
-    if config.load:
-      # init saver
-      tf_saver = tf.train.Saver(max_to_keep=10)
-
-      # load model
-      ckpt = tf.train.latest_checkpoint(os.path.join(config.model_dir, config.model, model_name))
-      print('Loading checkpoint: %s' % ckpt)
-      tf_saver.restore(session, ckpt)
     tf.get_default_graph().finalize()
+
+    outdir = os.path.join(config.eval_dir, config.run_name)
+    if not os.path.exists(outdir):
+      os.makedirs(outdir)
 
     def decode_triple(s_, r_, o_, score):
       return id2cui[s_], id2cui[r_], id2cui[o_], str(score)

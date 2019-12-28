@@ -19,30 +19,51 @@ config = Config.flags
 def sort_and_rank_objs(b_subj, b_rel, b_objs, b_obj_energies, b_real_objs, b_valid_objs):
   ranks = []
   obj_ranks = 0
-  rank = 0
+  prev_rank = 1
+  total_rank = 1
+  prev_score = float('-inf')
+  # sort all triples of (s, r, o) where o is every concept.
+  # b_real_objs contains all real (s, r, o) test triples for a given (s, r)
+  # b_valid_objs contains all real (s, r, o) train and test triples for a given (s, r)
+  # sort all objs for subj, rel by their energies, where lower is better.
   for b_obj, b_obj_energy in sorted(zip(b_objs, b_obj_energies), key=lambda x: x[1]):
+    # if the obj is a real test triple of (s, r, o) then save its rank
     if b_obj in b_real_objs:
-      ranks.append(((b_subj, b_rel, b_obj), rank, b_obj_energy))
+      ranks.append(((b_subj, b_rel, b_obj), prev_rank, b_obj_energy))
       obj_ranks += 1
+      # if we have seen all test triples for (s, r) then we break as we do not care about the remaining non-test
+      # triple ranks
       if obj_ranks == len(b_real_objs):
         break
+    # do not count true (s, r, o) triples which are part of training data in ranking since we are
+    # trying to get a rank for each true o in (s, r) vs all negative objs
     elif b_obj not in b_valid_objs:
-      rank += 1
+      total_rank += 1
+      # if energy is higher than previous energy then save new ranking, otherwise use same ranking
+      # for all same-energy triples.
+      if b_obj_energy > prev_score:
+        prev_score = b_obj_energy
+        prev_rank = total_rank
   return ranks
 
 
 def sort_and_rank_subjs(b_obj, b_rel, b_subjs, b_subj_energies, b_real_subjs, b_valid_subjs):
   ranks = []
   subj_ranks = 0
-  rank = 0
+  prev_rank = 1
+  total_rank = 1
+  prev_score = float('-inf')
   for b_subj, b_subj_energy in sorted(zip(b_subjs, b_subj_energies), key=lambda x: x[1]):
     if b_subj in b_real_subjs:
-      ranks.append(((b_subj, b_rel, b_obj), rank, b_subj_energy))
+      ranks.append(((b_subj, b_rel, b_obj), prev_rank, b_subj_energy))
       subj_ranks += 1
       if subj_ranks == len(b_real_subjs):
         break
     elif b_subj not in b_valid_subjs:
-      rank += 1
+      total_rank += 1
+      if b_subj_energy > prev_score:
+        prev_score = b_subj_energy
+        prev_rank = total_rank
   return ranks
 
 

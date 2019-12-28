@@ -77,6 +77,19 @@ class DisGen(BaseModel):
         norm_ord=self.energy_norm
       )
 
+  def build_pairwise_eval(self):
+    self.pos_energy = self.dis_embedding_model.energy(
+      self.pos_subj,
+      self.relations,
+      self.pos_obj,
+      norm_ord=self.energy_norm
+    )
+    self.neg_energy = self.dis_embedding_model.energy(
+      self.neg_subj,
+      self.relations,
+      self.neg_obj,
+      norm_ord=self.energy_norm
+    )
 
   def build(self):
 
