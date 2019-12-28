@@ -260,11 +260,23 @@ class TransDACE(BaseModel):
     r, r_proj = rel
     t, t_proj = tail
 
-    return tf.norm(self.project(h, h_proj, r_proj) + r - self.project(t, t_proj, r_proj),
-                   ord=norm_ord,
-                   axis=1,
-                   keepdims=False,
-                   name="energy")
+    h_p = self.project(h, h_proj, r_proj)
+    print(f'h_p:{h_p.get_shape()}')
+    t_p = self.project(t, t_proj, r_proj)
+    print(f't_p:{t_p.get_shape()}')
+    h_r_t_diff = h_p + r - t_p
+    print(f'h_r_t_diff:{h_r_t_diff.get_shape()}')
+
+    h_r_t_energy = tf.norm(
+      h_r_t_diff,
+      ord=norm_ord,
+      axis=1,
+      keepdims=False,
+      name="energy"
+    )
+
+    print(f'h_r_t_energy:{h_r_t_energy.get_shape()}')
+    return h_r_t_energy
 
   # noinspection PyMethodMayBeStatic
   def project(self, c, c_proj, r_proj):

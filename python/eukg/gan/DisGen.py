@@ -101,6 +101,12 @@ class DisGen(BaseModel):
     g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj = self._un_flatten_gen(self.g_e_concepts)
     d_e_neg_subj, d_e_neg_obj, d_e_pos_subj, d_e_pos_obj = self._un_flatten_dis(self.d_e_concepts)
 
+    print(f'd_e_neg_subj:{d_e_neg_subj[0].get_shape()}')
+    print(f'd_e_neg_obj:{d_e_neg_obj[0].get_shape()}')
+    print(f'd_e_pos_subj:{d_e_pos_subj[0].get_shape()}')
+    print(f'd_e_pos_obj:{d_e_pos_obj[0].get_shape()}')
+    print(f'd_e_rels:{self.d_e_rels[0].get_shape()}')
+
     self.concept_embeddings = self.d_e_concepts
     self.relation_embeddings = self.d_e_rels
     # [batch_size, num_samples]
@@ -160,19 +166,26 @@ class DisGen(BaseModel):
         tf.summary.scalar('gen_reg', reg)
       ]
     with tf.variable_scope('dis_energy'):
+      print(f'pos_subj[{d_e_pos_subj[0].get_shape()}], '
+            f'rels[{self.d_e_rels[0].get_shape()}], '
+            f'pos_obj[{d_e_pos_obj[0].get_shape()}]')
       self.d_pos_energy = self.dis_embedding_model.energy(
         d_e_pos_subj,
         self.d_e_rels,
         d_e_pos_obj,
         norm_ord=self.energy_norm
       )
-
+      input()
+      print(f'neg_subj[{d_e_neg_subj[0].get_shape()}], '
+            f'rels[{self.d_e_rels[0].get_shape()}], '
+            f'neg_obj[{d_e_neg_obj[0].get_shape()}]')
       self.d_neg_energy = self.dis_embedding_model.energy(
         d_e_neg_subj,
         self.d_e_rels,
         d_e_neg_obj,
         norm_ord=self.energy_norm
       )
+      input()
       self.pos_energy = self.d_pos_energy
       self.neg_energy = self.d_neg_energy
       self.d_avg_pos_energy = tf.reduce_mean(self.d_pos_energy)
