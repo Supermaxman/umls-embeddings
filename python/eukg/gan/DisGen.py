@@ -108,7 +108,7 @@ class DisGen(BaseModel):
     self._build_embeddings()
 
     g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj = self._un_flatten_gen(self.g_e_concepts)
-    uniform_sampls = tf.random.uniform([self.bsize, 1], maxval=self.nsamples, dtype=tf.int64)
+    uniform_sampls = tf.random.uniform([self.bsize, 1], maxval=tf.cast(self.nsamples, tf.int64), dtype=tf.int64)
     d_e_neg_subj, d_e_neg_obj, d_e_pos_subj, d_e_pos_obj = self._un_flatten_dis(self.d_e_concepts, uniform_sampls)
 
     print(f'd_e_neg_subj:{d_e_neg_subj[0].get_shape()}')
@@ -355,7 +355,7 @@ class DisGenGan(DisGen):
 
     g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj = self._un_flatten_gen(self.g_e_concepts)
 
-    uniform_sampls = tf.random.uniform([self.bsize, 1], maxval=self.nsamples, dtype=tf.int64)
+    uniform_sampls = tf.random.uniform([self.bsize, 1], maxval=tf.cast(self.nsamples, tf.int64), dtype=tf.int64)
     d_e_neg_subj_uniform, d_e_neg_obj_uniform, _, _ = self._un_flatten_dis(self.d_e_concepts, uniform_sampls)
 
     self.concept_embeddings = self.d_e_concepts
