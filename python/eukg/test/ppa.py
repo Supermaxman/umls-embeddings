@@ -66,6 +66,10 @@ def evaluate():
     incorrect = []  # list of tuples of (triple, corrupted_triple)
     num_correct = 0
     total = 0
+    ns_wrong = 0
+    ns_count = 0
+    no_wrong = 0
+    no_count = 0
     for r, s, o, ns, no in tqdm(data_generator.generate_mt(True), total=data_generator.num_train_batches()):
       pscores, nscores = session.run([model.pos_energy, model.neg_energy], {model.relations: r,
                                                                             model.pos_subj: s,
@@ -79,9 +83,19 @@ def evaluate():
           num_correct += 1
         else:
           incorrect.append((decode_triple(subj, rel, obj, pscore), decode_triple(nsubj, rel, nobj, nscore)))
-          print(((subj, rel, obj, pscore), (nsubj, rel, nobj, nscore)))
-          print((decode_triple(subj, rel, obj, pscore), decode_triple(nsubj, rel, nobj, nscore)))
-          input()
+          # print(((subj, rel, obj, pscore), (nsubj, rel, nobj, nscore)))
+          # print((decode_triple(subj, rel, obj, pscore), decode_triple(nsubj, rel, nobj, nscore)))
+          # input()
+          if subj == nsubj:
+            no_wrong += 1
+          else:
+            ns_wrong += 1
+        if subj == nsubj:
+          no_count += 1
+        else:
+          ns_count += 1
+      print(f'ns_wrong: {ns_wrong}/{ns_count} ({ns_wrong / ns_count})')
+      print(f'no_wrong: {no_wrong}/{no_count} ({no_wrong / no_count})')
     ppa = float(num_correct)/total
     print('PPA: %.4f' % ppa)
     outdir = os.path.join(config.eval_dir, config.run_name)
