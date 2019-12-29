@@ -94,8 +94,8 @@ def evaluate():
           no_count += 1
         else:
           ns_count += 1
-      print(f'ns_wrong: {ns_wrong}/{ns_count} ({ns_wrong / ns_count})')
-      print(f'no_wrong: {no_wrong}/{no_count} ({no_wrong / no_count})')
+    print(f'ns_wrong: {ns_wrong}/{ns_count} ({ns_wrong / ns_count})')
+    print(f'no_wrong: {no_wrong}/{no_count} ({no_wrong / no_count})')
     ppa = float(num_correct)/total
     print('PPA: %.4f' % ppa)
     outdir = os.path.join(config.eval_dir, config.run_name)
