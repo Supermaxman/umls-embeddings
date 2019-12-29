@@ -79,6 +79,9 @@ def evaluate():
           num_correct += 1
         else:
           incorrect.append((decode_triple(subj, rel, obj, pscore), decode_triple(nsubj, rel, nobj, nscore)))
+          print(((subj, rel, obj, pscore), (nsubj, rel, nobj, nscore)))
+          print((decode_triple(subj, rel, obj, pscore), decode_triple(nsubj, rel, nobj, nscore)))
+          input()
     ppa = float(num_correct)/total
     print('PPA: %.4f' % ppa)
     outdir = os.path.join(config.eval_dir, config.run_name)

@@ -241,7 +241,7 @@ class TfDataGenerator:
       b_objs_emb = b_concept_embs[2]
       b_objs_lengths = b_concept_lengths[2]
 
-      # TODO need to create tensor of shape [bsize, bsize - 1] where, for each bsize it is only the remaining indices
+      # need to create tensor of shape [bsize, bsize - 1] where, for each bsize it is only the remaining indices
       # shape [bsize, bsize, seq_len, emb_size]
       b_nsubjs_samples_embs = tf.tile(
         tf.expand_dims(b_subj_emb, axis=0),
