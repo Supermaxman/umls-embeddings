@@ -26,7 +26,7 @@ python -m python.eukg.test.ranking_evals \
 --run_name=transd-dm-disgen-ace-7 \
 --ace_model \
 --no_semantic_network \
---batch_size=32 \
+--batch_size=8 \
 --data_dir=/users/max/data/artifacts/umls-embeddings \
 --secondary_data_dir=/users/max/data/artifacts/umls-embeddings-compressed \
 --model_dir=/users/max/data/models/umls-embeddings \
@@ -36,7 +36,7 @@ python -m python.eukg.test.ranking_evals \
 --load=False \
 --load_embeddings=True \
 --embedding_file=/users/max/data/artifacts/umls-embeddings/transd-dm-disgen-ace-7/test_embeddings.npz \
---num_workers=10 \
+--num_workers=8 \
 --buffer_size=1
 
 
