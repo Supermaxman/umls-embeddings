@@ -155,11 +155,19 @@ class TransD(BaseModel):
     (r, r_proj) = rel
     (t, t_proj) = tail
 
-    return tf.norm(self.project(h, h_proj, r_proj) + r - self.project(t, t_proj, r_proj),
-            ord=norm_ord,
-            axis=1,
-            keepdims=False,
-            name="energy")
+    h_r_proj = self.project(h, h_proj, r_proj)
+
+    t_r_proj = self.project(t, t_proj, r_proj)
+
+    h_r_t_energy = tf.norm(
+      h_r_proj + r - t_r_proj,
+      ord=norm_ord,
+      axis=-1,
+      keepdims=False,
+      name="energy"
+    )
+
+    return h_r_t_energy
 
   # noinspection PyMethodMayBeStatic
   def project(self, c, c_proj, r_proj):
