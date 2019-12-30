@@ -62,20 +62,48 @@ class DisGen(BaseModel):
     self.b_or_objs = self.data_generator.b_or_objs
     self.all_concepts = self.data_generator.all_concepts
 
-    with tf.variable_scope('dis_energy'):
 
+    def broadcast_flat(x, y, x_y_order=True):
+      axis = -1 if x_y_order else 0
+      y_size = tf.shape(y)[0]
+      x_size = tf.shape(x)[0]
+      x_flat = tf.reshape(
+        tf.broadcast_to(
+          tf.expand_dims(x, axis=axis),
+          [x_size, y_size] if x_y_order else [y_size, x_size]
+        ),
+        [x_size * y_size]
+      )
+      return x_flat
+
+    with tf.variable_scope('dis_energy'):
+      # TODO flatten and then re-shape
+      b_sr_subjs_flat = broadcast_flat(self.b_sr_subjs, self.all_concepts)
+      b_sr_rels_flat = broadcast_flat(self.b_sr_rels, self.all_concepts)
+      b_sr_all_concepts_flat = broadcast_flat(self.all_concepts, self.b_sr_rels, x_y_order=False)
       self.subj_rel_all_energy = self.dis_embedding_model.energy(
-        tf.expand_dims(self.b_sr_subjs, axis=1),
-        tf.expand_dims(self.b_sr_rels, axis=1),
-        self.all_concepts,
+        b_sr_subjs_flat,
+        b_sr_rels_flat,
+        b_sr_all_concepts_flat,
         norm_ord=self.energy_norm
       )
+      self.subj_rel_all_energy = tf.reshape(
+        self.subj_rel_all_energy,
+        shape=[tf.shape(self.b_sr_rels)[0], tf.shape(self.all_concepts)[0]]
+      )
 
+      b_or_objs_flat = broadcast_flat(self.b_or_objs, self.all_concepts)
+      b_or_rels_flat = broadcast_flat(self.b_or_rels, self.all_concepts)
+      b_or_all_concepts_flat = broadcast_flat(self.all_concepts, self.b_or_rels, x_y_order=False)
       self.obj_rel_all_energy = self.dis_embedding_model.energy(
-        self.all_concepts,
-        tf.expand_dims(self.b_or_rels, axis=1),
-        tf.expand_dims(self.b_or_objs, axis=1),
+        b_or_all_concepts_flat,
+        b_or_rels_flat,
+        b_or_objs_flat,
         norm_ord=self.energy_norm
+      )
+      self.obj_rel_all_energy = tf.reshape(
+        self.obj_rel_all_energy,
+        shape=[tf.shape(self.b_or_rels)[0], tf.shape(self.all_concepts)[0]]
       )
 
   def build_pairwise_eval(self):
