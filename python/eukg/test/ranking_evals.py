@@ -105,30 +105,6 @@ def save_ranks():
     print(f'(s, r): {model.data_generator.nrof_sr}')
     print(f'(o, r): {model.data_generator.nrof_or}')
 
-    with open(os.path.join(outdir, 'obj_ranks.json'), 'w+') as f:
-      model.data_generator.load_sub_rel_eval(session)
-      pbar = tqdm(total=model.data_generator.nrof_sr)
-      obj_ranks = {}
-      try:
-        while True:
-          subj_rel_energy, b_subjs, b_rels = session.run([model.subj_rel_all_energy, model.b_sr_subjs, model.b_sr_rels])
-          bsize = len(b_rels)
-          b_promises = []
-          for b_subj, b_rel, b_obj_energies in zip(b_subjs, b_rels, subj_rel_energy):
-            b_real_objs = model.data_generator.test_sr2o[(b_subj, b_rel)]
-            b_valid_objs = model.data_generator.sr2o[(b_subj, b_rel)]
-            b_objs = model.data_generator.concepts
-            promise = pool.apply_async(sort_and_rank_objs, (b_subj, b_rel, b_objs, b_obj_energies, b_real_objs, b_valid_objs))
-            b_promises.append(promise)
-          for promise in b_promises:
-            b_ranks = promise.get()
-            for (b_subj, b_rel, b_obj), b_rank, b_score in b_ranks:
-              obj_ranks[f'({b_subj} {b_rel} {b_obj})'] = [int(b_rank), float(b_score)]
-          pbar.update(bsize)
-      except tf.errors.OutOfRangeError:
-        pass
-      json.dump(obj_ranks, f)
-
     with open(os.path.join(outdir, 'subj_ranks.json'), 'w+') as f:
       model.data_generator.load_obj_rel_eval(session)
       pbar = tqdm(total=model.data_generator.nrof_or)
@@ -152,6 +128,30 @@ def save_ranks():
       except tf.errors.OutOfRangeError:
         pass
       json.dump(subj_ranks, f)
+
+    with open(os.path.join(outdir, 'obj_ranks.json'), 'w+') as f:
+      model.data_generator.load_sub_rel_eval(session)
+      pbar = tqdm(total=model.data_generator.nrof_sr)
+      obj_ranks = {}
+      try:
+        while True:
+          subj_rel_energy, b_subjs, b_rels = session.run([model.subj_rel_all_energy, model.b_sr_subjs, model.b_sr_rels])
+          bsize = len(b_rels)
+          b_promises = []
+          for b_subj, b_rel, b_obj_energies in zip(b_subjs, b_rels, subj_rel_energy):
+            b_real_objs = model.data_generator.test_sr2o[(b_subj, b_rel)]
+            b_valid_objs = model.data_generator.sr2o[(b_subj, b_rel)]
+            b_objs = model.data_generator.concepts
+            promise = pool.apply_async(sort_and_rank_objs, (b_subj, b_rel, b_objs, b_obj_energies, b_real_objs, b_valid_objs))
+            b_promises.append(promise)
+          for promise in b_promises:
+            b_ranks = promise.get()
+            for (b_subj, b_rel, b_obj), b_rank, b_score in b_ranks:
+              obj_ranks[f'({b_subj} {b_rel} {b_obj})'] = [int(b_rank), float(b_score)]
+          pbar.update(bsize)
+      except tf.errors.OutOfRangeError:
+        pass
+      json.dump(obj_ranks, f)
 
 
 def calculate_scores(subj, rel, obj, replace_subject, concept_ids, session, model, batch_size):
