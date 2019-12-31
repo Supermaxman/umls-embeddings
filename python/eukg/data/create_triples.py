@@ -33,6 +33,27 @@ def pref_atom_filter(x):
     return False
   return True
 
+def umls_rel_filter(x):
+  # remove recursive relations
+  if x.cui2 == x.cui1:
+    return False
+  # ignore siblings, CHD is enough to infer
+  if x.rel == 'SIB':
+    return False
+  # ignore PAR, CHD is reflexive
+  if x.rel == 'PAR':
+    return False
+  # ignore RO with no relA, not descriptive
+  if x.rel == 'RO' and x.rela == '':
+    return False
+  # reflexive with AQ
+  if x.rel == 'QB':
+    return False
+  # too vague
+  if x.rel == 'RB':
+    return False
+  return True
+
 
 def tokenize_concept(cui, umls_atoms, umls_defs, umls_contexts, tokenize):
   # TODO do this in a different way.
@@ -42,13 +63,43 @@ def tokenize_concept(cui, umls_atoms, umls_defs, umls_contexts, tokenize):
   return token_ids
 
 
-def tokenize_rel(umls_rela, umls_rel_defs, tokenize):
-  rela_text = ' '.join(umls_rela.strip().split('_'))
-  _, token_ids = tokenize(rela_text)
-  return token_ids
+# def tokenize_rel(umls_rela, umls_rel_defs, tokenize):
+#   rela_text = ' '.join(umls_rela.strip().split('_'))
+#   _, token_ids = tokenize(rela_text)
+#   return token_ids
 
 
-def metathesaurus_triples(umls_dir, output_dir, valid_relations, vocab_file):
+def load_rel_merge_mapping(filepath):
+  rel_merge_mapping = {}
+  with open(filepath, 'r') as f:
+    for line in f:
+      s, t = line.strip().split(',')
+      rel_merge_mapping[s] = t
+  return rel_merge_mapping
+
+def load_rela_mapping(filepath):
+  rela_mapping = {}
+  with open(filepath, 'r') as f:
+    for line in f:
+      rela, rela_text = line.strip().split('\t')
+      rela = rela.strip()
+      rela_text = rela_text.strip()
+      rela_mapping[rela] = rela_text
+  return rela_mapping
+
+
+def load_rel_mapping(filepath):
+  rel_mapping = {}
+  with open(filepath, 'r') as f:
+    for line in f:
+      rela, rel_text = line.strip().split('\t')
+      rela = rela.strip()
+      rel_text = rel_text.strip()
+      rel_mapping[rela] = rel_text
+  return rel_mapping
+
+
+def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
   # TODO completely restructure way this data is generated.
   # TODO first generate triples, then
   # TODO create file structure with kept atoms, definitions, contexts, etc.
@@ -57,6 +108,10 @@ def metathesaurus_triples(umls_dir, output_dir, valid_relations, vocab_file):
   conc2id = {}
   rrf_file = os.path.join(umls_dir, 'META', 'MRREL.RRF')
   conso_file = os.path.join(umls_dir, 'META', 'MRCONSO.RRF')
+
+  rel_merge_mapping = load_rel_merge_mapping(os.path.join(data_folder, 'rel_merge_mapping.txt'))
+  rel_mapping = load_rel_mapping(os.path.join(data_folder, 'rel_desc.txt'))
+  rela_mapping = load_rela_mapping(os.path.join(data_folder, 'rela_desc.txt'))
 
   vocab = hgt.load_vocab(vocab_file)
   tokenizer = hgt.WordpieceTokenizer(vocab)
@@ -86,17 +141,6 @@ def metathesaurus_triples(umls_dir, output_dir, valid_relations, vocab_file):
     token_ids.append(vocab['[SEP]'])
     return tokens, token_ids
 
-  def umls_rel_filter(x):
-    # remove recursive relations
-    # if x.cui2 == x.cui1:
-    #   return False
-    # if x.rel not in keep_rels:
-    #   return False
-    if x.rela not in valid_relations:
-      return False
-    # looking for unique relas
-    return True
-
   umls_defs = defaultdict(list)
   umls_contexts = defaultdict(list)
   rel_defs = defaultdict(list)
@@ -109,7 +153,8 @@ def metathesaurus_triples(umls_dir, output_dir, valid_relations, vocab_file):
   )
   rel_count = 0
   # used for iterator estimate
-  total_matching_rel_count = 11391463
+  # total_matching_rel_count = 11391463
+  total_matching_rel_count = 12833115
   # prev values = 37207861 # TODO check with Ramon about these numbers & why so many rels skipped.
   for rel in tqdm(rel_iter, desc="reading", total=total_matching_rel_count):
     # TODO make sure this is the direction we want these relations to go
@@ -117,9 +162,16 @@ def metathesaurus_triples(umls_dir, output_dir, valid_relations, vocab_file):
     # TODO make sure we only want named relations (rela is not empty)
     # TODO consider flipping this to cui2 rela cui1 as per documentation.
     sid = add_concept(rel.cui1)
-    rid = add_concept(rel.rela)
+    rel_cui = rel_merge_mapping[f'{rel.rel}:{rel.rela}']
+    rel, rela = rel_cui.split(':')
+    # if there is no rela then we use rel text
+    if rela != '':
+      rel_text = rela_mapping[rela]
+    else:
+      rel_text = rel_mapping[rel]
+    rid = add_concept(rel_cui)
     if rid not in token_ids:
-      token_ids[rid] = tokenize_rel(rel.rela, rel_defs, tokenize)
+      token_ids[rid] = tokenize(rel_text)
     oid = add_concept(rel.cui2)
     triples.add((sid, rid, oid))
     rel_count += 1
@@ -234,10 +286,13 @@ def metathesaurus_triples(umls_dir, output_dir, valid_relations, vocab_file):
 
 def main():
   parser = argparse.ArgumentParser(description='Extract relation triples into a compressed numpy file from MRCONSO.RRF')
-  parser.add_argument('umls_dir', help='UMLS MRCONSO.RRF file containing metathesaurus relations')
+  parser.add_argument(
+    '--umls_dir',
+    default='data',
+    help='UMLS MRCONSO.RRF file containing metathesaurus relations')
   parser.add_argument('--output', default='data', help='the compressed numpy file to be created')
-  parser.add_argument('--valid_relations', default='data/valid_rels.txt',
-                      help='plaintext list of relations we want to extract triples for, one per line.')
+  parser.add_argument('--data_folder', default='python/data',
+                      help='Data folder.')
   parser.add_argument('--seed', default=1337,
                       help='Random seed.')
 
@@ -246,11 +301,9 @@ def main():
   random.seed(seed)
   np.random.seed(seed)
 
-  valid_relations = set([rel.strip() for rel in open(args.valid_relations)])
-
   vocab_file = '/shared/hltdir4/disk1/team/data/models/bert/uncased_L-24_H-1024_A-16/vocab.txt'
   # Previously MRCONSO.RRF, changed to MRREL.RRF
-  metathesaurus_triples(args.umls_dir, args.output, valid_relations, vocab_file)
+  metathesaurus_triples(args.umls_dir, args.output, args.data_folder, vocab_file)
 
 
 if __name__ == "__main__":

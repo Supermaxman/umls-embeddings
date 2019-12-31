@@ -53,14 +53,25 @@ def sort_and_rank_subjs(b_obj, b_rel, b_subjs, b_subj_energies, b_real_subjs, b_
   prev_rank = 1
   total_rank = 1
   prev_score = float('-inf')
+  # sort all triples of (s, r, o) where s is every concept.
+  # b_real_subjs contains all real (s, r, o) test triples for a given (o, r)
+  # b_valid_subjs contains all real (s, r, o) train and test triples for a given (o, r)
+  # sort all subjs for obj, rel by their energies, where lower is better.
   for b_subj, b_subj_energy in sorted(zip(b_subjs, b_subj_energies), key=lambda x: x[1]):
     if b_subj in b_real_subjs:
+      # if the obj is a real test triple of (s, r, o) then save its rank
       ranks.append(((b_subj, b_rel, b_obj), prev_rank, b_subj_energy))
       subj_ranks += 1
+      # if we have seen all test triples for (o, r) then we break as we do not care about the remaining non-test
+      # triple ranks
       if subj_ranks == len(b_real_subjs):
         break
+    # do not count true (s, r, o) triples which are part of data in ranking since we are
+    # trying to get a rank for each true s in (o, r) vs all negative subjs
     elif b_subj not in b_valid_subjs:
       total_rank += 1
+      # if energy is higher than previous energy then save new ranking, otherwise use same ranking
+      # for all same-energy triples.
       if b_subj_energy > prev_score:
         prev_score = b_subj_energy
         prev_rank = total_rank
