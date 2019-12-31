@@ -33,27 +33,6 @@ def pref_atom_filter(x):
     return False
   return True
 
-def umls_rel_filter(x):
-  # remove recursive relations
-  if x.cui2 == x.cui1:
-    return False
-  # ignore siblings, CHD is enough to infer
-  if x.rel == 'SIB':
-    return False
-  # ignore PAR, CHD is reflexive
-  if x.rel == 'PAR':
-    return False
-  # ignore RO with no relA, not descriptive
-  if x.rel == 'RO' and x.rela == '':
-    return False
-  # reflexive with AQ
-  if x.rel == 'QB':
-    return False
-  # too vague
-  if x.rel == 'RB':
-    return False
-  return True
-
 
 def tokenize_concept(cui, umls_atoms, umls_defs, umls_contexts, tokenize):
   # TODO do this in a different way.
@@ -115,6 +94,32 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
 
   vocab = hgt.load_vocab(vocab_file)
   tokenizer = hgt.WordpieceTokenizer(vocab)
+
+  valid_rel_cuis = set(rel_merge_mapping.keys())
+
+  def umls_rel_filter(x):
+    # remove recursive relations
+    if x.cui2 == x.cui1:
+      return False
+    # ignore siblings, CHD is enough to infer
+    if x.rel == 'SIB':
+      return False
+    # ignore PAR, CHD is reflexive
+    if x.rel == 'PAR':
+      return False
+    # ignore RO with no relA, not descriptive
+    if x.rel == 'RO' and x.rela == '':
+      return False
+    # reflexive with AQ
+    if x.rel == 'QB':
+      return False
+    # too vague
+    if x.rel == 'RB':
+      return False
+    # removes rels which have too few instances to keep around
+    if f'{x.rel}:{x.rela}' not in valid_rel_cuis:
+      return False
+    return True
 
   def add_concept(conc):
     if conc in conc2id:
