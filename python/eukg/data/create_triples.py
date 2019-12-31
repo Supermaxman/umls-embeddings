@@ -97,6 +97,13 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
 
   valid_rel_cuis = set(rel_merge_mapping.keys())
 
+  # TODO read in atoms other than only preferred.
+  languages = {'ENG'}
+  suppresses = {'O'}
+  tses = {'P'}
+  pfes = {'PF'}
+  isprefs = {'Y'}
+
   print(f'Reading umls concepts...')
   def umls_concept_filter(x):
     # filter out non-english atoms
@@ -115,9 +122,6 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
       return False
     # Ignore non-ispref atoms
     if x.ispref not in isprefs:
-      return False
-    # ignore atoms for concepts of which there are no relations.
-    if x.cui not in conc2id:
       return False
     return True
   concept_iter = umls_reader.read_umls(
@@ -225,13 +229,6 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
   print(f'Matching rel count: {rel_count}')
   print(f'{len(token_data)} tokenized')
   print(f'{max(token_data.keys())} max id')
-
-  # TODO read in atoms other than only preferred.
-  languages = {'ENG'}
-  suppresses = {'O'}
-  tses = {'P'}
-  pfes = {'PF'}
-  isprefs = {'Y'}
 
   def umls_atom_filter(x):
     # filter out non-english atoms
