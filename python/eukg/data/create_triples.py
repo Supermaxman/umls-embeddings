@@ -173,6 +173,9 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
     if cui_rela == '':
       rel_text = rel_mapping[cui_rel]
     else:
+      if cui_rela not in rela_mapping:
+        rela_mapping[cui_rela] = ' '.join(cui_rela.split('_'))
+        print(f'rela {cui_rela} not found in text mapping, defaulting to {rela_mapping[cui_rela]}.')
       rel_text = rela_mapping[cui_rela]
     rid = add_concept(rel_cui)
     if rid not in token_ids:
