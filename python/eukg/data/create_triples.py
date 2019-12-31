@@ -149,7 +149,7 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
   umls_defs = defaultdict(list)
   umls_contexts = defaultdict(list)
   rel_defs = defaultdict(list)
-  token_ids = {}
+  token_data = {}
 
   rel_iter = umls_reader.read_umls(
     rrf_file,
@@ -168,23 +168,25 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
     # TODO consider flipping this to cui2 rela cui1 as per documentation.
     sid = add_concept(rel.cui1)
     rel_cui = rel_merge_mapping[f'{rel.rel}:{rel.rela}']
-    cui_rel, cui_rela = rel_cui.split(':')
-    # if there is no rela then we use rel text
-    if cui_rela == '':
-      rel_text = rel_mapping[cui_rel]
-    else:
-      if cui_rela not in rela_mapping:
-        rela_mapping[cui_rela] = ' '.join(cui_rela.split('_'))
-        print(f'rela {cui_rela} not found in text mapping, defaulting to {rela_mapping[cui_rela]}.')
-      rel_text = rela_mapping[cui_rela]
     rid = add_concept(rel_cui)
-    if rid not in token_ids:
+    if rid not in token_data:
+      cui_rel, cui_rela = rel_cui.split(':')
+      # if there is no rela then we use rel text
+      if cui_rela == '':
+        rel_text = rel_mapping[cui_rel]
+      else:
+        if cui_rela not in rela_mapping:
+          rela_mapping[cui_rela] = ' '.join(cui_rela.split('_'))
+          print(f'rela {cui_rela} not found in text mapping, defaulting to {rela_mapping[cui_rela]}.')
+        rel_text = rela_mapping[cui_rela]
       _, t_ids = tokenize(rel_text)
-      token_ids[rid] = t_ids
+      token_data[rid] = (t_ids, len(t_ids))
     oid = add_concept(rel.cui2)
     triples.add((sid, rid, oid))
     rel_count += 1
   print(f'Matching rel count: {rel_count}')
+  print(f'{len(token_data)} tokenized')
+  print(f'{max(token_data.keys())} max id')
 
   # TODO read in atoms other than only preferred.
   languages = {'ENG'}
@@ -228,19 +230,20 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
   for atom in tqdm(atom_iter, desc="reading", total=total_matching_atom_count):
     cid = conc2id[atom.cui]
     # TODO make sure priority atom is first.
-    if cid not in token_ids:
+    if cid not in token_data:
       _, t_ids = tokenize(atom.string)
-      token_ids[cid] = t_ids
+      token_data[cid] = (t_ids, len(t_ids))
     atom_count += 1
 
   print(f'Read {atom_count} atoms.')
-  print(f'{len(token_ids)} tokenized')
-  print(f'{max(token_ids.keys())} max id')
-  token_lengths_dict = {x: len(y) for x, y in token_ids.items()}
-  token_lengths = np.zeros(len(token_lengths_dict), dtype=np.int32)
-  for cid, c_len in token_lengths_dict.items():
-    token_lengths[cid] = c_len
-  del token_lengths_dict
+  print(f'{len(token_data)} tokenized')
+  print(f'{max(token_data.keys())} max id')
+  tokenized_count = len(token_data)
+  max_token_idx = max(token_data.keys())
+  assert tokenized_count == max_token_idx + 1, \
+    f'token_data not densely packed! len={tokenized_count} vs max={max_token_idx}'
+
+  token_lengths = np.array([t_l for cid, (t_ids, t_l) in token_data.items()], dtype=np.int32)
   min_token_count = np.min(token_lengths)
   max_token_count = np.max(token_lengths)
   avg_token_count = np.mean(token_lengths)
@@ -256,16 +259,15 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
   pad_count = int(np.ceil(percentile_token_count))
   # p_tokens = {}
   print('Padding tokens...')
-  token_id_dict = token_ids
-  token_ids = np.zeros([len(token_id_dict), pad_count], dtype=np.int32)
-  for cid, t_ids in token_id_dict.items():
-    if len(t_ids) > pad_count:
+  token_ids = np.zeros([len(token_data), pad_count], dtype=np.int32)
+  for cid, (t_ids, t_l) in token_data.items():
+    if t_l > pad_count:
       token_ids[cid] = t_ids[:pad_count]
-    elif len(t_ids) < pad_count:
-      token_ids[cid] = t_ids + [0] * (pad_count - len(t_ids))
+    elif t_l < pad_count:
+      token_ids[cid] = t_ids + [0] * (pad_count - t_l)
     else:
       token_ids[cid] = t_ids
-  del token_id_dict
+  del token_data
   subjs, rels, objs = zip(*triples)
   snp = np.asarray(subjs, dtype=np.int32)
   rnp = np.asarray(rels, dtype=np.int32)
