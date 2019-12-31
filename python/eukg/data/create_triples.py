@@ -179,7 +179,8 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
       rel_text = rela_mapping[cui_rela]
     rid = add_concept(rel_cui)
     if rid not in token_ids:
-      token_ids[rid] = tokenize(rel_text)
+      _, t_ids = tokenize(rel_text)
+      token_ids[rid] = t_ids
     oid = add_concept(rel.cui2)
     triples.add((sid, rid, oid))
     rel_count += 1
@@ -216,18 +217,19 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
     return True
 
   print(f'Reading umls atoms...')
-  atom_count = 0
   atom_iter = umls_reader.read_umls(
       conso_file,
       umls.UmlsAtom,
       umls_filter=umls_atom_filter
   )
-  total_matching_atom_count = 1563246
+  atom_count = 0
+  # total_matching_atom_count = 1563246
+  total_matching_atom_count = 3210782
   for atom in tqdm(atom_iter, desc="reading", total=total_matching_atom_count):
-    _, t_ids = tokenize(atom.string)
     cid = conc2id[atom.cui]
     # TODO make sure priority atom is first.
     if cid not in token_ids:
+      _, t_ids = tokenize(atom.string)
       token_ids[cid] = t_ids
     atom_count += 1
 
