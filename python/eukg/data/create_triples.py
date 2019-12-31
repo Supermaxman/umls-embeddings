@@ -97,6 +97,41 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
 
   valid_rel_cuis = set(rel_merge_mapping.keys())
 
+  print(f'Reading umls concepts...')
+  def umls_concept_filter(x):
+    # filter out non-english atoms
+    # TODO allow other language atoms?
+    if x.lat not in languages:
+      return False
+    # TODO determine best way to filter atoms out
+    # Ignore atoms with suppress flag
+    # if x.suppress in suppresses:
+    #   return False
+    # Ignore non-ts preferred atoms
+    if x.ts not in tses:
+      return False
+    # Ignore non-stt preferred atoms
+    if x.stt not in pfes:
+      return False
+    # Ignore non-ispref atoms
+    if x.ispref not in isprefs:
+      return False
+    # ignore atoms for concepts of which there are no relations.
+    if x.cui not in conc2id:
+      return False
+    return True
+  concept_iter = umls_reader.read_umls(
+    conso_file,
+    umls.UmlsAtom,
+    umls_filter=umls_concept_filter
+  )
+  # total_matching_atom_count = 1563246
+  seen_cuis = set()
+  total_matching_atom_count = 3210782
+  for atom in tqdm(concept_iter, desc="reading", total=total_matching_atom_count):
+    seen_cuis.add(atom.cui)
+  print(f'Matching cui count: {len(seen_cuis)}')
+
   def umls_rel_filter(x):
     # remove recursive relations
     if x.cui2 == x.cui1:
@@ -118,6 +153,9 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
       return False
     # removes rels which have too few instances to keep around
     if f'{x.rel}:{x.rela}' not in valid_rel_cuis:
+      return False
+    # removes rels which do not have matching atoms/cuis
+    if x.cui1 not in seen_cuis or x.cui2 not in seen_cuis:
       return False
     return True
 
