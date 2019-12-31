@@ -234,7 +234,8 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
     atom_count += 1
 
   print(f'Read {atom_count} atoms.')
-
+  print(f'{len(token_ids)} tokenized')
+  print(f'{max(token_ids.keys())} max id')
   token_lengths_dict = {x: len(y) for x, y in token_ids.items()}
   token_lengths = np.zeros(len(token_lengths_dict), dtype=np.int32)
   for cid, c_len in token_lengths_dict.items():
