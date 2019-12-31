@@ -163,12 +163,12 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
     # TODO consider flipping this to cui2 rela cui1 as per documentation.
     sid = add_concept(rel.cui1)
     rel_cui = rel_merge_mapping[f'{rel.rel}:{rel.rela}']
-    rel, rela = rel_cui.split(':')
+    cui_rel, cui_rela = rel_cui.split(':')
     # if there is no rela then we use rel text
-    if rela != '':
-      rel_text = rela_mapping[rela]
+    if cui_rela == '':
+      rel_text = rel_mapping[cui_rel]
     else:
-      rel_text = rel_mapping[rel]
+      rel_text = rela_mapping[cui_rela]
     rid = add_concept(rel_cui)
     if rid not in token_ids:
       token_ids[rid] = tokenize(rel_text)
