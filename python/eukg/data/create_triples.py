@@ -129,10 +129,10 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
     umls.UmlsAtom,
     umls_filter=umls_concept_filter
   )
-  # total_matching_atom_count = 1563246
   seen_cuis = set()
-  total_matching_atom_count = 3210782
-  for atom in tqdm(concept_iter, desc="reading", total=total_matching_atom_count):
+  total_matching_concept_count = 3285966
+  # First pass through to get all possible cuis which we have atoms for.
+  for atom in tqdm(concept_iter, desc="reading", total=total_matching_concept_count):
     seen_cuis.add(atom.cui)
   print(f'Matching cui count: {len(seen_cuis)}')
 
@@ -199,10 +199,9 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
     umls_filter=umls_rel_filter
   )
   rel_count = 0
-  # used for iterator estimate
   # total_matching_rel_count = 11391463
-  total_matching_rel_count = 12833115
-  # prev values = 37207861 # TODO check with Ramon about these numbers & why so many rels skipped.
+  total_matching_rel_count = 12833112
+  # now get all rels which match our requirements and also have atoms.
   for rel in tqdm(rel_iter, desc="reading", total=total_matching_rel_count):
     # TODO make sure this is the direction we want these relations to go
     # TODO saw cui2 rela cui1 in documentation
@@ -262,6 +261,7 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
   atom_count = 0
   # total_matching_atom_count = 1563246
   total_matching_atom_count = 3210782
+  # finally, get atoms for only concepts which we have relations for.
   for atom in tqdm(atom_iter, desc="reading", total=total_matching_atom_count):
     cid = conc2id[atom.cui]
     # TODO make sure priority atom is first.
@@ -283,13 +283,13 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
   max_token_count = np.max(token_lengths)
   avg_token_count = np.mean(token_lengths)
   percentile_token_count = np.percentile(token_lengths, 95)
-  # 2
+  # 3
   print(f'Min token counts: {min_token_count}')
-  # 828
+  # 1189
   print(f'Max token counts: {max_token_count}')
-  # 9.9
+  # 13.7
   print(f'Avg token counts: {avg_token_count}')
-  # 31
+  # 27
   print(f'95 Percentile token counts: {percentile_token_count}')
   pad_count = int(np.ceil(percentile_token_count))
   # p_tokens = {}
