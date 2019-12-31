@@ -1,7 +1,7 @@
 
 python -m python.eukg.data.create_triples \
 --umls_dir=/shared/hltdir1/disk1/home/max/data/ontologies/umls_2019/2019AA-full/2019AA/ \
---data_dir=/users/max/data/artifacts/umls-embeddings
+--output=/users/max/data/artifacts/umls-embeddings
 
 
 python -m python.eukg.data.create_lm_embeddings \

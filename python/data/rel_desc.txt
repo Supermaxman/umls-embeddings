@@ -12,4 +12,3 @@ RU 	Related, unspecified
 SIB 	has sibling relationship
 SY 	source asserted synonymy
 XR 	Not related, no mapping
-  	Empty relationship

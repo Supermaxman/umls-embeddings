@@ -914,4 +914,3 @@ venous_drainage_of 	Venous drainage of
 version_of 	Version of
 was_a 	Was a
 wound_has_communication_with 	Wound has communication with
-  	Empty relationship attribute
