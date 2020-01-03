@@ -282,7 +282,7 @@ class TransDACE(BaseModel):
       h_r_t_energy = tf.reduce_sum(
         h_r_t_diff * h_r_t_diff,
         axis=-1,
-        keepdims=True,
+        keepdims=False,
         name='energy'
       )
     else:
