@@ -201,6 +201,7 @@ class DisGen(BaseModel):
       # loss
       self.d_margin = self.d_pos_energy - self.d_neg_energy
       self.d_loss = tf.reduce_mean(tf.nn.relu(self.gamma + self.d_margin), name='loss')
+      self.d_active_percent = tf.reduce_mean(tf.cast(self.d_loss > 0.0, tf.float32))
 
       self.d_accuracy = tf.reduce_mean(tf.to_float(tf.equal(self.d_predictions, 0)))
 
@@ -208,7 +209,8 @@ class DisGen(BaseModel):
       tf.summary.scalar('dis_loss', self.d_loss),
       tf.summary.scalar('dis_avg_margin', self.d_avg_pos_energy - self.d_avg_neg_energy),
       tf.summary.scalar('dis_margin', tf.reduce_mean(self.d_margin)),
-      tf.summary.scalar('dis_accuracy', self.d_accuracy)
+      tf.summary.scalar('dis_accuracy', self.d_accuracy),
+      tf.summary.scalar('dis_active_percent', self.d_active_percent)
     ]
 
     self.loss = self.g_loss + self.d_loss

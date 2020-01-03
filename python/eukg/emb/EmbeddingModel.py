@@ -278,7 +278,7 @@ class TransDACE(BaseModel):
     h_r_t_energy = tf.norm(
       h_r_t_diff,
       ord=norm_ord,
-      axis=1,
+      axis=-1,
       keepdims=False,
       name="energy"
     )
@@ -327,8 +327,21 @@ class TransDACE(BaseModel):
           name='embeddings_proj'
         )
 
-    embeddings = tf.nn.l2_normalize(embeddings, axis=-1)
-    embeddings_proj = tf.nn.l2_normalize(embeddings_proj, axis=-1)
+    embeddings_norm = tf.norm(embeddings, ord=2, axis=-1)
+    embeddings = tf.where(
+      embeddings_norm > 1.0,
+      embeddings / embeddings_norm,
+      embeddings
+    )
+    embeddings_proj_norm = tf.norm(embeddings_proj, ord=2, axis=-1)
+    embeddings_proj = tf.where(
+      embeddings_proj_norm > 1.0,
+      embeddings_proj / embeddings_proj_norm,
+      embeddings_proj
+    )
+
+    # embeddings = tf.nn.l2_normalize(embeddings, axis=-1)
+    # embeddings_proj = tf.nn.l2_normalize(embeddings_proj, axis=-1)
 
     if input_shape_count > 1:
       embeddings = tf.reshape(

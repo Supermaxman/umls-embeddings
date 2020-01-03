@@ -131,6 +131,73 @@ python -m python.eukg.train \
 --run_name=transd-dm-disgen-ace-8 \
 --ace_model \
 --no_semantic_network \
+--encoder_rnn_layers=2 \
+--encoder_rnn_size=128 \
+--learning_rate=1e-5 \
+--batch_size=16 \
+--val_batch_size=16 \
+--num_epochs=100 \
+--data_dir=/users/max/data/artifacts/umls-embeddings \
+--secondary_data_dir=/media/mdrive/umls-embeddings-compressed \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs \
+--num_workers=6 \
+--buffer_size=1 \
+--load=False
+
+python -m python.eukg.train \
+--mode=disgen \
+--model=transd-distmult \
+--run_name=transd-dm-disgen-ace-9 \
+--ace_model \
+--no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--embedding_size=100 \
+--learning_rate=1e-5 \
+--batch_size=16 \
+--val_batch_size=16 \
+--num_epochs=100 \
+--data_dir=/users/max/data/artifacts/umls-embeddings \
+--secondary_data_dir=/media/mdrive/umls-embeddings-compressed \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs \
+--num_workers=6 \
+--buffer_size=1 \
+--load=False
+
+python -m python.eukg.train \
+--mode=disgen \
+--model=transd-distmult \
+--run_name=transd-dm-disgen-ace-10 \
+--ace_model \
+--no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--embedding_size=100 \
+--gamma=0.4 \
+--learning_rate=1e-5 \
+--batch_size=16 \
+--val_batch_size=16 \
+--num_epochs=100 \
+--data_dir=/users/max/data/artifacts/umls-embeddings \
+--secondary_data_dir=/users/max/data/artifacts/umls-embeddings-compressed \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs \
+--num_workers=6 \
+--buffer_size=1 \
+--load=False
+
+python -m python.eukg.train \
+--mode=disgen \
+--model=transd-distmult \
+--run_name=transd-dm-disgen-ace-11 \
+--ace_model \
+--no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--embedding_size=100 \
+--gamma=0.5 \
 --learning_rate=1e-5 \
 --batch_size=16 \
 --val_batch_size=16 \
