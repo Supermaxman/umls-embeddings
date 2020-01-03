@@ -328,17 +328,10 @@ class TransDACE(BaseModel):
         )
 
     embeddings_norm = tf.norm(embeddings, ord=2, axis=-1, keepdims=True)
-    embeddings = tf.where(
-      embeddings_norm > 1.0,
-      embeddings / embeddings_norm,
-      embeddings
-    )
+    embeddings = embeddings / tf.maximum(embeddings_norm, 1.0)
+
     embeddings_proj_norm = tf.norm(embeddings_proj, ord=2, axis=-1, keepdims=True)
-    embeddings_proj = tf.where(
-      embeddings_proj_norm > 1.0,
-      embeddings_proj / embeddings_proj_norm,
-      embeddings_proj
-    )
+    embeddings_proj = embeddings_proj / tf.maximum(embeddings_proj_norm, 1.0)
 
     # embeddings = tf.nn.l2_normalize(embeddings, axis=-1)
     # embeddings_proj = tf.nn.l2_normalize(embeddings_proj, axis=-1)
