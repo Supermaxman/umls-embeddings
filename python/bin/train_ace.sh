@@ -213,7 +213,7 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=disgen \
 --model=transd-distmult \
---run_name=transd-dm-disgen-ace-15 \
+--run_name=transd-dm-disgen-ace-16 \
 --ace_model \
 --no_semantic_network \
 --encoder_rnn_layers=1 \
