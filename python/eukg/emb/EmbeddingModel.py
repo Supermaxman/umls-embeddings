@@ -275,13 +275,23 @@ class TransDACE(BaseModel):
     h_r_t_diff = h_p + r - t_p
     print(f'h_r_t_diff:{h_r_t_diff.get_shape()}')
 
-    h_r_t_energy = tf.norm(
-      h_r_t_diff,
-      ord=norm_ord,
-      axis=-1,
-      keepdims=False,
-      name="energy"
-    )
+    if norm_ord == 2:
+      # L2 norm squared
+      # https://www.aclweb.org/anthology/P15-1067.pdf
+      h_r_t_energy = tf.reduce_sum(
+        h_r_t_diff * h_r_t_diff,
+        axis=-1,
+        keepdims=True,
+        name='energy'
+      )
+    else:
+      h_r_t_energy = tf.norm(
+        h_r_t_diff,
+        ord=norm_ord,
+        axis=-1,
+        keepdims=False,
+        name="energy"
+      )
 
     print(f'h_r_t_energy:{h_r_t_energy.get_shape()}')
     return h_r_t_energy
@@ -296,7 +306,12 @@ class TransDACE(BaseModel):
     :param r_proj: relation projection embeddings [batch_size, embedding_size]
     :return: projected concept embedding [batch_size, embedding_size]
     """
-    return c + tf.reduce_sum(c * c_proj, axis=-1, keepdims=True) * r_proj
+    c_p = c + tf.reduce_sum(c * c_proj, axis=-1, keepdims=True) * r_proj
+    # https://www.aclweb.org/anthology/P15-1067.pdf
+    # normalize projection embeddings
+    c_p_norm = tf.norm(c_p, ord=2, axis=-1, keepdims=True)
+    c_p = c_p / tf.maximum(c_p_norm, 1.0)
+    return c_p
 
   def embed(self, input_encodings, emb_type=None):
 
@@ -326,12 +341,13 @@ class TransDACE(BaseModel):
           activation=None,
           name='embeddings_proj'
         )
-
+    # https://www.aclweb.org/anthology/P15-1067.pdf
+    # normalize all lookups
     embeddings_norm = tf.norm(embeddings, ord=2, axis=-1, keepdims=True)
     embeddings = embeddings / tf.maximum(embeddings_norm, 1.0)
 
-    embeddings_proj_norm = tf.norm(embeddings_proj, ord=2, axis=-1, keepdims=True)
-    embeddings_proj = embeddings_proj / tf.maximum(embeddings_proj_norm, 1.0)
+    # embeddings_proj_norm = tf.norm(embeddings_proj, ord=2, axis=-1, keepdims=True)
+    # embeddings_proj = embeddings_proj / tf.maximum(embeddings_proj_norm, 1.0)
 
     # embeddings = tf.nn.l2_normalize(embeddings, axis=-1)
     # embeddings_proj = tf.nn.l2_normalize(embeddings_proj, axis=-1)
