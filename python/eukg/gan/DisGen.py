@@ -202,7 +202,7 @@ class DisGen(BaseModel):
       self.d_margin = self.d_pos_energy - self.d_neg_energy
       print(self.d_margin.get_shape())
       # TODO move constants to config for loss balancing.
-      self.d_loss = 10.0 * tf.reduce_mean(tf.nn.relu(self.gamma + self.d_margin), name='loss')
+      self.d_loss = tf.reduce_mean(tf.nn.relu(self.gamma + self.d_margin), name='loss')
       self.d_active_percent = tf.reduce_mean(tf.to_float(-self.d_margin < self.gamma))
 
       self.d_accuracy = tf.reduce_mean(tf.to_float(tf.equal(self.d_predictions, 0)))
