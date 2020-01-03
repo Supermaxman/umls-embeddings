@@ -101,6 +101,7 @@ class TransE(BaseModel):
 
 class TransD(BaseModel):
   def __init__(self, config, embeddings_dict=None):
+    raise NotImplementedError('Need to make sure this model matches changes made for TransDACE')
     BaseModel.__init__(self, config)
     with tf.device("/%s:0" % self.embedding_device):
       if embeddings_dict is None:
