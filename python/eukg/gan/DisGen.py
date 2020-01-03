@@ -200,7 +200,8 @@ class DisGen(BaseModel):
       self.d_reward = tf.reduce_mean(self.d_neg_energy, name='reward')
       # loss
       self.d_margin = self.d_pos_energy - self.d_neg_energy
-      self.d_loss = tf.reduce_mean(tf.nn.relu(self.gamma + self.d_margin), name='loss')
+      # TODO move constants to config for loss balancing.
+      self.d_loss = 10.0 * tf.reduce_mean(tf.nn.relu(self.gamma + self.d_margin), name='loss')
       self.d_active_percent = tf.reduce_mean(tf.cast(self.d_loss > 0.0, tf.float32))
 
       self.d_accuracy = tf.reduce_mean(tf.to_float(tf.equal(self.d_predictions, 0)))

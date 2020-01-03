@@ -213,13 +213,13 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=disgen \
 --model=transd-distmult \
---run_name=transd-dm-disgen-ace-14 \
+--run_name=transd-dm-disgen-ace-15 \
 --ace_model \
 --no_semantic_network \
 --encoder_rnn_layers=1 \
 --encoder_rnn_size=512 \
 --embedding_size=100 \
---gamma=0.2 \
+--gamma=0.5 \
 --energy_norm_ord=2 \
 --learning_rate=1e-5 \
 --batch_size=16 \
