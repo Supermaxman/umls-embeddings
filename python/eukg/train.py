@@ -13,7 +13,6 @@ from .emb import AceModel
 from .tf_util import checkpoint_utils
 
 import random
-import numpy as np
 
 
 def train():
@@ -21,6 +20,7 @@ def train():
   seed = config.seed
   random.seed(seed)
   np.random.seed(seed)
+
 
   if config.mode == 'gan':
     train_gan.train()

@@ -93,7 +93,6 @@ class DisGen(BaseModel):
       norm_ord=self.energy_norm
     )
 
-
   def build(self):
 
     summary = []
