@@ -84,7 +84,6 @@ def embed():
     seen_concepts = np.zeros(nrof_concepts, dtype=np.bool)
     pbar = tqdm(total=nrof_concepts)
     print('Creating concept embeddings...')
-    model.data_generator.load_concepts(session)
     try:
       while True:
         (c_embs, c_embs_proj), c_ids = session.run([b_concept_embs, b_concept_ids])
