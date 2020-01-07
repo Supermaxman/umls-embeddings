@@ -241,6 +241,7 @@ python -m python.eukg.train \
 --no_semantic_network \
 --encoder_rnn_layers=1 \
 --encoder_rnn_size=512 \
+--encoder_rnn_type=gru \
 --embedding_size=100 \
 --gamma=0.5 \
 --energy_norm_ord=1 \
@@ -264,6 +265,7 @@ python -m python.eukg.train \
 --no_semantic_network \
 --encoder_rnn_layers=1 \
 --encoder_rnn_size=512 \
+--encoder_rnn_type=gru \
 --embedding_size=100 \
 --gamma=0.5 \
 --energy_norm_ord=2 \
@@ -282,7 +284,7 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=disgen \
 --model=transd-distmult \
---run_name=transd-dm-disgen-ace-21 \
+--run_name=transd-dm-disgen-ace-20 \
 --ace_model \
 --no_semantic_network \
 --encoder_rnn_layers=1 \
