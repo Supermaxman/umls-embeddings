@@ -73,7 +73,7 @@ def embed():
 
     iterator = data.make_one_shot_iterator()
     b_token_ids, b_concept_ids = iterator.get_next()
-    b_concept_embs = model(b_token_ids)
+    b_concept_embs = model(b_token_ids, 'concept')
 
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()
