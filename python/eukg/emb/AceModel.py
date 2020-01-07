@@ -6,7 +6,11 @@ class ACEModel(object):
   def __init__(self, config):
     self.encoder_rnn_layers = config.encoder_rnn_layers
     self.encoder_rnn_size = config.encoder_rnn_size
-    self.encoder_rnn_type = config.encoder_rnn_type.lower()
+    try:
+      self.encoder_rnn_type = config.encoder_rnn_type.lower()
+    except AttributeError:
+      print('No encoder rnn specified, defaulting to gru')
+      self.encoder_rnn_type = 'gru'
 
   def encode(self, encoder_seq_out, token_lengths, emb_type):
     assert emb_type is not None
