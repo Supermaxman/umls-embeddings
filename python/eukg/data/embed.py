@@ -44,7 +44,7 @@ def embed():
 
   ctokens = {}
   for c_txt, c_id in ctxt2id.items():
-    c_tokens = tokenize(c_txt)
+    _, c_tokens = tokenize(c_txt)
     ctokens[c_id] = (c_tokens, len(c_tokens))
 
   token_lengths = np.array([t_l for cid, (t_ids, t_l) in ctokens.items()], dtype=np.int32)
