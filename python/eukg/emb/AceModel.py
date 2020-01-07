@@ -6,6 +6,7 @@ class ACEModel(object):
   def __init__(self, config):
     self.encoder_rnn_layers = config.encoder_rnn_layers
     self.encoder_rnn_size = config.encoder_rnn_size
+    self.encoder_rnn_type = config.encoder_rnn_type.lower()
 
   def encode(self, encoder_seq_out, token_lengths, emb_type):
     assert emb_type is not None
@@ -22,15 +23,22 @@ class ACEModel(object):
           token_lengths,
           nrof_layers=self.encoder_rnn_layers,
           nrof_units=self.encoder_rnn_size,
+          rnn_type=self.encoder_rnn_type,
           reuse=tf.AUTO_REUSE
         )
       return encoder_out
 
 
-def rnn_encoder(input_embs, input_lengths, nrof_layers, nrof_units, reuse=tf.AUTO_REUSE):
+def rnn_encoder(input_embs, input_lengths, nrof_layers, nrof_units, rnn_type, reuse=tf.AUTO_REUSE):
   seq_output_indices = input_lengths - 1
+  if rnn_type == 'gru':
+    cell = tf.contrib.cudnn_rnn.CudnnGRU
+  elif rnn_type == 'lstm':
+    cell = tf.contrib.cudnn_rnn.CudnnLSTM
+  else:
+    raise ValueError(f'Unknown rnn type: {rnn_type}')
   with tf.variable_scope('forward', reuse=reuse) as scope:
-    rnn_forward = tf.contrib.cudnn_rnn.CudnnGRU(
+    rnn_forward = cell(
       num_layers=nrof_layers,
       num_units=nrof_units
     )
@@ -40,7 +48,7 @@ def rnn_encoder(input_embs, input_lengths, nrof_layers, nrof_units, reuse=tf.AUT
     encoder_forward = extract_last_seq_axis(encoder_forward, seq_output_indices)
 
   with tf.variable_scope('backward', reuse=reuse) as scope:
-    rnn_backward = tf.contrib.cudnn_rnn.CudnnGRU(
+    rnn_backward = cell(
       num_layers=nrof_layers,
       num_units=nrof_units
     )

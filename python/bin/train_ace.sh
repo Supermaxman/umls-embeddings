@@ -255,3 +255,50 @@ python -m python.eukg.train \
 --num_workers=6 \
 --buffer_size=1 \
 --load=False
+
+python -m python.eukg.train \
+--mode=disgen \
+--model=transd-distmult \
+--run_name=transd-dm-disgen-ace-19 \
+--ace_model \
+--no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--embedding_size=100 \
+--gamma=0.5 \
+--energy_norm_ord=2 \
+--learning_rate=1e-5 \
+--batch_size=16 \
+--val_batch_size=16 \
+--num_epochs=100 \
+--data_dir=/users/max/data/artifacts/umls-embeddings \
+--secondary_data_dir=/users/max/data/artifacts/umls-embeddings-compressed \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs \
+--num_workers=6 \
+--buffer_size=1 \
+--load=False
+
+python -m python.eukg.train \
+--mode=disgen \
+--model=transd-distmult \
+--run_name=transd-dm-disgen-ace-21 \
+--ace_model \
+--no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--encoder_rnn_type=lstm \
+--embedding_size=100 \
+--gamma=0.5 \
+--energy_norm_ord=2 \
+--learning_rate=1e-5 \
+--batch_size=16 \
+--val_batch_size=16 \
+--num_epochs=100 \
+--data_dir=/users/max/data/artifacts/umls-embeddings \
+--secondary_data_dir=/users/max/data/artifacts/umls-embeddings-compressed \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs \
+--num_workers=6 \
+--buffer_size=1 \
+--load=False

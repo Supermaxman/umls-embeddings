@@ -87,6 +87,7 @@ tf.flags.DEFINE_integer("buffer_size", 128, "Size of dataset feeding buffer.")
 
 tf.flags.DEFINE_integer("encoder_rnn_layers", 1, "Number of layers of encoder rnn.")
 tf.flags.DEFINE_integer("encoder_rnn_size", 64, "Size of encoder rnn.")
+tf.flags.DEFINE_string("encoder_rnn_type", 'lstm', "Encoder rnn type [gru, lstm].")
 
 tf.flags.DEFINE_bool("train_bert", True, "Jointly train bert encoder.")
 tf.flags.DEFINE_integer("seed", 1337, "Random seed.")
