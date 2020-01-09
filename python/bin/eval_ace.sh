@@ -5,9 +5,15 @@
 python -m python.eukg.test.save_embeddings \
 --mode=disgen \
 --model=transd-distmult \
---run_name=transd-dm-disgen-ace-7 \
+--run_name=transd-dm-disgen-ace-18 \
 --ace_model \
 --no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--encoder_rnn_type=gru \
+--embedding_size=100 \
+--gamma=0.5 \
+--energy_norm_ord=1 \
 --train_bert=False \
 --batch_size=32 \
 --data_dir=/users/max/data/artifacts/umls-embeddings \
@@ -19,6 +25,7 @@ python -m python.eukg.test.save_embeddings \
 --load=True \
 --num_workers=6 \
 --buffer_size=1
+
 
 python -m python.eukg.test.ranking_evals \
 --mode=disgen \
@@ -43,10 +50,13 @@ python -m python.eukg.test.ranking_evals \
 python -m python.eukg.test.ppa \
 --mode=disgen \
 --model=transd-distmult \
---run_name=transd-dm-disgen-ace-7 \
+--run_name=transd-dm-disgen-ace-18 \
 --ace_model \
 --no_semantic_network \
 --batch_size=1024 \
+--embedding_size=100 \
+--gamma=0.5 \
+--energy_norm_ord=1 \
 --data_dir=/users/max/data/artifacts/umls-embeddings \
 --secondary_data_dir=/users/max/data/artifacts/umls-embeddings-compressed \
 --model_dir=/users/max/data/models/umls-embeddings \
@@ -55,14 +65,14 @@ python -m python.eukg.test.ppa \
 --eval_dir=/users/max/data/artifacts/umls-embeddings \
 --load=False \
 --load_embeddings=True \
---embedding_file=/users/max/data/artifacts/umls-embeddings/transd-dm-disgen-ace-7/test_embeddings.npz \
+--embedding_file=/users/max/data/artifacts/umls-embeddings/transd-dm-disgen-ace-18/test_embeddings.npz \
 --num_workers=10 \
 --buffer_size=1
 
 python -m python.eukg.test.classification \
 --mode=disgen \
 --model=transd-distmult \
---run_name=transd-dm-disgen-ace-7 \
+--run_name=transd-dm-disgen-ace-18 \
 --ace_model \
 --no_semantic_network \
 --batch_size=1024 \
@@ -74,7 +84,7 @@ python -m python.eukg.test.classification \
 --eval_dir=/users/max/data/artifacts/umls-embeddings \
 --load=False \
 --load_embeddings=True \
---embedding_file=/users/max/data/artifacts/umls-embeddings/transd-dm-disgen-ace-7/test_embeddings.npz \
+--embedding_file=/users/max/data/artifacts/umls-embeddings/transd-dm-disgen-ace-18/test_embeddings.npz \
 --num_workers=10 \
 --buffer_size=1
 

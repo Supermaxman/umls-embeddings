@@ -101,7 +101,6 @@ class TransE(BaseModel):
 
 class TransD(BaseModel):
   def __init__(self, config, embeddings_dict=None):
-    raise NotImplementedError('Need to make sure this model matches changes made for TransDACE')
     BaseModel.__init__(self, config)
     with tf.device("/%s:0" % self.embedding_device):
       if embeddings_dict is None:
@@ -156,17 +155,27 @@ class TransD(BaseModel):
     (r, r_proj) = rel
     (t, t_proj) = tail
 
-    h_r_proj = self.project(h, h_proj, r_proj)
+    h_p = self.project(h, h_proj, r_proj)
 
-    t_r_proj = self.project(t, t_proj, r_proj)
-
-    h_r_t_energy = tf.norm(
-      h_r_proj + r - t_r_proj,
-      ord=norm_ord,
-      axis=-1,
-      keepdims=False,
-      name="energy"
-    )
+    t_p = self.project(t, t_proj, r_proj)
+    h_r_t_diff = h_p + r - t_p
+    if norm_ord == 2:
+      # L2 norm squared
+      # https://www.aclweb.org/anthology/P15-1067.pdf
+      h_r_t_energy = tf.reduce_sum(
+        h_r_t_diff * h_r_t_diff,
+        axis=-1,
+        keepdims=False,
+        name='energy'
+      )
+    else:
+      h_r_t_energy = tf.norm(
+        h_r_t_diff,
+        ord=norm_ord,
+        axis=-1,
+        keepdims=False,
+        name="energy"
+      )
 
     return h_r_t_energy
 
@@ -180,7 +189,12 @@ class TransD(BaseModel):
     :param r_proj: relation projection embeddings [batch_size, embedding_size]
     :return: projected concept embedding [batch_size, embedding_size]
     """
-    return c + tf.reduce_sum(c * c_proj, axis=-1, keepdims=True) * r_proj
+    c_p = c + tf.reduce_sum(c * c_proj, axis=-1, keepdims=True) * r_proj
+    # https://www.aclweb.org/anthology/P15-1067.pdf
+    # normalize projection embeddings
+    c_p_norm = tf.norm(c_p, ord=2, axis=-1, keepdims=True)
+    c_p = c_p / tf.maximum(c_p_norm, 1.0)
+    return c_p
 
   def embedding_lookup(self, ids, emb_type=None):
     with tf.device("/%s:0" % self.embedding_device):
