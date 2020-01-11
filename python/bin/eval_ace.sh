@@ -76,6 +76,9 @@ python -m python.eukg.test.classification \
 --ace_model \
 --no_semantic_network \
 --batch_size=1024 \
+--embedding_size=100 \
+--gamma=0.5 \
+--energy_norm_ord=1 \
 --data_dir=/users/max/data/artifacts/umls-embeddings \
 --secondary_data_dir=/users/max/data/artifacts/umls-embeddings-compressed \
 --model_dir=/users/max/data/models/umls-embeddings \

@@ -421,13 +421,15 @@ class DisGenGan(DisGen):
       self.d_accuracy = tf.reduce_mean(tf.to_float(tf.equal(self.d_predictions, 0)))
       self.d_accuracy_uniform = tf.reduce_mean(tf.to_float(tf.equal(self.d_predictions_uniform, 0)))
       # self.d_train_op = d_optimizer.minimize(self.d_loss, name='d_train_op')
+      self.d_active_percent = tf.reduce_mean(tf.to_float(-self.d_margin < self.gamma))
 
     summary += [
       tf.summary.scalar('dis_loss', self.d_loss),
       tf.summary.scalar('dis_avg_margin', self.d_avg_pos_energy - self.d_avg_neg_energy),
       tf.summary.scalar('dis_margin', tf.reduce_mean(self.d_margin)),
       tf.summary.scalar('dis_accuracy', self.d_accuracy_uniform),
-      tf.summary.scalar('dis_gen_accuracy', self.d_accuracy)
+      tf.summary.scalar('dis_gen_accuracy', self.d_accuracy),
+      tf.summary.scalar('dis_active_percent', self.d_active_percent)
     ]
 
     with tf.variable_scope("gen_loss"):
