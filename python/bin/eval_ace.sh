@@ -208,3 +208,118 @@ python -m python.eukg.test.ppa \
 --summaries_dir=/shared/hltdir4/disk1/max/logs \
 --eval_dir=/users/max/data/artifacts/umls-embeddings \
 --load=True
+
+
+
+python -m python.eukg.test.save_embeddings \
+--mode=gan-joint \
+--model=transd-distmult \
+--run_name=transd-dm-gan-joint-ace-20 \
+--ace_model \
+--no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--encoder_rnn_type=lstm \
+--embedding_size=100 \
+--gamma=1.0 \
+--energy_norm_ord=2 \
+--batch_size=32 \
+--data_dir=/users/max/data/artifacts/umls-embeddings \
+--secondary_data_dir=/users/max/data/artifacts/umls-embeddings-compressed \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs \
+--eval_mode=save \
+--eval_dir=/users/max/data/artifacts/umls-embeddings \
+--load=True \
+--num_workers=6 \
+--buffer_size=1
+
+python -m python.eukg.test.ppa \
+--mode=gan-joint \
+--model=transd-distmult \
+--run_name=transd-dm-gan-joint-ace-20 \
+--ace_model \
+--no_semantic_network \
+--batch_size=64 \
+--embedding_size=100 \
+--gamma=1.0 \
+--energy_norm_ord=2 \
+--num_generator_samples=1 \
+--val_batch_size=64 \
+--data_dir=/users/max/data/artifacts/umls-embeddings \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs \
+--eval_mode=save \
+--eval_dir=/users/max/data/artifacts/umls-embeddings \
+--load_embeddings=True \
+--embedding_file=/users/max/data/artifacts/umls-embeddings/transd-dm-gan-joint-ace-20/test_embeddings.npz \
+--load=False
+
+python -m python.eukg.test.classification \
+--mode=gan-joint \
+--model=transd-distmult \
+--run_name=transd-dm-gan-joint-ace-20 \
+--ace_model \
+--no_semantic_network \
+--batch_size=64 \
+--embedding_size=100 \
+--gamma=1.0 \
+--energy_norm_ord=2 \
+--num_generator_samples=1 \
+--val_batch_size=64 \
+--data_dir=/users/max/data/artifacts/umls-embeddings \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs \
+--eval_mode=save \
+--eval_dir=/users/max/data/artifacts/umls-embeddings \
+--load_embeddings=True \
+--embedding_file=/users/max/data/artifacts/umls-embeddings/transd-dm-gan-joint-ace-20/test_embeddings.npz \
+--load=False
+
+
+python -m python.eukg.test.save_embeddings \
+--mode=disgen \
+--model=transd-distmult \
+--run_name=transd-dm-disgen-ace-20 \
+--ace_model \
+--no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--encoder_rnn_type=lstm \
+--embedding_size=100 \
+--gamma=0.5 \
+--energy_norm_ord=2 \
+--train_bert=False \
+--batch_size=32 \
+--data_dir=/users/max/data/artifacts/umls-embeddings \
+--secondary_data_dir=/users/max/data/artifacts/umls-embeddings-compressed \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs \
+--eval_mode=save \
+--eval_dir=/users/max/data/artifacts/umls-embeddings \
+--load=True \
+--num_workers=6 \
+--buffer_size=1
+
+
+python -m python.eukg.test.ppa \
+--mode=disgen \
+--model=transd-distmult \
+--run_name=transd-dm-disgen-ace-18 \
+--ace_model \
+--no_semantic_network \
+--batch_size=1024 \
+--embedding_size=100 \
+--gamma=0.5 \
+--energy_norm_ord=1 \
+--data_dir=/users/max/data/artifacts/umls-embeddings \
+--secondary_data_dir=/users/max/data/artifacts/umls-embeddings-compressed \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs \
+--eval_mode=save \
+--eval_dir=/users/max/data/artifacts/umls-embeddings \
+--load=False \
+--load_embeddings=True \
+--embedding_file=/users/max/data/artifacts/umls-embeddings/transd-dm-disgen-ace-18/test_embeddings.npz \
+--num_workers=10 \
+--buffer_size=1

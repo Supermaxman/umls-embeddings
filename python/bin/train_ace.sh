@@ -331,9 +331,9 @@ python -m python.eukg.train \
 
 
 python -m python.eukg.train \
---mode=disgen \
+--mode=gan-joint \
 --model=transd-distmult \
---run_name=transd-dm-gan-ace-20 \
+--run_name=transd-dm-gan-joint-ace-20 \
 --pre_run_name=transd-dm-disgen-ace-20 \
 --ace_model \
 --no_semantic_network \
