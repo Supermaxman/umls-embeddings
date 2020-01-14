@@ -12,9 +12,9 @@ from ..ace import load_ace
 
 def embed():
   parser = argparse.ArgumentParser()
-  parser.add_argument('--ctxt2id_file', default='/home/max/data/artifacts/i2b2/2010/hd_data/ctxt2id.json')
+  parser.add_argument('--ctxt2id_file', default='/home/max/data/artifacts/i2b2/2010/new_data/ctxt2id.json')
   parser.add_argument('--ace_path', default='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-gan-joint-ace-20')
-  parser.add_argument('--out_file', default='/home/max/data/artifacts/i2b2/2010/hd_data/transd-dm-gan-joint-ace-20-embeddings.npz')
+  parser.add_argument('--out_file', default='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-gan-joint-ace-20-embeddings.npz')
   parser.add_argument('--embedding_size', default=100)
   config = parser.parse_args()
 
