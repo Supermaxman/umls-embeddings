@@ -355,4 +355,4 @@ python -m python.eukg.train \
 --summaries_dir=/shared/hltdir4/disk1/max/logs \
 --num_workers=6 \
 --buffer_size=1 \
---load=False
+--load=True
