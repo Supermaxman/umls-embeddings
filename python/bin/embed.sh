@@ -55,6 +55,19 @@ python -m python.eukg.data.embed_rels \
   --relid2txt='/users/max/data/corpora/ddi2013-type/original/relid2txt_umls.json' \
   --out_file='/home/max/data/artifacts/ddi2013-type/transd-dm-gan-joint-ace-20-rel-umls-embeddings.npz'
 
+#
+python -m python.eukg.data.embed \
+  --ctxt2id_file='/users/rmm120030/working/kge_ner/info/clef_mentions.json' \
+  --out_file='/users/rmm120030/working/kge_ner/info/clef_mentions.npz'
+
+python -m python.eukg.data.embed \
+  --ctxt2id_file='/users/rmm120030/working/kge_ner/info/medmentions_mentions.json' \
+  --out_file='/users/rmm120030/working/kge_ner/info/medmentions_mentions.npz'
+
+python -m python.eukg.data.embed \
+  --ctxt2id_file='/users/rmm120030/working/kge_ner/info/semtype_text.json' \
+  --out_file='/users/rmm120030/working/kge_ner/info/semtype_text.npz'
+
 
 python -m python.eukg.data.embed_rels \
   --relid2txt='/users/max/data/corpora/ddi2013-type/original/relid2txt_umls_2.json' \
