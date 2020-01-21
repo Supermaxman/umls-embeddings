@@ -16,6 +16,7 @@ def embed():
   parser.add_argument('--ace_path', default='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-gan-joint-ace-20')
   parser.add_argument('--out_file', default='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-gan-joint-ace-20-embeddings.npz')
   parser.add_argument('--embedding_size', default=100)
+  parser.add_argument('--batch_size', default=32)
   config = parser.parse_args()
 
   vocab_file = '/shared/hltdir4/disk1/team/data/models/bert/uncased_L-24_H-1024_A-16/vocab.txt'
@@ -68,7 +69,7 @@ def embed():
 
     # TODO build dataset from ctxt2id
     data = tf.data.Dataset.from_tensor_slices((token_ids, concept_ids))
-    data = data.batch(batch_size=32)
+    data = data.batch(batch_size=config.batch_size)
     data = data.prefetch(buffer_size=1)
 
     iterator = data.make_one_shot_iterator()

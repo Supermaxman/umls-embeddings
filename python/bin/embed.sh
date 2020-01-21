@@ -38,6 +38,14 @@ python -m python.eukg.data.embed_rels \
   --relid2txt='/users/max/data/corpora/ChemProt/original/relid2txt_umls_3.json' \
   --out_file='/home/max/data/artifacts/chemprot/transd-dm-gan-joint-ace-20-rel-umls-3-embeddings.npz'
 
+python -m python.eukg.data.embed_rels \
+  --relid2txt='/users/max/data/corpora/ChemProt/original/relid2txt_umls_4.json' \
+  --out_file='/home/max/data/artifacts/chemprot/transd-dm-gan-joint-ace-20-rel-umls-4-embeddings.npz'
+
+python -m python.eukg.data.embed_rels \
+  --relid2txt='/users/max/data/corpora/ChemProt/original/relid2txt_umls_5.json' \
+  --out_file='/home/max/data/artifacts/chemprot/transd-dm-gan-joint-ace-20-rel-umls-5-embeddings.npz'
+
 
 python -m python.eukg.data.embed \
   --ctxt2id_file='/home/max/data/corpora/ddi2013-type/original/ctxt2id.json' \
@@ -47,4 +55,12 @@ python -m python.eukg.data.embed_rels \
   --relid2txt='/users/max/data/corpora/ddi2013-type/original/relid2txt_umls.json' \
   --out_file='/home/max/data/artifacts/ddi2013-type/transd-dm-gan-joint-ace-20-rel-umls-embeddings.npz'
 
+
+python -m python.eukg.data.embed_rels \
+  --relid2txt='/users/max/data/corpora/ddi2013-type/original/relid2txt_umls_2.json' \
+  --out_file='/home/max/data/artifacts/ddi2013-type/transd-dm-gan-joint-ace-20-rel-umls-2-embeddings.npz'
+
+python -m python.eukg.data.embed_rels \
+  --relid2txt='/users/max/data/corpora/ddi2013-type/original/relid2txt_umls_3.json' \
+  --out_file='/home/max/data/artifacts/ddi2013-type/transd-dm-gan-joint-ace-20-rel-umls-3-embeddings.npz'
 
