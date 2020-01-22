@@ -15,8 +15,8 @@ def embed():
   parser.add_argument('--ctxt2id_file', default='/home/max/data/artifacts/i2b2/2010/new_data/ctxt2id.json')
   parser.add_argument('--ace_path', default='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-gan-joint-ace-20')
   parser.add_argument('--out_file', default='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-gan-joint-ace-20-embeddings.npz')
-  parser.add_argument('--embedding_size', default=100)
-  parser.add_argument('--batch_size', default=32)
+  parser.add_argument('--embedding_size', default=100, type=int)
+  parser.add_argument('--batch_size', default=32, type=int)
   config = parser.parse_args()
 
   vocab_file = '/shared/hltdir4/disk1/team/data/models/bert/uncased_L-24_H-1024_A-16/vocab.txt'
