@@ -77,3 +77,8 @@ python -m python.eukg.data.embed_rels \
   --relid2txt='/users/max/data/corpora/ddi2013-type/original/relid2txt_umls_3.json' \
   --out_file='/home/max/data/artifacts/ddi2013-type/transd-dm-gan-joint-ace-20-rel-umls-3-embeddings.npz'
 
+
+python -m python.eukg.data.embed \
+  --ctxt2id_file='/users/rmm120030/working/kge_ner/model/medmentions/pm_bilstm/test/text2id.json' \
+  --out_file='/users/rmm120030/working/kge_ner/model/medmentions/pm_bilstm/test/text_embeddings.npz' \
+  --batch_size=16

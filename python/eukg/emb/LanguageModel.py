@@ -2,7 +2,7 @@
 
 import tensorflow as tf
 import numpy as np
-from bert import modeling
+import hedgedog.tf.models.bert as modeling
 
 
 class LanguageModel(object):
