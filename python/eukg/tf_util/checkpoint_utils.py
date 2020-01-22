@@ -1,6 +1,7 @@
 
 import tensorflow as tf
-import hedgedog.tf.models.bert as modeling
+from bert import modeling
+# import hedgedog.tf.models.bert as modeling
 
 
 def init_from_checkpoint(init_checkpoint):
