@@ -89,8 +89,6 @@ python -m python.eukg.data.embed \
   --batch_size=32
 
 
-python -m python.eukg.data.top_k \
-  --ctxt2id_file='/users/rmm120030/working/kge_ner/info/medmentions_mentions.json' \
-  --out_file='/users/rmm120030/working/kge_ner/info/medmentions_mentions_top_k.npz' \
+python -m python.eukg.data.top_k_gpu \
   --batch_size=8
 

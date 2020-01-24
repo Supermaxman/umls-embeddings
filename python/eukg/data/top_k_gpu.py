@@ -38,15 +38,16 @@ def top_k():
 
   with tf.Graph().as_default(), tf.Session(config=gpu_config) as session:
     # [len(embs), 50]
-    embeddings = tf.Variable(embs)
-    mentions = tf.Variable(ment)
+    embeddings = tf.constant(embs)
+    mentions = tf.constant(ment)
 
-    data = tf.data.Dataset.from_tensor_slices((mention_ids, mentions))
+    data = tf.data.Dataset.from_tensor_slices((mention_ids,))
     data = data.batch(batch_size=config.batch_size)
     data = data.prefetch(buffer_size=1)
     iterator = data.make_one_shot_iterator()
     # bsize, [bsize, 50]
-    b_mention_id, b_mention = iterator.get_next()
+    b_mention_id = iterator.get_next()
+    b_mention = tf.nn.embedding_lookup(mentions, b_mention_id)
     # [bsize, 1, 50] + [1, e, 50]
     diff = tf.expand_dims(b_mention, axis=1) - tf.expand_dims(embeddings, axis=0)
     # [bsize, e]
@@ -77,6 +78,11 @@ def top_k():
     except tf.errors.OutOfRangeError:
       pass
 
+  seen_count = int(seen_concepts.astype(np.int32).sum())
+  total_count = len(seen_concepts)
+  print(f'Seen mentions: {seen_count}/{total_count}')
+  assert seen_count == total_count, 'Not all mentions have been seen!'
+  print('Saving results...')
   np.savez_compressed(
     config.out_file,
     distances=distances,
