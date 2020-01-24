@@ -57,7 +57,7 @@ def top_k():
       dists,
       axis=-1,
       direction='ASCENDING'
-    )[:, k]
+    )[:, :k]
     # [bsize, k]
     top_k_dists = tf.gather(
       tf.expand_dims(dists, axis=-1),
