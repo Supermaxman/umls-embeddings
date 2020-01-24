@@ -8,7 +8,7 @@ from sklearn.neighbors import NearestNeighbors
 def top_k():
   parser = argparse.ArgumentParser()
   parser.add_argument('--emb_path', default='/users/rmm120030/working/kge_ner/info/max/embeddings.npz')
-  parser.add_argument('--ment_path', default='/users/rmm120030/working/kge_ner/info/medmentions_mentions.npz')
+  parser.add_argument('--mention_path', default='/users/rmm120030/working/kge_ner/info/medmentions_mentions.npz')
   parser.add_argument('--out_file', default='/users/rmm120030/working/kge_ner/info/knn-emb.npz')
   parser.add_argument('--k', default=100, type=int)
   config = parser.parse_args()
