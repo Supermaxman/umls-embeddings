@@ -57,21 +57,26 @@ def top_k():
     dists = tf.reduce_sum(diff * diff, axis=-1)
     print(dists.get_shape())
 
-    # [bsize, k]
-    dist_top_k = tf.argsort(
-      dists,
-      axis=-1,
-      direction='ASCENDING'
-    )[:, :k]
-    print(dist_top_k.get_shape())
-
-    # [bsize, k]
-    top_k_dists = tf.gather(
-      dists,
-      dist_top_k,
-      batch_dims=1,
-      axis=-1
+    top_k_dists, dist_top_k = tf.math.top_k(
+      -dists,
+      k=k,
+      sorted=True
     )
+    top_k_dists = -top_k_dists
+    # # [bsize, k]
+    # dist_top_k = tf.argsort(
+    #   dists,
+    #   axis=-1,
+    #   direction='ASCENDING'
+    # )[:, :k]
+    #   # [bsize, k]
+    # top_k_dists = tf.gather(
+    #   dists,
+    #   dist_top_k,
+    #   batch_dims=1,
+    #   axis=-1
+    # )
+    print(dist_top_k.get_shape())
     print(top_k_dists.get_shape())
 
     seen_concepts = np.zeros(len(ment), dtype=np.bool)
