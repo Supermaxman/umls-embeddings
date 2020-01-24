@@ -45,19 +45,26 @@ def top_k():
     data = data.batch(batch_size=config.batch_size)
     data = data.prefetch(buffer_size=1)
     iterator = data.make_one_shot_iterator()
-    # bsize, [bsize, 50]
+    # bsize
     b_mention_id = iterator.get_next()
+    # [bsize, 50]
     b_mention = tf.nn.embedding_lookup(mentions, b_mention_id)
-    # [bsize, 1, 50] + [1, e, 50]
+    print(b_mention.get_shape())
+    # [bsize, 1, 50] - [1, e, 50]
     diff = tf.expand_dims(b_mention, axis=1) - tf.expand_dims(embeddings, axis=0)
+    print(diff.get_shape())
     # [bsize, e]
     dists = tf.reduce_sum(diff * diff, axis=-1)
+    print(dists.get_shape())
+
     # [bsize, k]
     dist_top_k = tf.argsort(
       dists,
       axis=-1,
       direction='ASCENDING'
     )[:, :k]
+    print(dist_top_k.get_shape())
+
     # [bsize, k]
     top_k_dists = tf.gather(
       dists,
@@ -65,6 +72,7 @@ def top_k():
       batch_dims=1,
       axis=-1
     )
+    print(top_k_dists.get_shape())
 
     seen_concepts = np.zeros(len(ment), dtype=np.bool)
     pbar = tqdm(total=len(ment))
