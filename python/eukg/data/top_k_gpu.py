@@ -60,10 +60,10 @@ def top_k():
     )[:, :k]
     # [bsize, k]
     top_k_dists = tf.gather(
-      tf.expand_dims(dists, axis=-1),
+      dists,
       dist_top_k,
       batch_dims=1
-    )[:, :, 0]
+    )
 
     seen_concepts = np.zeros(len(ment), dtype=np.bool)
     pbar = tqdm(total=len(ment))
