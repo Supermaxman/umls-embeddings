@@ -22,7 +22,7 @@ def top_k():
   print(f'Total embs: {len(embs)}')
   print(f'Total ments: {len(ment)}')
   print(f'Running KNN...')
-  knn = NearestNeighbors(n_neighbors=k, metric='l2')
+  knn = NearestNeighbors(n_neighbors=k, metric='l2', n_jobs=10)
   knn.fit(embs)
   print(f'Querying KNN...')
   distances, candidates = knn.kneighbors(ment, n_neighbors=k)
