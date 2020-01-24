@@ -81,4 +81,15 @@ python -m python.eukg.data.embed_rels \
 python -m python.eukg.data.embed \
   --ctxt2id_file='/users/rmm120030/working/kge_ner/model/medmentions/pm_bilstm/test/text2id.json' \
   --out_file='/users/rmm120030/working/kge_ner/model/medmentions/pm_bilstm/test/text_embeddings.npz' \
-  --batch_size=16
+  --batch_size=32
+
+python -m python.eukg.data.embed \
+  --ctxt2id_file='/users/rmm120030/working/kge_ner/model/medmentions/pm_bilstm/dev/text2id.json' \
+  --out_file='/users/rmm120030/working/kge_ner/model/medmentions/pm_bilstm/dev/text_embeddings2.npz' \
+  --batch_size=32
+
+
+python -m python.eukg.data.top_k \
+  --ctxt2id_file='/users/rmm120030/working/kge_ner/info/medmentions_mentions.json' \
+  --out_file='/users/rmm120030/working/kge_ner/info/medmentions_mentions_top_k.npz' \
+  --batch_size=8
