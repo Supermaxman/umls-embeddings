@@ -46,7 +46,7 @@ def top_k():
     data = data.prefetch(buffer_size=1)
     iterator = data.make_one_shot_iterator()
     # bsize
-    b_mention_id = iterator.get_next()
+    b_mention_id = iterator.get_next()[0]
     # [bsize, 50]
     b_mention = tf.nn.embedding_lookup(mentions, b_mention_id)
     print(b_mention.get_shape())
