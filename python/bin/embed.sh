@@ -89,6 +89,6 @@ python -m python.eukg.data.embed \
   --batch_size=32
 
 
-python -m python.eukg.data.top_k_gpu \
-  --batch_size=8
 
+python -m python.eukg.data.top_k_gpu \
+  --batch_size=1

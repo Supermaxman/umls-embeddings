@@ -62,7 +62,8 @@ def top_k():
     top_k_dists = tf.gather(
       dists,
       dist_top_k,
-      batch_dims=1
+      batch_dims=1,
+      axis=-1
     )
 
     seen_concepts = np.zeros(len(ment), dtype=np.bool)
