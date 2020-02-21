@@ -34,7 +34,7 @@ PPA: 0.9829
 
 # ppa gan-ace-50
 PPA: 0.9858
-
+93.0
 
 
 # transd-dm-gan-joint-ace-20

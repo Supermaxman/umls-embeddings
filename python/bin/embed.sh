@@ -92,3 +92,9 @@ python -m python.eukg.data.embed \
 
 python -m python.eukg.data.top_k_gpu \
   --batch_size=1
+
+
+python -m python.eukg.data.embed \
+  --ctxt2id_file='/users/max/data/corpora/nary-rel/tf-0/ctxt2id.json' \
+  --out_file='/users/max/data/corpora/nary-rel/tf-0/transd-dm-gan-joint-ace-20-embeddings.npz' \
+  --batch_size=16
