@@ -76,9 +76,9 @@ tf.flags.DEFINE_string("encoder_checkpoint",
                        "Checkpoint path for embedding encoder network. Start with bert pre-trained.")
 
 
-tf.flags.DEFINE_string("bert_config", '/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_config.json',
+tf.flags.DEFINE_string("bert_config", '/users/max/data/models/bert/ncbi_pubmed_mimic_uncased_base/bert_config.json',
                        "Config path for pre-trained bert model.")
-tf.flags.DEFINE_string("bert_vocab", '/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_vocab.txt',
+tf.flags.DEFINE_string("bert_vocab", '/users/max/data/models/bert/uncased_L-12_H-768_A-12/vocab.txt',
                        "Vocab path for pre-trained bert model.")
 tf.flags.DEFINE_integer("lm_encoder_size", 768, "Language model encoding size.")
 tf.flags.DEFINE_integer("num_workers", 2, "Number of workers for dataset feeding.")

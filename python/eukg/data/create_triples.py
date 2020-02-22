@@ -13,39 +13,46 @@ from .create_test_set import split
 from . import umls_reader
 from . import umls
 
-
-def pref_atom_filter(x):
-  # filter out non-english atoms
-  if x.lat not in {'ENG'}:
-    return False
-  # TODO determine best way to filter atoms out
-  # Ignore atoms with supress flag
-  if x.suppress in {'O'}:
-    return False
-  # Ignore non-ts preferred atoms
-  if x.ts not in {'P'}:
-    return False
-  # Ignore non-stt preferred atoms
-  if x.stt not in {'PF'}:
-    return False
-  # Ignore non-ispref atoms
-  if x.ispref not in {'Y'}:
-    return False
-  return True
+import scispacy
+import spacy
 
 
-def tokenize_concept(cui, umls_atoms, umls_defs, umls_contexts, tokenize):
-  # TODO do this in a different way.
-  assert len(umls_atoms) > 0, f'No atom found for concept {cui}!'
-  primary_atom = umls_atoms[0]
-  tokens, token_ids = tokenize(primary_atom.string)
-  return token_ids
+class ConceptExample:
+  def __init__(self, cid, cui):
+    self.cid = cid
+    self.cui = cui
+    self.p_atom_tokens = None
+    self.s_atom_tokens = []
+
+  def to_dict(self):
+    dict = {
+      'cid': self.cid,
+      'cui': self.cui,
+      'p_atom_tokens': self.p_atom_tokens,
+      's_atom_tokens': self.s_atom_tokens
+    }
+    return dict
+
+  def to_json(self):
+    return json.dumps(self.to_dict())
 
 
-# def tokenize_rel(umls_rela, umls_rel_defs, tokenize):
-#   rela_text = ' '.join(umls_rela.strip().split('_'))
-#   _, token_ids = tokenize(rela_text)
-#   return token_ids
+class RelationTypeExample:
+  def __init__(self, rid, rel_cui):
+    self.rid = rid
+    self.rel_cui = rel_cui
+    self.rel_tokens = None
+
+  def to_dict(self):
+    dict = {
+      'rid': self.rid,
+      'rel_cui': self.rel_cui,
+      'rel_tokens': self.rel_tokens
+    }
+    return dict
+
+  def to_json(self):
+    return json.dumps(self.to_dict())
 
 
 def load_rel_merge_mapping(filepath):
@@ -55,6 +62,7 @@ def load_rel_merge_mapping(filepath):
       s, t = line.strip().split(',')
       rel_merge_mapping[s] = t
   return rel_merge_mapping
+
 
 def load_rela_mapping(filepath):
   rela_mapping = {}
@@ -97,9 +105,7 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
 
   valid_rel_cuis = set(rel_merge_mapping.keys())
 
-  # TODO read in atoms other than only preferred.
   languages = {'ENG'}
-  suppresses = {'O'}
   tses = {'P'}
   pfes = {'PF'}
   isprefs = {'Y'}
@@ -171,15 +177,17 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
       conc2id[conc] = cid
     return cid
 
+  nlp = spacy.load('en_core_sci_sm', disable=['tagger', 'parser', 'ner', 'textcat'])
+
   def tokenize(text):
     tokens = []
     token_ids = []
-    # TODO simple whitespace tokenize, can do something more complicated later
-    w_tokens = text.strip().lower().split()
+    doc = nlp(text.strip())
+    # w_tokens = text.strip().lower().split()
     tokens.append('[CLS]')
     token_ids.append(vocab['[CLS]'])
-    for w_t in w_tokens:
-      wpt_tokens = tokenizer.tokenize(w_t)
+    for w_t in doc:
+      wpt_tokens = tokenizer.tokenize(w_t.string.lower())
       for wpt_t in wpt_tokens:
         tokens.append(wpt_t)
         token_ids.append(vocab[wpt_t])
@@ -188,29 +196,22 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
     token_ids.append(vocab['[SEP]'])
     return tokens, token_ids
 
-  umls_defs = defaultdict(list)
-  umls_contexts = defaultdict(list)
-  rel_defs = defaultdict(list)
-  token_data = {}
-
   rel_iter = umls_reader.read_umls(
     rrf_file,
     umls.UmlsRelation,
     umls_filter=umls_rel_filter
   )
   rel_count = 0
-  # total_matching_rel_count = 11391463
+
   total_matching_rel_count = 12833112
+  relation_types = {}
   # now get all rels which match our requirements and also have atoms.
   for rel in tqdm(rel_iter, desc="reading", total=total_matching_rel_count):
-    # TODO make sure this is the direction we want these relations to go
-    # TODO saw cui2 rela cui1 in documentation
-    # TODO make sure we only want named relations (rela is not empty)
-    # TODO consider flipping this to cui2 rela cui1 as per documentation.
     sid = add_concept(rel.cui1)
     rel_cui = rel_merge_mapping[f'{rel.rel}:{rel.rela}']
     rid = add_concept(rel_cui)
-    if rid not in token_data:
+    if rel_cui not in relation_types:
+      relation_types[rel_cui] = RelationTypeExample(rid, rel_cui)
       cui_rel, cui_rela = rel_cui.split(':')
       # if there is no rela then we use rel text
       if cui_rela == '':
@@ -221,36 +222,34 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
           print(f'rela {cui_rela} not found in text mapping, defaulting to {rela_mapping[cui_rela]}.')
         rel_text = rela_mapping[cui_rela]
       _, t_ids = tokenize(rel_text)
-      token_data[rid] = (t_ids, len(t_ids))
+      rt = relation_types[rel_cui]
+      rt.rel_tokens = t_ids
+
     oid = add_concept(rel.cui2)
     triples.add((sid, rid, oid))
     rel_count += 1
   print(f'Matching rel count: {rel_count}')
-  print(f'{len(token_data)} tokenized')
-  print(f'{max(token_data.keys())} max id')
+  print(f'{len(relation_types)} tokenized')
+
+  def is_preferred(x):
+    return x.ts in tses and x.stt in pfes and x.ispref in isprefs
+
+  seen_concept_strings = defaultdict(set)
 
   def umls_atom_filter(x):
     # filter out non-english atoms
     # TODO allow other language atoms?
     if x.lat not in languages:
       return False
-    # TODO determine best way to filter atoms out
-    # Ignore atoms with suppress flag
-    # if x.suppress in suppresses:
-    #   return False
-    # Ignore non-ts preferred atoms
-    if x.ts not in tses:
-      return False
-    # Ignore non-stt preferred atoms
-    if x.stt not in pfes:
-      return False
-    # Ignore non-ispref atoms
-    if x.ispref not in isprefs:
-      return False
     # ignore atoms for concepts of which there are no relations.
     if x.cui not in conc2id:
       return False
-    return True
+    # always keep preferred atom
+    # skip duplicate strings
+    if is_preferred(x) or x.string.lower() not in seen_concept_strings[x.cui]:
+      seen_concept_strings[x.cui].add(x.string.lower())
+      return True
+    return False
 
   print(f'Reading umls atoms...')
   atom_iter = umls_reader.read_umls(
@@ -259,50 +258,71 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
       umls_filter=umls_atom_filter
   )
   atom_count = 0
-  # total_matching_atom_count = 1563246
+  # TODO change with new atoms
+  # total_matching_atom_count = 3210782
   total_matching_atom_count = 3210782
+  concepts = {}
   # finally, get atoms for only concepts which we have relations for.
   for atom in tqdm(atom_iter, desc="reading", total=total_matching_atom_count):
     cid = conc2id[atom.cui]
-    # TODO make sure priority atom is first.
-    if cid not in token_data:
-      _, t_ids = tokenize(atom.string)
-      token_data[cid] = (t_ids, len(t_ids))
+
+    _, t_ids = tokenize(atom.string)
+    if atom.cui not in concepts:
+      concepts[atom.cui] = ConceptExample(cid, atom.cui)
+    c = concepts[atom.cui]
+    if is_preferred(atom):
+      c.p_atom_tokens = t_ids
+    else:
+      c.s_atom_tokens.append(t_ids)
     atom_count += 1
 
   print(f'Read {atom_count} atoms.')
-  print(f'{len(token_data)} tokenized')
-  print(f'{max(token_data.keys())} max id')
-  tokenized_count = len(token_data)
-  max_token_idx = max(token_data.keys())
-  assert tokenized_count == max_token_idx + 1, \
-    f'token_data not densely packed! len={tokenized_count} vs max={max_token_idx}'
+  print(f'{len(concepts)} concepts')
 
-  token_lengths = np.array([t_l for cid, (t_ids, t_l) in token_data.items()], dtype=np.int32)
-  min_token_count = np.min(token_lengths)
-  max_token_count = np.max(token_lengths)
-  avg_token_count = np.mean(token_lengths)
-  percentile_token_count = np.percentile(token_lengths, 95)
-  # 3
-  print(f'Min token counts: {min_token_count}')
-  # 1189
-  print(f'Max token counts: {max_token_count}')
-  # 13.7
-  print(f'Avg token counts: {avg_token_count}')
-  # 27
-  print(f'95 Percentile token counts: {percentile_token_count}')
-  pad_count = int(np.ceil(percentile_token_count))
-  # p_tokens = {}
-  print('Padding tokens...')
-  token_ids = np.zeros([len(token_data), pad_count], dtype=np.int32)
-  for cid, (t_ids, t_l) in token_data.items():
-    if t_l > pad_count:
-      token_ids[cid] = t_ids[:pad_count]
-    elif t_l < pad_count:
-      token_ids[cid] = t_ids + [0] * (pad_count - t_l)
-    else:
-      token_ids[cid] = t_ids
-  del token_data
+  entity_dir = os.path.join(output_dir, 'entities')
+  if not os.path.exists(entity_dir):
+    os.mkdir(entity_dir)
+  print('Writing relation types to json...')
+  for rui, rt in relation_types.items():
+    rt_str = rt.to_json()
+    rt_file = os.path.join(entity_dir, f'{rt.rid}.json')
+    with open(rt_file, 'w') as f:
+      f.write(rt_str)
+
+  print('Writing concepts to json...')
+  for cui, c in concepts.items():
+    c_str = c.to_json()
+    c_file = os.path.join(entity_dir, f'{c.cid}.json')
+    with open(c_file, 'w') as f:
+      f.write(c_str)
+
+
+  # token_lengths = np.array([t_l for cid, (t_ids, t_l) in token_data.items()], dtype=np.int32)
+  # min_token_count = np.min(token_lengths)
+  # max_token_count = np.max(token_lengths)
+  # avg_token_count = np.mean(token_lengths)
+  # percentile_token_count = np.percentile(token_lengths, 95)
+  # # 3
+  # print(f'Min token counts: {min_token_count}')
+  # # 1189
+  # print(f'Max token counts: {max_token_count}')
+  # # 13.7
+  # print(f'Avg token counts: {avg_token_count}')
+  # # 27
+  # print(f'95 Percentile token counts: {percentile_token_count}')
+  # pad_count = int(np.ceil(percentile_token_count))
+  # # p_tokens = {}
+  # print('Padding tokens...')
+  # token_ids = np.zeros([len(token_data), pad_count], dtype=np.int32)
+  # for cid, (t_ids, t_l) in token_data.items():
+  #   if t_l > pad_count:
+  #     token_ids[cid] = t_ids[:pad_count]
+  #   elif t_l < pad_count:
+  #     token_ids[cid] = t_ids + [0] * (pad_count - t_l)
+  #   else:
+  #     token_ids[cid] = t_ids
+  # del token_data
+
   subjs, rels, objs = zip(*triples)
   snp = np.asarray(subjs, dtype=np.int32)
   rnp = np.asarray(rels, dtype=np.int32)
@@ -318,17 +338,13 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
   print('Saving dicts...')
   with open(os.path.join(output_dir, 'name2id.json'), 'w+') as f:
     json.dump(conc2id, f, indent=2)
-  with open(os.path.join(output_dir, 'concept_vocab.json'), 'w+') as f:
-    json.dump(concepts, f, indent=2)
-  with open(os.path.join(output_dir, 'relation_vocab.json'), 'w+') as f:
-    json.dump(relations, f, indent=2)
 
-  print('Saving tokens...')
-  np.savez_compressed(
-    os.path.join(output_dir, 'id2tokens.npz'),
-    token_ids=token_ids,
-    token_lengths=token_lengths
-  )
+  # print('Saving tokens...')
+  # np.savez_compressed(
+  #   os.path.join(output_dir, 'id2tokens.npz'),
+  #   token_ids=token_ids,
+  #   token_lengths=token_lengths
+  # )
   print('Done!')
 
 

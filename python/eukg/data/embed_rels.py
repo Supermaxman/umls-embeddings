@@ -8,6 +8,8 @@ import hedgedog.nlp.wordpiece_tokenization as hgt
 
 
 from ..ace import load_ace
+import scispacy
+import spacy
 
 
 def embed():
@@ -21,15 +23,17 @@ def embed():
   vocab_file = '/shared/hltdir4/disk1/team/data/models/bert/uncased_L-24_H-1024_A-16/vocab.txt'
   vocab = hgt.load_vocab(vocab_file)
   tokenizer = hgt.WordpieceTokenizer(vocab)
+  nlp = spacy.load('en_core_sci_sm', disable=['tagger', 'parser', 'ner', 'textcat'])
+
   def tokenize(text):
     tokens = []
     token_ids = []
-    # TODO simple whitespace tokenize, can do something more complicated later
-    w_tokens = text.strip().lower().split()
+    doc = nlp(text.strip())
+    # w_tokens = text.strip().lower().split()
     tokens.append('[CLS]')
     token_ids.append(vocab['[CLS]'])
-    for w_t in w_tokens:
-      wpt_tokens = tokenizer.tokenize(w_t)
+    for w_t in doc:
+      wpt_tokens = tokenizer.tokenize(w_t.string.lower())
       for wpt_t in wpt_tokens:
         tokens.append(wpt_t)
         token_ids.append(vocab[wpt_t])
