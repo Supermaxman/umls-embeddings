@@ -17,21 +17,37 @@ import scispacy
 import spacy
 
 
+def is_preferred(x):
+  return x.ts == 'P' and x.stt == 'PF' and x.ispref == 'Y'
+
+
 class ConceptExample:
   def __init__(self, cid, cui):
     self.cid = cid
     self.cui = cui
-    self.p_atom_tokens = None
-    self.s_atom_tokens = []
+    self.p_atom_idx = None
+    self.atom_tokens = []
+    self.atom_lookup = {}
 
   def to_dict(self):
-    dict = {
+    d = {
       'cid': self.cid,
       'cui': self.cui,
-      'p_atom_tokens': self.p_atom_tokens,
-      's_atom_tokens': self.s_atom_tokens
+      'p_atom_idx': self.p_atom_idx,
+      'atom_tokens': self.atom_tokens,
+      'atom_lookup': self.atom_lookup
     }
-    return dict
+    return d
+
+  def add_atom_string(self, atom):
+    a_str = atom.string.lower().strip()
+    added_atom = False
+    if a_str not in self.atom_lookup:
+      self.atom_lookup[a_str] = len(self.atom_lookup)
+      added_atom = True
+    if is_preferred(atom) and self.p_atom_idx is None:
+      self.p_atom_idx = self.atom_lookup[a_str]
+    return added_atom
 
   def to_json(self):
     return json.dumps(self.to_dict())
@@ -104,32 +120,16 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
   tokenizer = hgt.WordpieceTokenizer(vocab)
 
   valid_rel_cuis = set(rel_merge_mapping.keys())
-
   languages = {'ENG'}
-  tses = {'P'}
-  pfes = {'PF'}
-  isprefs = {'Y'}
-
   print(f'Reading umls concepts...')
   def umls_concept_filter(x):
     # filter out non-english atoms
-    # TODO allow other language atoms?
     if x.lat not in languages:
       return False
-    # TODO determine best way to filter atoms out
-    # Ignore atoms with suppress flag
-    # if x.suppress in suppresses:
-    #   return False
-    # Ignore non-ts preferred atoms
-    if x.ts not in tses:
-      return False
-    # Ignore non-stt preferred atoms
-    if x.stt not in pfes:
-      return False
-    # Ignore non-ispref atoms
-    if x.ispref not in isprefs:
-      return False
-    return True
+    # Ignore non-preferred atoms
+    if is_preferred(x):
+      return True
+    return False
   concept_iter = umls_reader.read_umls(
     conso_file,
     umls.UmlsAtom,
@@ -231,11 +231,6 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
   print(f'Matching rel count: {rel_count}')
   print(f'{len(relation_types)} tokenized')
 
-  def is_preferred(x):
-    return x.ts in tses and x.stt in pfes and x.ispref in isprefs
-
-  seen_concept_strings = defaultdict(set)
-
   def umls_atom_filter(x):
     # filter out non-english atoms
     # TODO allow other language atoms?
@@ -244,12 +239,7 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
     # ignore atoms for concepts of which there are no relations.
     if x.cui not in conc2id:
       return False
-    # always keep preferred atom
-    # skip duplicate strings
-    if is_preferred(x) or x.string.lower() not in seen_concept_strings[x.cui]:
-      seen_concept_strings[x.cui].add(x.string.lower())
-      return True
-    return False
+    return True
 
   print(f'Reading umls atoms...')
   atom_iter = umls_reader.read_umls(
@@ -258,22 +248,18 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
       umls_filter=umls_atom_filter
   )
   atom_count = 0
-  # TODO change with new atoms
-  # total_matching_atom_count = 3210782
-  total_matching_atom_count = 3210782
+  total_matching_atom_count = 6873557
   concepts = {}
+
   # finally, get atoms for only concepts which we have relations for.
   for atom in tqdm(atom_iter, desc="reading", total=total_matching_atom_count):
     cid = conc2id[atom.cui]
-
-    _, t_ids = tokenize(atom.string)
     if atom.cui not in concepts:
       concepts[atom.cui] = ConceptExample(cid, atom.cui)
     c = concepts[atom.cui]
-    if is_preferred(atom):
-      c.p_atom_tokens = t_ids
-    else:
-      c.s_atom_tokens.append(t_ids)
+    if c.add_atom_string(atom):
+      _, t_ids = tokenize(atom.string)
+      c.atom_tokens.append(t_ids)
     atom_count += 1
 
   print(f'Read {atom_count} atoms.')
@@ -283,14 +269,14 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
   if not os.path.exists(entity_dir):
     os.mkdir(entity_dir)
   print('Writing relation types to json...')
-  for rui, rt in relation_types.items():
+  for rui, rt in tqdm(relation_types.items(), desc="writing", total=len(relation_types)):
     rt_str = rt.to_json()
     rt_file = os.path.join(entity_dir, f'{rt.rid}.json')
     with open(rt_file, 'w') as f:
       f.write(rt_str)
 
   print('Writing concepts to json...')
-  for cui, c in concepts.items():
+  for cui, c in tqdm(concepts.items(), desc="writing", total=len(concepts)):
     c_str = c.to_json()
     c_file = os.path.join(entity_dir, f'{c.cid}.json')
     with open(c_file, 'w') as f:
