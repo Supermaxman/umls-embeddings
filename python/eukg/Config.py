@@ -72,7 +72,7 @@ tf.flags.DEFINE_bool("ace_model", False, "Train Atom Concept Embedding model whe
                                         "of the atoms and relation tokens.")
 
 tf.flags.DEFINE_string("encoder_checkpoint",
-                       None, #'/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_model.ckpt'
+                       '/users/max/data/models/bert/ncbi_pubmed_mimic_uncased_base/bert_model.ckpt', #'/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_model.ckpt'
                        "Checkpoint path for embedding encoder network. Start with bert pre-trained.")
 
 
