@@ -401,15 +401,17 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
     print('Creating concept lm embeddings...')
     for cui, c in tqdm(concepts.items(), desc="calculating", total=len(concepts)):
       nrof_atoms = len(c.atom_tokens)
-      token_ids = np.zeros([nrof_atoms, atom_token_pad], dtype=np.int32)
+      max_token_length = max([len(x) for x in c.atom_tokens])
+      concept_token_pad = min(max_token_length, atom_token_pad)
+      token_ids = np.zeros([nrof_atoms, concept_token_pad], dtype=np.int32)
       token_lengths = np.zeros([nrof_atoms], dtype=np.int32)
       for a_id, t_ids in enumerate(c.atom_tokens):
         t_l = len(t_ids)
-        if t_l > atom_token_pad:
-          token_ids[a_id] = t_ids[:atom_token_pad]
-          token_lengths[a_id] = atom_token_pad
-        elif t_l < atom_token_pad:
-          token_ids[a_id] = t_ids + [0] * (atom_token_pad - t_l)
+        if t_l > concept_token_pad:
+          token_ids[a_id] = t_ids[:concept_token_pad]
+          token_lengths[a_id] = concept_token_pad
+        elif t_l < concept_token_pad:
+          token_ids[a_id] = t_ids + [0] * (concept_token_pad - t_l)
           token_lengths[a_id] = t_l
         else:
           token_ids[a_id] = t_ids
@@ -427,19 +429,23 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
           entity_token_lengths: token_lengths
         }
       )
+      lm_emb_size = token_embeddings.shape[2]
       c_file = os.path.join(lm_concept_embeddings_dir, f'{c.cid}.tfexample')
       feature = {
         'lm_embeddings': tf.train.Feature(
           float_list=tf.train.FloatList(
             value=np.reshape(
               token_embeddings,
-              token_embeddings.shape[0] * token_embeddings.shape[1] * token_embeddings.shape[2]
+              nrof_atoms * concept_token_pad * lm_emb_size
             )
           )
         ),
         'token_lengths': tf.train.Feature(int64_list=tf.train.Int64List(value=token_lengths)),
         'entity_id': _int64_feature(c.cid),
-        'nrof_atoms': _int64_feature(nrof_atoms)
+        'nrof_atoms': _int64_feature(nrof_atoms),
+        'concept_token_pad': _int64_feature(concept_token_pad),
+        'lm_emb_size': _int64_feature(lm_emb_size),
+        'p_atom_idx': _int64_feature(c.p_atom_idx)
       }
       with open(c_file, 'wb') as f:
         example_proto_str = tf.train.Example(
