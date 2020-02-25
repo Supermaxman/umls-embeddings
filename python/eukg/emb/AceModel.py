@@ -9,8 +9,8 @@ class ACEModel(object):
     try:
       self.encoder_rnn_type = config.encoder_rnn_type.lower()
     except AttributeError:
-      print('No encoder rnn specified, defaulting to gru')
-      self.encoder_rnn_type = 'gru'
+      print('No encoder rnn specified, defaulting to lstm')
+      self.encoder_rnn_type = 'lstm'
 
   def encode(self, encoder_seq_out, token_lengths, emb_type):
     assert emb_type is not None

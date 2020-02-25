@@ -99,15 +99,16 @@ class DisGen(BaseModel):
 
     self._build_embeddings()
 
-    g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj = self._un_flatten_gen(self.g_e_concepts)
+    g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj, g_e_s_subj, g_e_s_obj = self._un_flatten_gen(self.g_e_concepts)
     uniform_sampls = tf.random.uniform([self.bsize, 1], maxval=tf.cast(self.nsamples, tf.int64), dtype=tf.int64)
-    d_e_neg_subj, d_e_neg_obj, d_e_pos_subj, d_e_pos_obj = self._un_flatten_dis(self.d_e_concepts, uniform_sampls)
+    d_e_neg_subj, d_e_neg_obj, d_e_pos_subj, d_e_pos_obj, d_e_s_subj, d_e_s_obj = self._un_flatten_dis(self.d_e_concepts, uniform_sampls)
 
     print(f'd_e_neg_subj:{d_e_neg_subj[0].get_shape()}')
     print(f'd_e_neg_obj:{d_e_neg_obj[0].get_shape()}')
     print(f'd_e_pos_subj:{d_e_pos_subj[0].get_shape()}')
     print(f'd_e_pos_obj:{d_e_pos_obj[0].get_shape()}')
-    print(f'd_e_rels:{self.d_e_rels[0].get_shape()}')
+    print(f'd_e_s_subj:{d_e_s_subj[0].get_shape()}')
+    print(f'd_e_s_obj:{d_e_s_obj[0].get_shape()}')
 
     self.concept_embeddings = self.d_e_concepts
     self.relation_embeddings = self.d_e_rels
@@ -235,15 +236,23 @@ class DisGen(BaseModel):
     self.nsubjs_embs = self.data_generator.nsubjs_embs
     self.nobjs_embs = self.data_generator.nobjs_embs
 
+    self.s_subjs_emb = self.data_generator.s_subjs_emb
+    self.s_objs_emb = self.data_generator.s_objs_emb
+
     self.subjs_lengths = self.data_generator.subjs_lengths
     self.rels_lengths = self.data_generator.rels_lengths
     self.objs_lengths = self.data_generator.objs_lengths
     self.nsubjs_lengths = self.data_generator.nsubjs_lengths
     self.nobjs_lengths = self.data_generator.nobjs_lengths
 
+    self.s_subjs_lengths = self.data_generator.s_subjs_lengths
+    self.s_objs_lengths = self.data_generator.s_objs_lengths
+
     neg_shape = tf.shape(self.nsubjs_embs)
     self.bsize, self.nsamples, self.seq_len = neg_shape[0], neg_shape[1], neg_shape[2]
     self.total_neg_size = self.bsize * self.nsamples
+    self.s_nsamples = tf.shape(self.s_subjs_emb)[1]
+    self.total_s_size = self.bsize * self.s_nsamples
 
     # [bsize * num_samples]
     neg_subj_flat = tf.reshape(
@@ -258,10 +267,36 @@ class DisGen(BaseModel):
 
     neg_obj_length_flat = tf.reshape(self.nobjs_lengths, [self.total_neg_size], name='neg_obj_flat_len')
 
-    # [bsize * num_samples + bsize * num_samples + b_size + b_size, enc_size]
-    concept_embs = tf.concat([neg_subj_flat, neg_obj_flat, self.subjs_emb, self.objs_emb], axis=0)
-    concept_lengths = tf.concat([neg_subj_length_flat, neg_obj_length_flat, self.subjs_lengths, self.objs_lengths],
-                                axis=0)
+    s_subjs_flat = tf.reshape(
+      self.s_subjs_emb,
+      [self.total_s_size, self.data_generator.num_atom_samples, self.seq_len, self.lm_encoder_size]
+    )
+    s_objs_flat = tf.reshape(
+      self.s_objs_emb,
+      [self.total_s_size, self.data_generator.num_atom_samples, self.seq_len, self.lm_encoder_size]
+    )
+    s_subjs_lengths_flat = tf.reshape(self.s_subjs_lengths, [self.total_s_size])
+    s_objs_lengths_flat = tf.reshape(self.s_objs_lengths, [self.total_s_size])
+
+    # [bsize * num_samples + bsize * num_samples + b_size + b_size + 2 * b_size * num_atom_samples, enc_size]
+    concept_embs = tf.concat(
+      [neg_subj_flat,
+       neg_obj_flat,
+       self.subjs_emb,
+       self.objs_emb,
+       s_subjs_flat,
+       s_objs_flat],
+      axis=0
+    )
+    concept_lengths = tf.concat(
+      [neg_subj_length_flat,
+       neg_obj_length_flat,
+       self.subjs_lengths,
+       self.objs_lengths,
+       s_subjs_lengths_flat,
+       s_objs_lengths_flat],
+      axis=0
+    )
 
     concept_encodes = self.ace_model.encode(concept_embs, concept_lengths, 'concept')
     rel_encodes = self.ace_model.encode(self.rels_emb, self.rels_lengths, 'rel')
@@ -276,24 +311,42 @@ class DisGen(BaseModel):
   def _un_flatten_gen(self, e_concepts):
     emb_size = e_concepts.get_shape()[-1]
     # first bsize * num_samples
-    e_neg_subj = tf.reshape(e_concepts[:self.total_neg_size], [self.bsize, self.nsamples, emb_size])
+    e_neg_subj = tf.reshape(
+      e_concepts[:self.total_neg_size],
+      [self.bsize, self.nsamples, emb_size]
+    )
     # second bsize * num_samples
-    e_neg_obj = tf.reshape(e_concepts[self.total_neg_size:2 * self.total_neg_size],
-                           [self.bsize, self.nsamples, emb_size])
+    e_neg_obj = tf.reshape(
+      e_concepts[self.total_neg_size:2 * self.total_neg_size],
+      [self.bsize, self.nsamples, emb_size]
+    )
+    pos_subj_start = 2 * self.total_neg_size
     # bsize
-    e_pos_subj = e_concepts[2 * self.total_neg_size:2 * self.total_neg_size + self.bsize]
+    e_pos_subj = e_concepts[pos_subj_start:pos_subj_start + self.bsize]
     # bsize
-    e_pos_obj = e_concepts[2 * self.total_neg_size + self.bsize:]
+    e_pos_obj = e_concepts[pos_subj_start + self.bsize:pos_subj_start + 2 * self.bsize]
 
-    return e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj
+    s_subj_start = 2 * self.total_neg_size + 2 * self.bsize
+    # first bsize * num_samples
+    e_s_subj = tf.reshape(
+      e_concepts[s_subj_start:s_subj_start + self.total_s_size],
+      [self.bsize, self.s_nsamples, emb_size]
+    )
+    # second bsize * num_samples
+    e_s_obj = tf.reshape(
+      e_concepts[s_subj_start + self.total_s_size:s_subj_start + 2 * self.total_s_size],
+      [self.bsize, self.s_nsamples, emb_size]
+    )
+
+    return e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj, e_s_subj, e_s_obj
 
   def _un_flatten_dis(self, e_concepts, g_sampls=None):
     if g_sampls is None:
       g_sampls = tf.zeros(shape=[self.bsize, 1], dtype=tf.int64)
     if isinstance(e_concepts, tuple):
       e_concepts, e_concepts_proj = e_concepts
-      e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj = self._un_flatten_gen(e_concepts)
-      e_neg_subj_proj, e_neg_obj_proj, e_pos_subj_proj, e_pos_obj_proj = self._un_flatten_gen(e_concepts_proj)
+      e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj, e_s_subj, e_s_obj = self._un_flatten_gen(e_concepts)
+      e_neg_subj_proj, e_neg_obj_proj, e_pos_subj_proj, e_pos_obj_proj, e_s_subj_proj, e_s_obj_proj = self._un_flatten_gen(e_concepts_proj)
       # only take first negative sample for discriminator loss
       e_neg_subj = tf.gather(e_neg_subj, g_sampls, batch_dims=1, axis=1)[:, 0]
       e_neg_subj_proj = tf.gather(e_neg_subj_proj, g_sampls, batch_dims=1, axis=1)[:, 0]
@@ -305,11 +358,11 @@ class DisGen(BaseModel):
       e_pos_subj = e_pos_subj, e_pos_subj_proj
       e_pos_obj = e_pos_obj, e_pos_obj_proj
     else:
-      e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj = self._un_flatten_gen(e_concepts)
+      e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj, e_s_subj, e_s_obj = self._un_flatten_gen(e_concepts)
       e_neg_subj = tf.gather(e_neg_subj, g_sampls, batch_dims=1, axis=1)[:, 0]
       e_neg_obj = tf.gather(e_neg_obj, g_sampls, batch_dims=1, axis=1)[:, 0]
 
-    return e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj
+    return e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj, e_s_subj, e_s_obj
 
   def fetches(self, is_training, verbose=False):
     fetches = [self.summary, self.loss]
@@ -349,10 +402,10 @@ class DisGenGan(DisGen):
 
     self._build_embeddings()
 
-    g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj = self._un_flatten_gen(self.g_e_concepts)
+    g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj, g_e_s_subj, g_e_s_obj = self._un_flatten_gen(self.g_e_concepts)
 
     uniform_sampls = tf.random.uniform([self.bsize, 1], maxval=tf.cast(self.nsamples, tf.int64), dtype=tf.int64)
-    d_e_neg_subj_uniform, d_e_neg_obj_uniform, _, _ = self._un_flatten_dis(self.d_e_concepts, uniform_sampls)
+    d_e_neg_subj_uniform, d_e_neg_obj_uniform, _, _, _, _ = self._un_flatten_dis(self.d_e_concepts, uniform_sampls)
 
     self.concept_embeddings = self.d_e_concepts
     self.relation_embeddings = self.d_e_rels
@@ -375,7 +428,7 @@ class DisGenGan(DisGen):
       )
 
     # This gets the negative subj and obj sampled from the generator along with the positive subj and obj
-    d_e_neg_subj, d_e_neg_obj, d_e_pos_subj, d_e_pos_obj = self._un_flatten_dis(self.d_e_concepts, self.g_sampls)
+    d_e_neg_subj, d_e_neg_obj, d_e_pos_subj, d_e_pos_obj, d_e_s_subj, d_e_s_obj = self._un_flatten_dis(self.d_e_concepts, self.g_sampls)
 
     with tf.variable_scope('dis_energy'):
       self.d_pos_energy = self.dis_embedding_model.energy(

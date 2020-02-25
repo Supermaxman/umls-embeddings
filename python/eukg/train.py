@@ -65,6 +65,7 @@ def train():
     config.batch_size,
     config.num_epochs,
     config.lm_encoder_size,
+    config.num_atom_samples,
     config.num_workers,
     config.buffer_size
   )
