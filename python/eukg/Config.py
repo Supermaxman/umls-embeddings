@@ -50,6 +50,7 @@ tf.flags.DEFINE_float("gamma", 0.1, "Margin parameter for loss")
 
 tf.flags.DEFINE_string("np_atom_loss_type", 'p_dist', "Loss type for non-preferred atom loss.")
 tf.flags.DEFINE_float("np_atom_loss_factor", 0.1, "Loss weight for non-preferred atom loss")
+tf.flags.DEFINE_integer("num_atom_samples", 1, "Number of non-preferred atoms to sample each batch.")
 
 tf.flags.DEFINE_integer("vocab_size", 1726933, "Number of unique concepts+relations")
 tf.flags.DEFINE_integer("embedding_size", 50, "embedding size")
@@ -85,7 +86,6 @@ tf.flags.DEFINE_string("bert_config", '/users/max/data/models/bert/ncbi_pubmed_m
 tf.flags.DEFINE_string("bert_vocab", '/users/max/data/models/bert/uncased_L-12_H-768_A-12/vocab.txt',
                        "Vocab path for pre-trained bert model.")
 tf.flags.DEFINE_integer("lm_encoder_size", 768, "Language model encoding size.")
-tf.flags.DEFINE_integer("num_atom_samples", 1, "Number of non-preferred atoms to sample each batch.")
 tf.flags.DEFINE_integer("num_workers", 2, "Number of workers for dataset feeding.")
 tf.flags.DEFINE_integer("buffer_size", 128, "Size of dataset feeding buffer.")
 
@@ -102,7 +102,6 @@ tf.flags.DEFINE_integer("nrof_queued_batches", 20, "Number of batches to queue u
 tf.flags.DEFINE_integer("nrof_queued_workers", 1, "Number of workers to queue up batches in another thread.")
 tf.flags.DEFINE_string("baseline_type", "avg_prev_batch", "Type of baseline for policy gradient update.")
 tf.flags.DEFINE_float("baseline_momentum", 0.9, "Momentum of baseline for policy gradient update.")
-
 
 
 flags = tf.flags.FLAGS

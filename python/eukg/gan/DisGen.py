@@ -218,6 +218,18 @@ class DisGen(BaseModel):
           pd_loss = tf.reduce_mean(pd_loss, axis=-1)
           pd_loss = tf.reduce_mean(pd_loss, axis=-1)
           return pd_loss
+      elif self.np_atom_loss_type == 'p_dist_symmetric':
+        def np_atom_loss(p_emb, np_emb):
+          p_emb = tf.expand_dims(tf.concat(p_emb, axis=-1), axis=1)
+          np_emb = tf.concat(np_emb, axis=-1)
+          # [bsize, s_nsample, e_dim]
+          p_np_diff = p_emb - np_emb
+          # [bsize, s_nsample]
+          pd_loss = tf.reduce_mean(p_np_diff * p_np_diff, axis=-1)
+          # [bsize]
+          pd_loss = tf.reduce_mean(pd_loss, axis=-1)
+          pd_loss = tf.reduce_mean(pd_loss, axis=-1)
+          return pd_loss
       else:
         raise ValueError(f'Unknown non-primary atom loss type: {self.np_atom_loss_type}')
 
