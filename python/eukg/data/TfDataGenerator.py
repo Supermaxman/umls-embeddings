@@ -158,7 +158,7 @@ class TfDataGenerator:
 
       max_atom_count = tf.maximum(obj_ex['nrof_atoms'], max_atom_count)
       max_token_length = tf.maximum(obj_ex['concept_token_pad'], max_token_length)
-      # [slen lm_size]
+      # [slen, lm_size]
       rt_ex['lm_embedding'] = tf.pad(
         rt_ex['lm_embedding'],
         paddings=[
@@ -166,6 +166,11 @@ class TfDataGenerator:
           [0, 0]
         ]
       )
+      rt_ex['lm_embedding'] = tf.reshape(
+        rt_ex['lm_embedding'],
+        [max_token_length, self.lm_encoder_size]
+      )
+
       # [atoms, slen, lm_size]
       subj_ex['lm_embeddings'] = tf.pad(
         subj_ex['lm_embeddings'],
@@ -174,6 +179,10 @@ class TfDataGenerator:
           [0, max_token_length-subj_ex['concept_token_pad']],
           [0, 0]
         ]
+      )
+      subj_ex['lm_embeddings'] = tf.reshape(
+        subj_ex['lm_embeddings'],
+        [max_atom_count, max_token_length, self.lm_encoder_size]
       )
       subj_ex['token_lengths'] = tf.pad(
         tf.sparse.to_dense(subj_ex['token_lengths']),
@@ -188,6 +197,10 @@ class TfDataGenerator:
           [0, max_token_length - obj_ex['concept_token_pad']],
           [0, 0]
         ]
+      )
+      obj_ex['lm_embeddings'] = tf.reshape(
+        obj_ex['lm_embeddings'],
+        [max_atom_count, max_token_length, self.lm_encoder_size]
       )
       obj_ex['token_lengths'] = tf.pad(
         tf.sparse.to_dense(obj_ex['token_lengths']),
@@ -282,10 +295,6 @@ class TfDataGenerator:
         axis=1
       )
       print(f's_lengths: {s_lengths.get_shape()}')
-
-      # TODO REMOVE IN FUTURE, JUST TESTING:
-      s_embs = tf.expand_dims(p_embs, axis=1)
-      s_lengths = tf.expand_dims(p_lengths, axis=1)
 
       return p_embs, p_lengths, s_embs, s_lengths
 
