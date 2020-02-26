@@ -361,7 +361,7 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=disgen \
 --model=transd-distmult \
---run_name=transd-dm-disgen-cake-ext-3 \
+--run_name=transd-dm-disgen-cake-ext-4 \
 --ace_model \
 --np_atom_loss_type='p_dist' \
 --np_atom_loss_factor=0.1 \
