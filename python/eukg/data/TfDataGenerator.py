@@ -222,7 +222,7 @@ class TfDataGenerator:
       # will be 1 for primary atom
       p_mask = tf.one_hot(
         p_idxs,
-        depth=lengths.get_shape()[1],
+        depth=tf.shape(lengths)[1],
         on_value=0.0,
         off_value=1.0,
         dtype=tf.float32
