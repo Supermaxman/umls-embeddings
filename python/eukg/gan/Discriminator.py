@@ -30,6 +30,8 @@ class BaseModel(Trainable):
     # self.embedding_size = config.embedding_size
     # self.vocab_size = config.vocab_size
     self.gamma = config.gamma
+    self.np_atom_loss_type = config.np_atom_loss_type.lower()
+    self.np_atom_loss_factor = config.np_atom_loss_factor
     self.embedding_device = config.embedding_device
     self.max_concepts_per_type = config.max_concepts_per_type
     # self.is_training = is_training

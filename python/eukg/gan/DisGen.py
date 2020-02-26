@@ -159,7 +159,6 @@ class DisGen(BaseModel):
 
     # regularization for distmult
     if self.g_model == "distmult":
-      # TODO use already computed embeddings here
       reg = self.regulatization_parameter * self.gen_embedding_model.regularization(
         [self.g_e_concepts],
         [self.g_e_rels]
@@ -207,15 +206,35 @@ class DisGen(BaseModel):
 
       self.d_accuracy = tf.reduce_mean(tf.to_float(tf.equal(self.d_predictions, 0)))
 
+      if self.np_atom_loss_type == 'p_dist':
+        def np_atom_loss(p_emb, np_emb):
+          p_emb = tf.expand_dims(tf.stop_gradient(tf.concat(p_emb, axis=-1)), axis=1)
+          np_emb = tf.concat(np_emb, axis=-1)
+          # [bsize, s_nsample, e_dim]
+          p_np_diff = p_emb - np_emb
+          # [bsize, s_nsample]
+          pd_loss = tf.reduce_mean(p_np_diff * p_np_diff, axis=-1)
+          # [bsize]
+          pd_loss = tf.reduce_mean(pd_loss, axis=-1)
+          pd_loss = tf.reduce_mean(pd_loss, axis=-1)
+          return pd_loss
+      else:
+        raise ValueError(f'Unknown non-primary atom loss type: {self.np_atom_loss_type}')
+
+      p_dist_subj_loss = np_atom_loss(d_e_pos_subj, d_e_s_subj)
+      p_dist_obj_loss = np_atom_loss(d_e_pos_obj, d_e_s_obj)
+      self.np_loss = self.np_atom_loss_factor * (p_dist_subj_loss + p_dist_obj_loss)
+
     summary += [
       tf.summary.scalar('dis_loss', self.d_loss),
+      tf.summary.scalar('np_loss', self.np_loss),
       tf.summary.scalar('dis_avg_margin', self.d_avg_pos_energy - self.d_avg_neg_energy),
       tf.summary.scalar('dis_margin', tf.reduce_mean(self.d_margin)),
       tf.summary.scalar('dis_accuracy', self.d_accuracy),
       tf.summary.scalar('dis_active_percent', self.d_active_percent)
     ]
 
-    self.loss = self.g_loss + self.d_loss
+    self.loss = self.g_loss + self.d_loss + self.np_loss
     summary += [
       tf.summary.scalar('loss', self.loss)
     ]

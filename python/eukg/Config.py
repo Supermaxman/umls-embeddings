@@ -47,6 +47,10 @@ tf.flags.DEFINE_float("gen_learning_rate", 1e-5, "Starting learning rate for gan
 tf.flags.DEFINE_float("decay_rate", 0.96, "LR decay rate")
 tf.flags.DEFINE_float("momentum", 0.9, "Momentum")
 tf.flags.DEFINE_float("gamma", 0.1, "Margin parameter for loss")
+
+tf.flags.DEFINE_string("np_atom_loss_type", 'p_dist', "Loss type for non-preferred atom loss.")
+tf.flags.DEFINE_float("np_atom_loss_factor", 0.1, "Loss weight for non-preferred atom loss")
+
 tf.flags.DEFINE_integer("vocab_size", 1726933, "Number of unique concepts+relations")
 tf.flags.DEFINE_integer("embedding_size", 50, "embedding size")
 tf.flags.DEFINE_integer("energy_norm_ord", 1,
