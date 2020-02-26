@@ -523,7 +523,7 @@ class TfDataGenerator:
     self.s_subjs_emb = batch['b_s_subj_embs']
     self.nsubjs_embs = batch['b_nsubjs_embs']
     self.objs_emb = batch['b_objs_emb']
-    self.s_objs_emb = batch['b_s_objs_emb']
+    self.s_objs_emb = batch['b_s_objs_embs']
     self.nobjs_embs = batch['b_nobjs_embs']
     self.rels_emb = batch['b_rels_emb']
 
