@@ -104,7 +104,7 @@ class TfDataGenerator:
 
     def get_padding_values():
       concept_pad = {
-        'lm_embeddings': [None, None],
+        'lm_embeddings': [None, None, self.lm_encoder_size],
         'token_lengths': [None],
         'p_atom_idx': [],
         'nrof_atoms': [],
@@ -113,7 +113,7 @@ class TfDataGenerator:
         'entity_id': []
       }
       rel_pad = {
-        'lm_embedding': [None],
+        'lm_embedding': [None, self.lm_encoder_size],
         'token_length': [],
         'entity_id': []
       }
