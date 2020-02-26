@@ -388,6 +388,10 @@ class DisGen(BaseModel):
       e_neg_obj = e_neg_obj, e_neg_obj_proj
       e_pos_subj = e_pos_subj, e_pos_subj_proj
       e_pos_obj = e_pos_obj, e_pos_obj_proj
+
+      e_s_subj = e_s_subj, e_s_subj_proj
+      e_s_obj = e_s_obj, e_s_obj_proj
+
     else:
       e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj, e_s_subj, e_s_obj = self._un_flatten_gen(e_concepts)
       e_neg_subj = tf.gather(e_neg_subj, g_sampls, batch_dims=1, axis=1)[:, 0]
