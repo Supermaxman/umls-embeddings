@@ -136,7 +136,8 @@ class TfDataGenerator:
       # [nrof_atoms, concept_token_pad, lm_size]
       subj_ex['lm_embeddings'] = tf.reshape(
         tf.sparse.to_dense(subj_ex['lm_embeddings']),
-        [subj_ex['nrof_atoms'], subj_ex['concept_token_pad'], self.lm_encoder_size]
+        [subj_ex['nrof_atoms'], subj_ex['concept_token_pad'], self.lm_encoder_size],
+        name='subj_ex_lm_embeddings_r1'
       )
 
       max_token_length = tf.maximum(subj_ex['concept_token_pad'], max_token_length)
@@ -149,11 +150,13 @@ class TfDataGenerator:
       )
       obj_ex['lm_embeddings'] = tf.reshape(
         tf.sparse.to_dense(obj_ex['lm_embeddings']),
-        [obj_ex['nrof_atoms'], obj_ex['concept_token_pad'], self.lm_encoder_size]
+        [obj_ex['nrof_atoms'], obj_ex['concept_token_pad'], self.lm_encoder_size],
+        name='obj_ex_lm_embeddings_r1'
       )
       rt_ex['lm_embedding'] = tf.reshape(
         tf.sparse.to_dense(rt_ex['lm_embedding']),
-        [rt_ex['token_length'], self.lm_encoder_size]
+        [rt_ex['token_length'], self.lm_encoder_size],
+        name='rt_ex_lm_embeddings_r1'
       )
 
       max_atom_count = tf.maximum(obj_ex['nrof_atoms'], max_atom_count)
@@ -168,7 +171,8 @@ class TfDataGenerator:
       )
       rt_ex['lm_embedding'] = tf.reshape(
         rt_ex['lm_embedding'],
-        [max_token_length, self.lm_encoder_size]
+        [max_token_length, self.lm_encoder_size],
+        name='rt_ex_lm_embeddings_r2'
       )
 
       # [atoms, slen, lm_size]
@@ -182,7 +186,8 @@ class TfDataGenerator:
       )
       subj_ex['lm_embeddings'] = tf.reshape(
         subj_ex['lm_embeddings'],
-        [max_atom_count, max_token_length, self.lm_encoder_size]
+        [max_atom_count, max_token_length, self.lm_encoder_size],
+        name='subj_ex_lm_embeddings_r2'
       )
       subj_ex['token_lengths'] = tf.pad(
         tf.sparse.to_dense(subj_ex['token_lengths']),
@@ -204,7 +209,8 @@ class TfDataGenerator:
       )
       obj_ex['lm_embeddings'] = tf.reshape(
         obj_ex['lm_embeddings'],
-        [max_atom_count, max_token_length, self.lm_encoder_size]
+        [max_atom_count, max_token_length, self.lm_encoder_size],
+        name='obj_ex_lm_embeddings_r2'
       )
       obj_ex['token_lengths'] = tf.pad(
         tf.sparse.to_dense(obj_ex['token_lengths']),
