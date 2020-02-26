@@ -176,7 +176,7 @@ class TfDataGenerator:
         ]
       )
       subj_ex['token_lengths'] = tf.pad(
-        subj_ex['token_lengths'],
+        tf.sparse.to_dense(subj_ex['token_lengths']),
         paddings=[
           [0, max_atom_count - subj_ex['nrof_atoms']]
         ]
@@ -190,7 +190,7 @@ class TfDataGenerator:
         ]
       )
       obj_ex['token_lengths'] = tf.pad(
-        obj_ex['token_lengths'],
+        tf.sparse.to_dense(obj_ex['token_lengths']),
         paddings=[
           [0, max_atom_count - obj_ex['nrof_atoms']]
         ]
