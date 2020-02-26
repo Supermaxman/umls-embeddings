@@ -322,7 +322,7 @@ class TfDataGenerator:
       b_rels_lengths = b_rt_exs['token_length']
       # other subjs and objs in batch I can utilize
       bsize = tf.shape(b_subjs_ex['lm_embeddings'])[0]
-      b_max_token_length = tf.shape(b_subjs_ex['lm_embeddings'])[1]
+      b_max_token_length = tf.shape(b_subjs_ex['lm_embeddings'])[2]
       # [bsize, num_atoms, seq_len, emb_size]
       b_subj_emb = b_subjs_ex['lm_embeddings']
       # [bsize, num_atoms]
