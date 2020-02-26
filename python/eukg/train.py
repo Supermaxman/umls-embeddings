@@ -220,6 +220,10 @@ def init_saver(config, tf_saver, session):
     elif config.save_strategy == 'epoch':
       print('Models will be saved every training epoch')
       return ModelSaver.EpochSaver(tf_saver, session, model_file)
+    elif config.save_strategy == 'timed_epoch':
+      print('Models will be saved every %d seconds' % config.save_interval)
+      print('Models will be saved every training epoch')
+      return ModelSaver.TimedEpochSaver(tf_saver, session, model_file, config.save_interval)
     else:
       raise ValueError('Unrecognized save strategy: %s' % config.save_strategy)
 

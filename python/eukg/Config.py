@@ -22,8 +22,8 @@ tf.flags.DEFINE_integer("batches_per_epoch", 1, "Number of batches per training 
 tf.flags.DEFINE_integer("max_batches_per_epoch", None, "Maximum number of batches per training epoch")
 tf.flags.DEFINE_string("embedding_device", "gpu", "Device to do embedding lookups on [gpu, cpu]")
 tf.flags.DEFINE_string("optimizer", "adam", "Optimizer [adam, sgd]")
-tf.flags.DEFINE_string("save_strategy", "epoch", "Save every epoch or saved every"
-                                                 " flags.save_interval seconds [epoch, timed]")
+tf.flags.DEFINE_string("save_strategy", "timed_epoch", "Save every epoch or saved every"
+                                                 " flags.save_interval seconds [epoch, timed, timed_epoch]")
 
 # eval control options
 tf.flags.DEFINE_string("eval_mode", "save", "Evaluation mode: [save, calc]")
