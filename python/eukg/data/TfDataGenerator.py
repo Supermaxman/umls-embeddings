@@ -151,11 +151,16 @@ class TfDataGenerator:
         tf.sparse.to_dense(obj_ex['lm_embeddings']),
         [obj_ex['nrof_atoms'], obj_ex['concept_token_pad'], self.lm_encoder_size]
       )
+      rt_ex['lm_embedding'] = tf.reshape(
+        tf.sparse.to_dense(rt_ex['lm_embedding']),
+        [rt_ex['token_length'], self.lm_encoder_size]
+      )
+
       max_atom_count = tf.maximum(obj_ex['nrof_atoms'], max_atom_count)
       max_token_length = tf.maximum(obj_ex['concept_token_pad'], max_token_length)
       # [slen lm_size]
       rt_ex['lm_embedding'] = tf.pad(
-        tf.sparse.to_dense(rt_ex['lm_embedding']),
+        rt_ex['lm_embedding'],
         paddings=[
           [0, max_token_length-rt_ex['token_length']],
           [0, 0]
