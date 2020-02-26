@@ -283,6 +283,10 @@ class TfDataGenerator:
       )
       print(f's_lengths: {s_lengths.get_shape()}')
 
+      # TODO REMOVE IN FUTURE, JUST TESTING:
+      s_embs = tf.expand_dims(p_embs, axis=1)
+      s_lengths = tf.expand_dims(p_lengths, axis=1)
+
       return p_embs, p_lengths, s_embs, s_lengths
 
     def parse_batch_example(b_subjs_ex, b_rt_exs, b_objs_ex):
