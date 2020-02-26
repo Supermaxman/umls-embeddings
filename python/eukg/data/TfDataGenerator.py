@@ -190,6 +190,10 @@ class TfDataGenerator:
           [0, max_atom_count - subj_ex['nrof_atoms']]
         ]
       )
+      subj_ex['token_lengths'] = tf.reshape(
+        subj_ex['token_lengths'],
+        [max_atom_count]
+      )
       obj_ex['lm_embeddings'] = tf.pad(
         obj_ex['lm_embeddings'],
         paddings=[
@@ -207,6 +211,10 @@ class TfDataGenerator:
         paddings=[
           [0, max_atom_count - obj_ex['nrof_atoms']]
         ]
+      )
+      obj_ex['token_lengths'] = tf.reshape(
+        obj_ex['token_lengths'],
+        [max_atom_count]
       )
       # everything should be padded to the same shape by here, so only
       # remaining padding needs to be done by tf dataset.padded_batch
