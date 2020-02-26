@@ -272,6 +272,8 @@ class TfDataGenerator:
       # [bsize, num_atoms]
       sample_mask = p_mask * a_mask
       # allow sampling primary atom when concept has no other secondary atoms
+      # TODO problem with this mask possibly when <= 0 sample_mask sum
+      # TODO leading to different counts? [16, 4] vs [16, 3] somehow happened, not 100% sure where.
       sample_mask = tf.where(
         # [bsize, num_atoms]
         tf.tile(
