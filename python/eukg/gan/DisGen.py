@@ -304,11 +304,11 @@ class DisGen(BaseModel):
 
     s_subjs_flat = tf.reshape(
       self.s_subjs_emb,
-      [self.total_s_size, self.seq_len, self.lm_encoder_size]
+      [self.total_s_size, self.seq_len, self.lm_encoder_size], name='s_subjs_flat'
     )
     s_objs_flat = tf.reshape(
       self.s_objs_emb,
-      [self.total_s_size, self.seq_len, self.lm_encoder_size]
+      [self.total_s_size, self.seq_len, self.lm_encoder_size], name='s_objs_flat'
     )
     s_subjs_lengths_flat = tf.reshape(self.s_subjs_lengths, [self.total_s_size])
     s_objs_lengths_flat = tf.reshape(self.s_objs_lengths, [self.total_s_size])

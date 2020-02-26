@@ -201,6 +201,11 @@ class TfDataGenerator:
 
     def sample_non_primary(embs, lengths, a_counts, p_idxs, k):
       print('sample_non_primary')
+      print(f'embs: {embs.get_shape()}')
+      print(f'lengths: {lengths.get_shape()}')
+      print(f'a_counts: {a_counts.get_shape()}')
+      print(f'p_idxs: {p_idxs.get_shape()}')
+
       # TODO validate indexing
       p_embs = tf.gather(
         embs,
