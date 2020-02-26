@@ -197,7 +197,8 @@ class TfDataGenerator:
       )
       subj_ex['token_lengths'] = tf.reshape(
         subj_ex['token_lengths'],
-        [max_atom_count]
+        [max_atom_count],
+        name='subj_ex_token_lengths'
       )
       obj_ex['lm_embeddings'] = tf.pad(
         obj_ex['lm_embeddings'],
@@ -220,7 +221,8 @@ class TfDataGenerator:
       )
       obj_ex['token_lengths'] = tf.reshape(
         obj_ex['token_lengths'],
-        [max_atom_count]
+        [max_atom_count],
+        name='obj_ex_token_lengths'
       )
       # everything should be padded to the same shape by here, so only
       # remaining padding needs to be done by tf dataset.padded_batch
@@ -393,25 +395,29 @@ class TfDataGenerator:
       # shape [bsize, bsize-1, b_max_token_length, lm_encoder_size]
       b_nsubjs_samples_embs = tf.reshape(
         tf.boolean_mask(b_nsubjs_samples_embs, b_sample_mask),
-        shape=[bsize, subj_sample_count, b_max_token_length, self.lm_encoder_size]
+        shape=[bsize, subj_sample_count, b_max_token_length, self.lm_encoder_size],
+        name='b_nsubjs_samples_embs'
       )
       print(b_nsubjs_samples_embs.get_shape())
       # shape [bsize, bsize-1]
       b_nsubjs_sample_lengths = tf.reshape(
         tf.boolean_mask(b_nsubjs_sample_lengths, b_sample_mask),
-        shape=[bsize, subj_sample_count]
+        shape=[bsize, subj_sample_count],
+        name='b_nsubjs_sample_lengths'
       )
       print(b_nsubjs_sample_lengths.get_shape())
 
       # shape [bsize, bsize-1, b_max_token_length, lm_encoder_size]
       b_nobjs_samples_embs = tf.reshape(
         tf.boolean_mask(b_nobjs_samples_embs, b_sample_mask),
-        shape=[bsize, obj_sample_count, b_max_token_length, self.lm_encoder_size]
+        shape=[bsize, obj_sample_count, b_max_token_length, self.lm_encoder_size],
+        name='b_nobjs_samples_embs'
       )
       # shape [bsize, bsize-1]
       b_nobjs_sample_lengths = tf.reshape(
         tf.boolean_mask(b_nobjs_sample_lengths, b_sample_mask),
-        shape=[bsize, obj_sample_count]
+        shape=[bsize, obj_sample_count],
+        name='b_nobjs_sample_lengths'
       )
 
       # concat real objs for negative subj samples
