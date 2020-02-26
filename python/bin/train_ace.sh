@@ -361,10 +361,10 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=disgen \
 --model=transd-distmult \
---run_name=transd-dm-disgen-cake-ext-7 \
+--run_name=transd-dm-disgen-cake-ext-8 \
 --ace_model \
---np_atom_loss_type='p_dist' \
---np_atom_loss_factor=0.1 \
+--np_atom_loss_type='p_dist_symmetric' \
+--np_atom_loss_factor=0.5 \
 --num_atom_samples=1 \
 --no_semantic_network \
 --encoder_rnn_layers=1 \

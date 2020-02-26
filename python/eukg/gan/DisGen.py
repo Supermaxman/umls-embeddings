@@ -159,15 +159,15 @@ class DisGen(BaseModel):
 
     # regularization for distmult
     #  Invalid argument: Incompatible shapes: [16,3] vs. [16,4]
-    # if self.g_model == "distmult":
-    #   reg = self.regulatization_parameter * self.gen_embedding_model.regularization(
-    #     [g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj],
-    #     [self.g_e_rels]
-    #   )
-    #   self.g_loss += reg
-    #   summary += [
-    #     tf.summary.scalar('gen_reg', reg)
-    #   ]
+    if self.g_model == "distmult":
+      reg = self.regulatization_parameter * self.gen_embedding_model.regularization(
+        [g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj],
+        [self.g_e_rels]
+      )
+      self.g_loss += reg
+      summary += [
+        tf.summary.scalar('gen_reg', reg)
+      ]
     with tf.variable_scope('dis_energy'):
       print(f'pos_subj[{d_e_pos_subj[0].get_shape()}], '
             f'rels[{self.d_e_rels[0].get_shape()}], '
@@ -582,15 +582,15 @@ class DisGenGan(DisGen):
       self.g_loss = tf.reduce_mean(self.discounted_reward * g_loss)
       self.g_avg_prob = tf.reduce_mean(self.g_probabilities)
 
-      # if self.g_model == "distmult":
-      #   reg = self.regulatization_parameter * self.gen_embedding_model.regularization(
-      #     [self.g_e_concepts],
-      #     [self.g_e_rels]
-      #   )
-      #   summary += [
-      #     tf.summary.scalar('gen_reg', reg)
-      #   ]
-      #   self.g_loss += reg
+      if self.g_model == "distmult":
+        reg = self.regulatization_parameter * self.gen_embedding_model.regularization(
+          [self.g_e_concepts],
+          [self.g_e_rels]
+        )
+        summary += [
+          tf.summary.scalar('gen_reg', reg)
+        ]
+        self.g_loss += reg
 
     self.loss = self.d_loss + self.g_loss + self.np_loss
 
