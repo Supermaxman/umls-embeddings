@@ -201,7 +201,7 @@ class DisGen(BaseModel):
       # loss
       self.d_margin = self.d_pos_energy - self.d_neg_energy
       print(self.d_margin.get_shape())
-      # TODO move constants to config for loss balancing.
+
       self.d_loss = tf.reduce_mean(tf.nn.relu(self.gamma + self.d_margin), name='loss')
       self.d_active_percent = tf.reduce_mean(tf.to_float(-self.d_margin < self.gamma))
 
@@ -451,7 +451,7 @@ class DisGenGan(DisGen):
 
     self._build_embeddings()
 
-    g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj, g_e_s_subj, g_e_s_obj = self._un_flatten_gen(self.g_e_concepts)
+    g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj, _, _ = self._un_flatten_gen(self.g_e_concepts)
 
     uniform_sampls = tf.random.uniform([self.bsize, 1], maxval=tf.cast(self.nsamples, tf.int64), dtype=tf.int64)
     d_e_neg_subj_uniform, d_e_neg_obj_uniform, _, _, _, _ = self._un_flatten_dis(self.d_e_concepts, uniform_sampls)
@@ -469,9 +469,6 @@ class DisGenGan(DisGen):
       self.g_avg_neg_energy = tf.reduce_mean(self.g_sampl_energies)
       # [bsize, 1]
       # index into [bsize, num_samples]
-      # TODO double check these sample energies are my logits
-      # TODO this needs to be negative because of how the pre-trained model was trained with negative softmax inputs
-      # TODO WHYYYY
       self.g_sampls = tf.stop_gradient(
         tf.random.categorical(self.g_sampl_energies, 1, name='g_sampls')
       )
@@ -512,9 +509,6 @@ class DisGenGan(DisGen):
         tf.stack([self.d_pos_energy, self.d_neg_energy], axis=1), axis=1, output_type=tf.int32)
       self.d_predictions_uniform = tf.argmin(
         tf.stack([self.d_pos_energy, self.neg_energy_uniform], axis=1), axis=1, output_type=tf.int32)
-      # TODO double check this is correct with REINFORCE
-      # TODO also double check this shouldn't be negative here
-      #
       self.d_reward = tf.identity(-self.d_neg_energy, name='reward')
       # loss
       # loss wants high neg energy and low pos energy
@@ -525,8 +519,41 @@ class DisGenGan(DisGen):
       # self.d_train_op = d_optimizer.minimize(self.d_loss, name='d_train_op')
       self.d_active_percent = tf.reduce_mean(tf.to_float(-self.d_margin < self.gamma))
 
+      if self.np_atom_loss_type == 'p_dist':
+        def np_atom_loss(p_emb, np_emb):
+          p_emb = tf.expand_dims(tf.stop_gradient(tf.concat(p_emb, axis=-1)), axis=1)
+          np_emb = tf.concat(np_emb, axis=-1)
+          # [bsize, s_nsample, e_dim]
+          p_np_diff = p_emb - np_emb
+          # [bsize, s_nsample]
+          pd_loss = tf.reduce_sum(p_np_diff * p_np_diff, axis=-1)
+          # [bsize]
+          pd_loss = tf.reduce_mean(pd_loss, axis=-1)
+          pd_loss = tf.reduce_mean(pd_loss, axis=-1)
+          return pd_loss
+      elif self.np_atom_loss_type == 'p_dist_symmetric':
+        def np_atom_loss(p_emb, np_emb):
+          p_emb = tf.expand_dims(tf.concat(p_emb, axis=-1), axis=1)
+          np_emb = tf.concat(np_emb, axis=-1)
+          # [bsize, s_nsample, e_dim]
+          p_np_diff = p_emb - np_emb
+          # [bsize, s_nsample]
+          pd_loss = tf.reduce_sum(p_np_diff * p_np_diff, axis=-1)
+          # [bsize]
+          pd_loss = tf.reduce_mean(pd_loss, axis=-1)
+          pd_loss = tf.reduce_mean(pd_loss, axis=-1)
+          return pd_loss
+      else:
+        raise ValueError(f'Unknown non-primary atom loss type: {self.np_atom_loss_type}')
+
+      p_dist_subj_loss = np_atom_loss(d_e_pos_subj, d_e_s_subj)
+      p_dist_obj_loss = np_atom_loss(d_e_pos_obj, d_e_s_obj)
+      self.np_loss = self.np_atom_loss_factor * (p_dist_subj_loss + p_dist_obj_loss)
+
+
     summary += [
       tf.summary.scalar('dis_loss', self.d_loss),
+      tf.summary.scalar('np_loss', self.np_loss),
       tf.summary.scalar('dis_avg_margin', self.d_avg_pos_energy - self.d_avg_neg_energy),
       tf.summary.scalar('dis_margin', tf.reduce_mean(self.d_margin)),
       tf.summary.scalar('dis_accuracy', self.d_accuracy_uniform),
@@ -535,13 +562,10 @@ class DisGenGan(DisGen):
     ]
 
     with tf.variable_scope("gen_loss"):
-      # TODO determine if this is a good baseline method
       self.discounted_reward = tf.stop_gradient(self.d_reward - self.baseline)
       self.avg_reward = tf.reduce_mean(self.d_reward)
       self.avg_discounted_reward = tf.reduce_mean(self.discounted_reward)
       # [batch_size, num_samples] - this is for sampling during GAN training
-      # TODO this needs to be negative because of how the pre-trained model was trained with negative softmax inputs
-      # TODO WHYYYY
       self.g_probability_distributions = tf.nn.softmax(self.g_sampl_energies, axis=-1)
       self.g_probabilities = tf.gather(
         self.g_probability_distributions,
@@ -550,8 +574,7 @@ class DisGenGan(DisGen):
         axis=1,
         name='sampl_probs'
       )[:, 0]
-      # TODO ask if self.discounted_reward should be [bsize] neg energies, then multiplied to each of these
-      # TODO losses before sum/avg instead of sum and multiplying by avg neg energy of discriminator.
+
       # g_loss = -tf.reduce_sum(tf.log(self.g_probabilities))
       # we want to maximize -f(neg) * log(p(neg)) so we minimize -[-f(neg) * log(p(neg))]
       g_loss = -tf.log(self.g_probabilities)
@@ -559,17 +582,17 @@ class DisGenGan(DisGen):
       self.g_loss = tf.reduce_mean(self.discounted_reward * g_loss)
       self.g_avg_prob = tf.reduce_mean(self.g_probabilities)
 
-      if self.g_model == "distmult":
-        reg = self.regulatization_parameter * self.gen_embedding_model.regularization(
-          [self.g_e_concepts],
-          [self.g_e_rels]
-        )
-        summary += [
-          tf.summary.scalar('gen_reg', reg)
-        ]
-        self.g_loss += reg
+      # if self.g_model == "distmult":
+      #   reg = self.regulatization_parameter * self.gen_embedding_model.regularization(
+      #     [self.g_e_concepts],
+      #     [self.g_e_rels]
+      #   )
+      #   summary += [
+      #     tf.summary.scalar('gen_reg', reg)
+      #   ]
+      #   self.g_loss += reg
 
-    self.loss = self.d_loss + self.g_loss
+    self.loss = self.d_loss + self.g_loss + self.np_loss
 
     self.train_op = optimizer.minimize(
       self.loss,
@@ -579,8 +602,6 @@ class DisGenGan(DisGen):
 
     with tf.variable_scope('gen_loss'):
       with tf.control_dependencies([self.train_op]):
-        # TODO determine if this is a good baseline method, maybe running mean or something
-        # TODO use baseline_type to change to running avg, etc.
         if self.baseline_type == 'avg_prev_batch':
           self.new_baseline = self.avg_reward
         elif self.baseline_type == 'avg_prev_batch_momentum':
