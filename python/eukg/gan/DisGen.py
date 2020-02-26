@@ -310,8 +310,8 @@ class DisGen(BaseModel):
       self.s_objs_emb,
       [self.total_s_size, self.seq_len, self.lm_encoder_size], name='s_objs_flat'
     )
-    s_subjs_lengths_flat = tf.reshape(self.s_subjs_lengths, [self.total_s_size])
-    s_objs_lengths_flat = tf.reshape(self.s_objs_lengths, [self.total_s_size])
+    s_subjs_lengths_flat = tf.reshape(self.s_subjs_lengths, [self.total_s_size], name='s_subjs_lengths_flat')
+    s_objs_lengths_flat = tf.reshape(self.s_objs_lengths, [self.total_s_size], name='s_objs_lengths_flat')
 
     # [bsize * num_samples + bsize * num_samples + b_size + b_size + 2 * b_size * num_atom_samples, enc_size]
     concept_embs = tf.concat(
@@ -321,7 +321,8 @@ class DisGen(BaseModel):
        self.objs_emb,
        s_subjs_flat,
        s_objs_flat],
-      axis=0
+      axis=0,
+      name='concept_flat_embs'
     )
     concept_lengths = tf.concat(
       [neg_subj_length_flat,
@@ -330,7 +331,8 @@ class DisGen(BaseModel):
        self.objs_lengths,
        s_subjs_lengths_flat,
        s_objs_lengths_flat],
-      axis=0
+      axis=0,
+      name='concept_flat_lengths'
     )
 
     concept_encodes = self.ace_model.encode(concept_embs, concept_lengths, 'concept')
