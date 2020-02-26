@@ -213,7 +213,7 @@ class DisGen(BaseModel):
           # [bsize, s_nsample, e_dim]
           p_np_diff = p_emb - np_emb
           # [bsize, s_nsample]
-          pd_loss = tf.reduce_mean(p_np_diff * p_np_diff, axis=-1)
+          pd_loss = tf.reduce_sum(p_np_diff * p_np_diff, axis=-1)
           # [bsize]
           pd_loss = tf.reduce_mean(pd_loss, axis=-1)
           pd_loss = tf.reduce_mean(pd_loss, axis=-1)
