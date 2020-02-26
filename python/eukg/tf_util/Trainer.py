@@ -37,7 +37,10 @@ def train(config, session, model, saver,
   # init summary directories and summary writers
   if not os.path.exists(os.path.join(config['summaries_dir'], 'train')):
     os.makedirs(os.path.join(config['summaries_dir'], 'train'))
-  train_summary_writer = tf.summary.FileWriter(os.path.join(config['summaries_dir'], 'train'))
+  train_summary_writer = tf.summary.FileWriter(
+    os.path.join(config['summaries_dir'], 'train'),
+    graph=tf.get_default_graph()
+  )
   if not os.path.exists(os.path.join(config['summaries_dir'], 'val')):
     os.makedirs(os.path.join(config['summaries_dir'], 'val'))
   val_summary_writer = tf.summary.FileWriter(os.path.join(config['summaries_dir'], 'val'))
