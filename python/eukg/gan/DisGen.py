@@ -99,7 +99,7 @@ class DisGen(BaseModel):
 
     self._build_embeddings()
 
-    g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj, g_e_s_subj, g_e_s_obj = self._un_flatten_gen(self.g_e_concepts)
+    g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj, _, _ = self._un_flatten_gen(self.g_e_concepts)
     uniform_sampls = tf.random.uniform([self.bsize, 1], maxval=tf.cast(self.nsamples, tf.int64), dtype=tf.int64)
     d_e_neg_subj, d_e_neg_obj, d_e_pos_subj, d_e_pos_obj, d_e_s_subj, d_e_s_obj = self._un_flatten_dis(self.d_e_concepts, uniform_sampls)
 
@@ -160,7 +160,7 @@ class DisGen(BaseModel):
     # regularization for distmult
     if self.g_model == "distmult":
       reg = self.regulatization_parameter * self.gen_embedding_model.regularization(
-        [self.g_e_concepts],
+        [g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj],
         [self.g_e_rels]
       )
       self.g_loss += reg
@@ -225,7 +225,7 @@ class DisGen(BaseModel):
           # [bsize, s_nsample, e_dim]
           p_np_diff = p_emb - np_emb
           # [bsize, s_nsample]
-          pd_loss = tf.reduce_mean(p_np_diff * p_np_diff, axis=-1)
+          pd_loss = tf.reduce_sum(p_np_diff * p_np_diff, axis=-1)
           # [bsize]
           pd_loss = tf.reduce_mean(pd_loss, axis=-1)
           pd_loss = tf.reduce_mean(pd_loss, axis=-1)

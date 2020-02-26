@@ -389,8 +389,8 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=gan-joint \
 --model=transd-distmult \
---run_name=transd-dm-gan-joint-cake-1 \
---pre_run_name=transd-dm-disgen-cake-ext-1 \
+--run_name=transd-dm-gan-joint-cake-2 \
+--pre_run_name=transd-dm-disgen-cake-ext-2 \
 --ace_model \
 --np_atom_loss_type='p_dist' \
 --np_atom_loss_factor=0.1 \
