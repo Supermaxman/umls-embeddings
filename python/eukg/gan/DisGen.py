@@ -346,34 +346,41 @@ class DisGen(BaseModel):
     self.d_e_rels = self.dis_embedding_model.embed(rel_encodes, 'rel')
 
   def _un_flatten_gen(self, e_concepts):
-    emb_size = e_concepts.get_shape()[-1]
-    # first bsize * num_samples
-    e_neg_subj = tf.reshape(
-      e_concepts[:self.total_neg_size],
-      [self.bsize, self.nsamples, emb_size]
-    )
-    # second bsize * num_samples
-    e_neg_obj = tf.reshape(
-      e_concepts[self.total_neg_size:2 * self.total_neg_size],
-      [self.bsize, self.nsamples, emb_size]
-    )
-    pos_subj_start = 2 * self.total_neg_size
-    # bsize
-    e_pos_subj = e_concepts[pos_subj_start:pos_subj_start + self.bsize]
-    # bsize
-    e_pos_obj = e_concepts[pos_subj_start + self.bsize:pos_subj_start + 2 * self.bsize]
+    with tf.variable_scope('emb_indexing'):
+      emb_size = e_concepts.get_shape()[-1]
 
-    s_subj_start = 2 * self.total_neg_size + 2 * self.bsize
-    # first bsize * num_samples
-    e_s_subj = tf.reshape(
-      e_concepts[s_subj_start:s_subj_start + self.total_s_size],
-      [self.bsize, self.s_nsamples, emb_size]
-    )
-    # second bsize * num_samples
-    e_s_obj = tf.reshape(
-      e_concepts[s_subj_start + self.total_s_size:s_subj_start + 2 * self.total_s_size],
-      [self.bsize, self.s_nsamples, emb_size]
-    )
+      pos_subj_start = 2 * self.total_neg_size
+      s_subj_start = pos_subj_start + 2 * self.bsize
+
+      # first bsize * num_samples
+      e_neg_subj = tf.reshape(
+        e_concepts[:self.total_neg_size],
+        [self.bsize, self.nsamples, emb_size],
+        name='e_neg_subj'
+      )
+      # second bsize * num_samples
+      e_neg_obj = tf.reshape(
+        e_concepts[self.total_neg_size:2 * self.total_neg_size],
+        [self.bsize, self.nsamples, emb_size],
+        name='e_neg_obj'
+      )
+      # bsize
+      e_pos_subj = e_concepts[pos_subj_start:pos_subj_start + self.bsize]
+      # bsize
+      e_pos_obj = e_concepts[pos_subj_start + self.bsize:s_subj_start]
+
+      # first bsize * num_samples
+      e_s_subj = tf.reshape(
+        e_concepts[s_subj_start:s_subj_start + self.total_s_size],
+        [self.bsize, self.s_nsamples, emb_size],
+        name='e_s_subj'
+      )
+      # second bsize * num_samples
+      e_s_obj = tf.reshape(
+        e_concepts[s_subj_start + self.total_s_size:],
+        [self.bsize, self.s_nsamples, emb_size],
+        name='e_s_obj'
+      )
 
     return e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj, e_s_subj, e_s_obj
 
