@@ -228,94 +228,6 @@ class TfDataGenerator:
       # remaining padding needs to be done by tf dataset.padded_batch
       return subj_ex, rt_ex, obj_ex
 
-    def sample_non_primary(embs, lengths, a_counts, p_idxs, k):
-      print('sample_non_primary')
-      print(f'embs: {embs.get_shape()}')
-      print(f'lengths: {lengths.get_shape()}')
-      print(f'a_counts: {a_counts.get_shape()}')
-      print(f'p_idxs: {p_idxs.get_shape()}')
-
-      # TODO validate indexing
-      p_embs = tf.gather(
-        embs,
-        tf.expand_dims(p_idxs, axis=-1),
-        batch_dims=1,
-        axis=1
-      )[:, 0]
-      print(f'p_embs: {p_embs.get_shape()}')
-      # TODO validate indexing
-      p_lengths = tf.gather(
-        lengths,
-        tf.expand_dims(p_idxs, axis=-1),
-        batch_dims=1,
-        axis=1
-      )[:, 0]
-      print(f'p_lengths: {p_lengths.get_shape()}')
-
-      # [bsize, num_atoms]
-      # will be 1 for primary atom
-      p_mask = tf.one_hot(
-        p_idxs,
-        depth=tf.shape(lengths)[1],
-        on_value=0.0,
-        off_value=1.0,
-        dtype=tf.float32
-      )
-      print(f'p_mask: {p_mask.get_shape()}')
-      # [bsize, num_atoms]
-      a_mask = tf.sequence_mask(
-        a_counts,
-        dtype=tf.float32
-      )
-      print(f'a_mask: {a_mask.get_shape()}')
-      # valid samples for each concept
-      # [bsize, num_atoms]
-      sample_mask = p_mask * a_mask
-      # allow sampling primary atom when concept has no other secondary atoms
-      # TODO problem with this mask possibly when <= 0 sample_mask sum
-      # TODO leading to different counts? [16, 4] vs [16, 3] somehow happened, not 100% sure where.
-      sample_mask = tf.where(
-        # [bsize, num_atoms]
-        tf.tile(
-          tf.expand_dims(tf.greater(tf.reduce_sum(sample_mask, axis=-1), 0.0), axis=-1),
-          multiples=[1, tf.shape(sample_mask)[1]]
-        ),
-        # [bsize, num_atoms]
-        sample_mask,
-        # [bsize, num_atoms]
-        a_mask
-      )
-
-      # [bsize, num_atoms]
-      sample_energies = (1.0 - sample_mask) * -1e9
-      # [bsize, k]
-      sample_idxs = tf.random.categorical(sample_energies, k)
-      print(f'sample_idxs: {sample_idxs.get_shape()}')
-      # TODO validate indexing
-      # [bsize, k, seq_len, emb_size]
-      s_embs = tf.gather(
-        # [bsize, num_atoms, seq_len, emb_size]
-        embs,
-        # [bsize, k]
-        sample_idxs,
-        batch_dims=1,
-        axis=1
-      )
-      print(f's_embs: {s_embs.get_shape()}')
-      # TODO validate indexing
-      # [bsize, k]
-      s_lengths = tf.gather(
-        # [bsize, num_atoms]
-        lengths,
-        # [bsize, k]
-        sample_idxs,
-        batch_dims=1,
-        axis=1
-      )
-      print(f's_lengths: {s_lengths.get_shape()}')
-
-      return p_embs, p_lengths, s_embs, s_lengths
-
     def parse_batch_example(b_subjs_ex, b_rt_exs, b_objs_ex):
       # [bsize], [bsize], [bsize]
       # I am going to utilize already-loaded other batch elements
@@ -868,3 +780,95 @@ class TfEvalDataGenerator:
 
     self.b_or_objs = objs
     self.b_or_rels = rels
+
+
+
+def sample_non_primary(embs, lengths, a_counts, p_idxs, k):
+  print('sample_non_primary')
+  print(f'embs: {embs.get_shape()}')
+  print(f'lengths: {lengths.get_shape()}')
+  print(f'a_counts: {a_counts.get_shape()}')
+  print(f'p_idxs: {p_idxs.get_shape()}')
+
+  # TODO validate indexing
+  p_embs = tf.gather(
+    embs,
+    tf.expand_dims(p_idxs, axis=-1),
+    batch_dims=1,
+    axis=1
+  )[:, 0]
+  print(f'p_embs: {p_embs.get_shape()}')
+  # TODO validate indexing
+  p_lengths = tf.gather(
+    lengths,
+    tf.expand_dims(p_idxs, axis=-1),
+    batch_dims=1,
+    axis=1
+  )[:, 0]
+  print(f'p_lengths: {p_lengths.get_shape()}')
+
+  # [bsize, num_atoms]
+  # will be 1 for primary atom
+  max_num_atoms = tf.shape(lengths)[1]
+  p_mask = tf.one_hot(
+    p_idxs,
+    depth=max_num_atoms,
+    on_value=0.0,
+    off_value=1.0,
+    dtype=tf.float32
+  )
+  print(f'p_mask: {p_mask.get_shape()}')
+  # [bsize, num_atoms]
+  a_mask = tf.sequence_mask(
+    a_counts,
+    dtype=tf.float32,
+    maxlen=max_num_atoms
+  )
+  print(f'a_mask: {a_mask.get_shape()}')
+  # valid samples for each concept
+  # [bsize, num_atoms]
+  sample_mask = p_mask * a_mask
+  # allow sampling primary atom when concept has no other secondary atoms
+  # TODO problem with this mask possibly when <= 0 sample_mask sum
+  # TODO leading to different counts? [16, 4] vs [16, 3] somehow happened, not 100% sure where.
+  sample_mask = tf.where(
+    # [bsize, num_atoms]
+    tf.tile(
+      tf.expand_dims(tf.greater(tf.reduce_sum(sample_mask, axis=-1), 0.0), axis=-1),
+      multiples=[1, max_num_atoms]
+    ),
+    # [bsize, num_atoms]
+    sample_mask,
+    # [bsize, num_atoms]
+    a_mask
+  )
+
+  # [bsize, num_atoms]
+  sample_energies = (1.0 - sample_mask) * -1e9
+  # [bsize, k]
+  sample_idxs = tf.random.categorical(sample_energies, k)
+  print(f'sample_idxs: {sample_idxs.get_shape()}')
+  # TODO validate indexing
+  # [bsize, k, seq_len, emb_size]
+  s_embs = tf.gather(
+    # [bsize, num_atoms, seq_len, emb_size]
+    embs,
+    # [bsize, k]
+    sample_idxs,
+    batch_dims=1,
+    axis=1
+  )
+  print(f's_embs: {s_embs.get_shape()}')
+  # TODO validate indexing
+  # [bsize, k]
+  s_lengths = tf.gather(
+    # [bsize, num_atoms]
+    lengths,
+    # [bsize, k]
+    sample_idxs,
+    batch_dims=1,
+    axis=1
+  )
+  print(f's_lengths: {s_lengths.get_shape()}')
+
+  return p_embs, p_lengths, s_embs, s_lengths
