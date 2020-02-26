@@ -223,8 +223,8 @@ class TfDataGenerator:
       p_mask = tf.one_hot(
         p_idxs,
         depth=lengths.get_shape()[1],
-        on_value=0,
-        off_value=1,
+        on_value=0.0,
+        off_value=1.0,
         dtype=tf.float32
       )
       print(f'p_mask: {p_mask.get_shape()}')
