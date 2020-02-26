@@ -283,6 +283,10 @@ class DisGen(BaseModel):
     self.bsize, self.nsamples, self.seq_len = neg_shape[0], neg_shape[1], neg_shape[2]
     self.total_neg_size = self.bsize * self.nsamples
     self.s_nsamples = tf.shape(self.s_subjs_emb)[1]
+    print(f's_subjs_emb: {self.s_subjs_emb.get_shape()}')
+    print(f's_objs_emb: {self.s_objs_emb.get_shape()}')
+    print(f's_subjs_lengths: {self.s_subjs_lengths.get_shape()}')
+    print(f's_objs_lengths: {self.s_objs_lengths.get_shape()}')
     self.total_s_size = self.bsize * self.s_nsamples
 
     # [bsize * num_samples]
