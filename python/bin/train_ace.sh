@@ -361,7 +361,7 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=disgen \
 --model=transd-distmult \
---run_name=transd-dm-disgen-cake-ext-12 \
+--run_name=transd-dm-disgen-cake-ext-13 \
 --ace_model \
 --np_atom_loss_type='p_dist_symmetric' \
 --np_atom_loss_factor=0.5 \
@@ -383,14 +383,14 @@ python -m python.eukg.train \
 --summaries_dir=/shared/hltdir4/disk1/max/logs \
 --num_workers=6 \
 --buffer_size=1 \
---load=False
+--load=True
 
 
 python -m python.eukg.train \
 --mode=gan-joint \
 --model=transd-distmult \
---run_name=transd-dm-gan-joint-cake-2 \
---pre_run_name=transd-dm-disgen-cake-ext-2 \
+--run_name=transd-dm-gan-joint-cake-13 \
+--pre_run_name=transd-dm-disgen-cake-ext-13 \
 --ace_model \
 --np_atom_loss_type='p_dist' \
 --np_atom_loss_factor=0.1 \
