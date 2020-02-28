@@ -584,7 +584,7 @@ class DisGenGan(DisGen):
 
       if self.g_model == "distmult":
         reg = self.regulatization_parameter * self.gen_embedding_model.regularization(
-          [self.g_e_concepts],
+          [g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj],
           [self.g_e_rels]
         )
         summary += [
