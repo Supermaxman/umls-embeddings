@@ -98,3 +98,24 @@ python -m python.eukg.data.embed \
   --ctxt2id_file='/users/max/data/corpora/nary-rel/tf-0/ctxt2id.json' \
   --out_file='/users/max/data/corpora/nary-rel/tf-0/transd-dm-gan-joint-ace-20-embeddings.npz' \
   --batch_size=16
+
+python -m python.eukg.data.embed \
+  --ace_path='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-gan-joint-cake-13' \
+  --ctxt2id_file='/home/max/data/artifacts/i2b2/2010/new_data/ctxt2id.json' \
+  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-gan-joint-cake-13-embeddings.npz'
+
+python -m python.eukg.data.embed_rels \
+  --ace_path='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-gan-joint-cake-13' \
+  --relid2txt='/home/max/data/artifacts/i2b2/2010/new_data/relid2txt_umls.json' \
+  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-gan-joint-cake-13-rel-umls-embeddings.npz'
+
+python -m python.eukg.data.embed \
+  --ace_path='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-gan-joint-cake-13-bkpt' \
+  --ctxt2id_file='/home/max/data/artifacts/i2b2/2010/new_data/ctxt2id.json' \
+  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-gan-joint-cake-13-bkpt-embeddings.npz'
+
+python -m python.eukg.data.embed_rels \
+  --ace_path='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-gan-joint-cake-13-bkpt' \
+  --relid2txt='/home/max/data/artifacts/i2b2/2010/new_data/relid2txt_umls.json' \
+  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-gan-joint-cake-13-bkpt-rel-umls-embeddings.npz'
+
