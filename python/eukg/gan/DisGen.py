@@ -100,6 +100,7 @@ class DisGen(BaseModel):
     self._build_embeddings()
 
     g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj, _, _ = self._un_flatten_gen(self.g_e_concepts)
+    self.nsamples = tf.shape(g_e_neg_subj)[1]
     uniform_sampls = tf.random.uniform([self.bsize, 1], maxval=tf.cast(self.nsamples, tf.int64), dtype=tf.int64)
     d_e_neg_subj, d_e_neg_obj, d_e_pos_subj, d_e_pos_obj, d_e_s_subj, d_e_s_obj = self._un_flatten_dis(self.d_e_concepts, uniform_sampls)
 
@@ -259,14 +260,86 @@ class DisGen(BaseModel):
     # summary
     self.summary = tf.summary.merge(summary)
 
+  def _get_neg_samples(self, b_subj_emb, b_objs_emb):
+    bsize = tf.shape(b_subj_emb)[0]
+    emb_size = b_subj_emb.get_shape()[-1]
+    # need to create tensor of shape [bsize, bsize - 1] where, for each bsize it is only the remaining indices
+    # shape [bsize, bsize, emb_size]
+    b_nsubjs_samples_embs = tf.tile(
+      tf.expand_dims(b_subj_emb, axis=0),
+      [bsize, 1, 1]
+    )
+    # shape [bsize, bsize, emb_size]
+    b_nobjs_samples_embs = tf.tile(
+      tf.expand_dims(b_objs_emb, axis=0),
+      [bsize, 1, 1]
+    )
+
+    # mask out same batch elements
+    b_sample_mask = tf.logical_not(tf.eye(bsize, dtype=tf.bool))
+
+    # only dropping the equal element in batch, so keep others for samples
+    subj_sample_count = bsize - 1
+    obj_sample_count = bsize - 1
+
+    # utilize boolean mask to get embeddings
+    # shape [bsize, bsize-1, emb_size]
+    b_nsubjs_samples_embs = tf.reshape(
+      tf.boolean_mask(b_nsubjs_samples_embs, b_sample_mask),
+      shape=[bsize, subj_sample_count, emb_size],
+      name='b_nsubjs_samples_embs'
+    )
+    print(b_nsubjs_samples_embs)
+
+    # shape [bsize, bsize-1, emb_size]
+    b_nobjs_samples_embs = tf.reshape(
+      tf.boolean_mask(b_nobjs_samples_embs, b_sample_mask),
+      shape=[bsize, obj_sample_count, emb_size],
+      name='b_nobjs_samples_embs'
+    )
+    print(b_nobjs_samples_embs)
+
+    # concat real objs for negative subj samples
+    # shape [bsize,
+    # concatenate
+    # [bsize, subj_sample_count, lm_encoder_size]
+    # with
+    # [bsize, obj_sample_count, lm_encoder_size]
+    # to get
+    # [bsize, total_sample_count, lm_encoder_size]
+    b_nsubjs_embs = tf.concat(
+      [
+        b_nsubjs_samples_embs,
+        # tile to [bsize, obj_sample_count, emb_size]
+        tf.tile(
+          # expand to [bsize, 1, emb_size]
+          tf.expand_dims(b_subj_emb, axis=1),
+          [1, obj_sample_count, 1]
+        )
+      ],
+      axis=1
+    )
+    print(b_nsubjs_embs)
+    b_nobjs_embs = tf.concat(
+      [
+        tf.tile(
+          tf.expand_dims(b_objs_emb, axis=1),
+          [1, subj_sample_count, 1]
+        ),
+        b_nobjs_samples_embs
+      ],
+      axis=1
+    )
+    print(b_nobjs_embs)
+
+    return b_nsubjs_embs, b_nobjs_embs
+
   def _build_embeddings(self):
     self.data_generator.create_iterator()
 
     self.subjs_emb = self.data_generator.subjs_emb
     self.rels_emb = self.data_generator.rels_emb
     self.objs_emb = self.data_generator.objs_emb
-    self.nsubjs_embs = self.data_generator.nsubjs_embs
-    self.nobjs_embs = self.data_generator.nobjs_embs
 
     self.s_subjs_emb = self.data_generator.s_subjs_emb
     self.s_objs_emb = self.data_generator.s_objs_emb
@@ -274,34 +347,14 @@ class DisGen(BaseModel):
     self.subjs_lengths = self.data_generator.subjs_lengths
     self.rels_lengths = self.data_generator.rels_lengths
     self.objs_lengths = self.data_generator.objs_lengths
-    self.nsubjs_lengths = self.data_generator.nsubjs_lengths
-    self.nobjs_lengths = self.data_generator.nobjs_lengths
 
     self.s_subjs_lengths = self.data_generator.s_subjs_lengths
     self.s_objs_lengths = self.data_generator.s_objs_lengths
 
-    neg_shape = tf.shape(self.nsubjs_embs)
-    self.bsize, self.nsamples, self.seq_len = neg_shape[0], neg_shape[1], neg_shape[2]
-    self.total_neg_size = self.bsize * self.nsamples
+    self.bsize = tf.shape(self.subjs_emb)[0]
+    self.seq_len = tf.shape(self.subjs_emb)[1]
     self.s_nsamples = tf.shape(self.s_subjs_emb)[1]
-    print(f's_subjs_emb: {self.s_subjs_emb.get_shape()}')
-    print(f's_objs_emb: {self.s_objs_emb.get_shape()}')
-    print(f's_subjs_lengths: {self.s_subjs_lengths.get_shape()}')
-    print(f's_objs_lengths: {self.s_objs_lengths.get_shape()}')
     self.total_s_size = self.bsize * self.s_nsamples
-
-    # [bsize * num_samples]
-    neg_subj_flat = tf.reshape(
-      self.nsubjs_embs,
-      [self.total_neg_size, self.seq_len, self.lm_encoder_size], name='neg_subj_flat')
-
-    neg_subj_length_flat = tf.reshape(self.nsubjs_lengths, [self.total_neg_size], name='neg_subj_flat_len')
-    # [bsize * num_samples]
-    neg_obj_flat = tf.reshape(
-      self.nobjs_embs,
-      [self.total_neg_size, self.seq_len, self.lm_encoder_size], name='neg_obj_flat')
-
-    neg_obj_length_flat = tf.reshape(self.nobjs_lengths, [self.total_neg_size], name='neg_obj_flat_len')
 
     s_subjs_flat = tf.reshape(
       self.s_subjs_emb,
@@ -316,9 +369,7 @@ class DisGen(BaseModel):
 
     # [bsize * num_samples + bsize * num_samples + b_size + b_size + 2 * b_size * num_atom_samples, enc_size]
     concept_embs = tf.concat(
-      [neg_subj_flat,
-       neg_obj_flat,
-       self.subjs_emb,
+      [self.subjs_emb,
        self.objs_emb,
        s_subjs_flat,
        s_objs_flat],
@@ -326,9 +377,7 @@ class DisGen(BaseModel):
       name='concept_flat_embs'
     )
     concept_lengths = tf.concat(
-      [neg_subj_length_flat,
-       neg_obj_length_flat,
-       self.subjs_lengths,
+      [self.subjs_lengths,
        self.objs_lengths,
        s_subjs_lengths_flat,
        s_objs_lengths_flat],
@@ -350,25 +399,12 @@ class DisGen(BaseModel):
     with tf.variable_scope('emb_indexing'):
       emb_size = e_concepts.get_shape()[-1]
 
-      pos_subj_start = 2 * self.total_neg_size
-      s_subj_start = pos_subj_start + 2 * self.bsize
+      s_subj_start = 2 * self.bsize
 
-      # first bsize * num_samples
-      e_neg_subj = tf.reshape(
-        e_concepts[:self.total_neg_size],
-        [self.bsize, self.nsamples, emb_size],
-        name='e_neg_subj'
-      )
-      # second bsize * num_samples
-      e_neg_obj = tf.reshape(
-        e_concepts[self.total_neg_size:2 * self.total_neg_size],
-        [self.bsize, self.nsamples, emb_size],
-        name='e_neg_obj'
-      )
       # bsize
-      e_pos_subj = e_concepts[pos_subj_start:pos_subj_start + self.bsize]
+      e_pos_subj = e_concepts[:self.bsize]
       # bsize
-      e_pos_obj = e_concepts[pos_subj_start + self.bsize:s_subj_start]
+      e_pos_obj = e_concepts[self.bsize:s_subj_start]
 
       # first bsize * num_samples
       e_s_subj = tf.reshape(
@@ -383,6 +419,7 @@ class DisGen(BaseModel):
         name='e_s_obj'
       )
 
+      e_neg_subj, e_neg_obj = self._get_neg_samples(e_pos_subj, e_pos_obj)
     return e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj, e_s_subj, e_s_obj
 
   def _un_flatten_dis(self, e_concepts, g_sampls=None):
@@ -408,6 +445,7 @@ class DisGen(BaseModel):
 
     else:
       e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj, e_s_subj, e_s_obj = self._un_flatten_gen(e_concepts)
+
       e_neg_subj = tf.gather(e_neg_subj, g_sampls, batch_dims=1, axis=1)[:, 0]
       e_neg_obj = tf.gather(e_neg_obj, g_sampls, batch_dims=1, axis=1)[:, 0]
 
@@ -453,6 +491,7 @@ class DisGenGan(DisGen):
 
     g_e_neg_subj, g_e_neg_obj, g_e_pos_subj, g_e_pos_obj, _, _ = self._un_flatten_gen(self.g_e_concepts)
 
+    self.nsamples = tf.shape(g_e_neg_subj)[1]
     uniform_sampls = tf.random.uniform([self.bsize, 1], maxval=tf.cast(self.nsamples, tf.int64), dtype=tf.int64)
     d_e_neg_subj_uniform, d_e_neg_obj_uniform, _, _, _, _ = self._un_flatten_dis(self.d_e_concepts, uniform_sampls)
 

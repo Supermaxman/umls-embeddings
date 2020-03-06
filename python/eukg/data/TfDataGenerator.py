@@ -51,25 +51,6 @@ class TfDataGenerator:
     )
 
   def create_iterator(self):
-    if self.test_mode:
-      _, test_data, _, _ = data_util.load_metathesaurus_data(self.data_dir, 0.)
-    else:
-      test_data = data_util.load_metathesaurus_test_data(self.data_dir)
-    # valid_triples = set()
-    # for s, r, o in zip(self.data['subj'], self.data['rel'], self.data['obj']):
-    #   valid_triples.add((s, r, o))
-    # for s, r, o in zip(test_data['subj'], test_data['rel'], test_data['obj']):
-    #   valid_triples.add((s, r, o))
-
-    # Get all concepts which have some relation for negative sampling (these should be dense
-    total_concepts = np.unique(
-      np.concatenate(
-        [self.data['obj'], test_data['obj'], self.data['subj'], test_data['subj']]
-      )
-    )
-    concept_count = len(total_concepts)
-    concept_lookup = tf.constant(total_concepts)
-
     self.subjs_placeholder = tf.placeholder(tf.int32, [None])
     self.rels_placeholder = tf.placeholder(tf.int32, [None])
     self.objs_placeholder = tf.placeholder(tf.int32, [None])
@@ -272,127 +253,10 @@ class TfDataGenerator:
         self.num_atom_samples
       )
 
-      # need to create tensor of shape [bsize, bsize - 1] where, for each bsize it is only the remaining indices
-      # shape [bsize, bsize, seq_len, emb_size]
-      b_nsubjs_samples_embs = tf.tile(
-        tf.expand_dims(b_subj_emb, axis=0),
-        [bsize, 1, 1, 1]
-      )
-      print(b_nsubjs_samples_embs.get_shape())
-      # shape [bsize, bsize]
-      b_nsubjs_sample_lengths = tf.tile(
-        tf.expand_dims(b_subj_lengths, axis=0),
-        [bsize, 1]
-      )
-      print(b_nsubjs_sample_lengths.get_shape())
-
-      # shape [bsize, bsize, seq_len, emb_size]
-      b_nobjs_samples_embs = tf.tile(
-        tf.expand_dims(b_objs_emb, axis=0),
-        [bsize, 1, 1, 1]
-      )
-      # shape [bsize, bsize]
-      b_nobjs_sample_lengths = tf.tile(
-        tf.expand_dims(b_objs_lengths, axis=0),
-        [bsize, 1]
-      )
-
-      # mask out same batch elements
-      b_sample_mask = tf.logical_not(tf.eye(bsize, dtype=tf.bool))
-      print(b_sample_mask.get_shape())
-
-      # only dropping the equal element in batch, so keep others for samples
-      subj_sample_count = bsize - 1
-      obj_sample_count = bsize - 1
-
-      # utilize boolean mask to get embeddings
-      # shape [bsize, bsize-1, b_max_token_length, lm_encoder_size]
-      b_nsubjs_samples_embs = tf.reshape(
-        tf.boolean_mask(b_nsubjs_samples_embs, b_sample_mask),
-        shape=[bsize, subj_sample_count, b_max_token_length, self.lm_encoder_size],
-        name='b_nsubjs_samples_embs'
-      )
-      print(b_nsubjs_samples_embs.get_shape())
-      # shape [bsize, bsize-1]
-      b_nsubjs_sample_lengths = tf.reshape(
-        tf.boolean_mask(b_nsubjs_sample_lengths, b_sample_mask),
-        shape=[bsize, subj_sample_count],
-        name='b_nsubjs_sample_lengths'
-      )
-      print(b_nsubjs_sample_lengths.get_shape())
-
-      # shape [bsize, bsize-1, b_max_token_length, lm_encoder_size]
-      b_nobjs_samples_embs = tf.reshape(
-        tf.boolean_mask(b_nobjs_samples_embs, b_sample_mask),
-        shape=[bsize, obj_sample_count, b_max_token_length, self.lm_encoder_size],
-        name='b_nobjs_samples_embs'
-      )
-      # shape [bsize, bsize-1]
-      b_nobjs_sample_lengths = tf.reshape(
-        tf.boolean_mask(b_nobjs_sample_lengths, b_sample_mask),
-        shape=[bsize, obj_sample_count],
-        name='b_nobjs_sample_lengths'
-      )
-
-      # concat real objs for negative subj samples
-      # shape [bsize,
-      # concatenate
-      # [bsize, subj_sample_count, b_max_token_length, lm_encoder_size]
-      # with
-      # [bsize, obj_sample_count, b_max_token_length, lm_encoder_size]
-      # to get
-      # [bsize, total_sample_count, b_max_token_length, lm_encoder_size]
-      b_nsubjs_embs = tf.concat(
-        [
-          b_nsubjs_samples_embs,
-          # tile to [bsize, obj_sample_count, seq_len, emb_size]
-          tf.tile(
-            # expand to [bsize, 1, seq_len, emb_size]
-            tf.expand_dims(b_subj_emb, axis=1),
-            [1, obj_sample_count, 1, 1]
-          )
-        ],
-        axis=1
-      )
-      print(b_nsubjs_embs.get_shape())
-      b_nsubjs_lengths = tf.concat(
-        [
-          b_nsubjs_sample_lengths,
-          tf.tile(
-            tf.expand_dims(b_subj_lengths, axis=1),
-            [1, obj_sample_count]
-          )
-        ],
-        axis=1
-      )
-      print(b_nsubjs_lengths.get_shape())
-      b_nobjs_embs = tf.concat(
-        [
-          tf.tile(
-            tf.expand_dims(b_objs_emb, axis=1),
-            [1, subj_sample_count, 1, 1]
-          ),
-          b_nobjs_samples_embs
-        ],
-        axis=1
-      )
-      b_nobjs_lengths = tf.concat(
-        [
-          tf.tile(
-            tf.expand_dims(b_objs_lengths, axis=1),
-            [1, subj_sample_count]
-          ),
-          b_nobjs_sample_lengths
-        ],
-        axis=1
-      )
-
       b_subj_emb.set_shape([None, None, self.lm_encoder_size])
       b_s_subj_embs.set_shape([None, self.num_atom_samples, None, self.lm_encoder_size])
-      b_nsubjs_embs.set_shape([None, None, None, self.lm_encoder_size])
       b_objs_emb.set_shape([None, None, self.lm_encoder_size])
       b_s_objs_embs.set_shape([None, self.num_atom_samples, None, self.lm_encoder_size])
-      b_nobjs_embs.set_shape([None, None, None, self.lm_encoder_size])
       b_rels_emb.set_shape([None, None, self.lm_encoder_size])
 
       b_data = {
@@ -401,17 +265,10 @@ class TfDataGenerator:
         'b_s_subj_embs': b_s_subj_embs,
         'b_s_subj_lengths': b_s_subj_lengths,
 
-        'b_nsubjs_embs': b_nsubjs_embs,
-        'b_nsubjs_lengths': b_nsubjs_lengths,
-
-
         'b_objs_emb': b_objs_emb,
         'b_objs_lengths': b_objs_lengths,
         'b_s_objs_embs': b_s_objs_embs,
         'b_s_objs_lengths': b_s_objs_lengths,
-
-        'b_nobjs_embs': b_nobjs_embs,
-        'b_nobjs_lengths': b_nobjs_lengths,
 
         'b_rels_emb': b_rels_emb,
         'b_rels_lengths': b_rels_lengths
@@ -473,18 +330,14 @@ class TfDataGenerator:
 
     self.subjs_emb = batch['b_subj_emb']
     self.s_subjs_emb = batch['b_s_subj_embs']
-    self.nsubjs_embs = batch['b_nsubjs_embs']
     self.objs_emb = batch['b_objs_emb']
     self.s_objs_emb = batch['b_s_objs_embs']
-    self.nobjs_embs = batch['b_nobjs_embs']
     self.rels_emb = batch['b_rels_emb']
 
     self.subjs_lengths = batch['b_subj_lengths']
     self.s_subjs_lengths = batch['b_s_subj_lengths']
-    self.nsubjs_lengths = batch['b_nsubjs_lengths']
     self.objs_lengths = batch['b_objs_lengths']
     self.s_objs_lengths = batch['b_s_objs_lengths']
-    self.nobjs_lengths = batch['b_nobjs_lengths']
     self.rels_lengths = batch['b_rels_lengths']
 
 
@@ -871,4 +724,6 @@ def sample_non_primary(embs, lengths, a_counts, p_idxs, k):
   )
   print(f's_lengths: {s_lengths.get_shape()}')
 
-  return p_embs, p_lengths, s_embs, s_lengths
+  print(f'WARNING: NOT USING NON-PRIMARY SAMPLING')
+  # return p_embs, p_lengths, s_embs, s_lengths
+  return p_embs, p_lengths, tf.expand_dims(p_embs, axis=1), tf.expand_dims(p_lengths, axis=1)

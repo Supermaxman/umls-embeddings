@@ -119,3 +119,14 @@ python -m python.eukg.data.embed_rels \
   --relid2txt='/home/max/data/artifacts/i2b2/2010/new_data/relid2txt_umls.json' \
   --out_file='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-gan-joint-cake-13-bkpt-rel-umls-embeddings.npz'
 
+
+python -m python.eukg.data.embed \
+  --ace_path='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-disgen-cake-ext-15' \
+  --ctxt2id_file='/home/max/data/artifacts/i2b2/2010/new_data/ctxt2id.json' \
+  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-disgen-cake-ext-15-embeddings.npz'
+
+python -m python.eukg.data.embed_rels \
+  --ace_path='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-disgen-cake-ext-15' \
+  --relid2txt='/home/max/data/artifacts/i2b2/2010/new_data/relid2txt_umls.json' \
+  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-disgen-cake-ext-15-rel-umls-embeddings.npz'
+
