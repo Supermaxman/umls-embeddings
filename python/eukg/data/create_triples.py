@@ -60,7 +60,7 @@ class ConceptExample:
     return d
 
   def add_atom_string(self, atom):
-    a_str = atom.string.lower().strip()
+    a_str = atom.string.strip()
     added_atom = False
     if a_str not in self.atom_lookup:
       self.atom_lookup[a_str] = len(self.atom_lookup)
@@ -203,11 +203,10 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
     tokens = []
     token_ids = []
     doc = nlp(text.strip())
-    # w_tokens = text.strip().lower().split()
     tokens.append('[CLS]')
     token_ids.append(vocab['[CLS]'])
     for w_t in doc:
-      wpt_tokens = tokenizer.tokenize(w_t.string.lower())
+      wpt_tokens = tokenizer.tokenize(w_t.string)
       for wpt_t in wpt_tokens:
         tokens.append(wpt_t)
         token_ids.append(vocab[wpt_t])
@@ -347,8 +346,8 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
 
   gpu_config = tf.ConfigProto()
   gpu_config.gpu_options.allow_growth = True
-  bert_config = '/users/max/data/models/bert/ncbi_pubmed_mimic_uncased_base/bert_config.json'
-  encoder_checkpoint = '/users/max/data/models/bert/ncbi_pubmed_mimic_uncased_base/bert_model.ckpt'
+  bert_config = '/users/max/data/models/bert/biobert_v1.1_pubmed/bert_config.json'
+  encoder_checkpoint = '/users/max/data/models/bert/biobert_v1.1_pubmed/bert_model.ckpt'
   with tf.Graph().as_default(), tf.Session(config=gpu_config) as session:
     print('Loading bert...')
     lm = LanguageModel.BertLanguageModel(
@@ -389,6 +388,11 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
           )
         ),
         'token_length': _int64_feature(token_lengths[0]),
+        'token_ids': tf.train.Feature(
+          int64_list=tf.train.Int64List(
+            value=token_ids[0]
+          )
+        ),
         'entity_id': _int64_feature(rt.rid)
       }
       with open(rt_file, 'wb') as f:
@@ -445,6 +449,14 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
           )
         ),
         'token_lengths': tf.train.Feature(int64_list=tf.train.Int64List(value=token_lengths)),
+        'token_ids': tf.train.Feature(
+          int64_list=tf.train.Int64List(
+            value=np.reshape(
+              token_ids,
+              nrof_atoms * concept_token_pad
+            )
+          )
+        ),
         'entity_id': _int64_feature(c.cid),
         'nrof_atoms': _int64_feature(nrof_atoms),
         'concept_token_pad': _int64_feature(concept_token_pad),
@@ -507,7 +519,7 @@ def main():
   random.seed(seed)
   np.random.seed(seed)
 
-  vocab_file = '/shared/hltdir4/disk1/team/data/models/bert/uncased_L-24_H-1024_A-16/vocab.txt'
+  vocab_file = '/users/max/data/models/bert/biobert_v1.1_pubmed/vocab.txt'
   # Previously MRCONSO.RRF, changed to MRREL.RRF
   metathesaurus_triples(args.umls_dir, args.output, args.data_folder, vocab_file)
 
