@@ -405,10 +405,10 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
     print('Creating concept lm embeddings...')
     for cui, c in tqdm(concepts.items(), desc="calculating", total=len(concepts)):
       c_file = os.path.join(lm_concept_embeddings_dir, f'{c.cid}.tfexample')
-      if os.path.exists(c_file):
-        statinfo = os.stat(c_file)
-        if statinfo.st_size != 0:
-          continue
+      # if os.path.exists(c_file):
+      #   statinfo = os.stat(c_file)
+      #   if statinfo.st_size != 0:
+      #     continue
       nrof_atoms = len(c.atom_tokens)
       max_token_length = max([len(x) for x in c.atom_tokens])
       concept_token_pad = min(max_token_length, atom_token_pad)
