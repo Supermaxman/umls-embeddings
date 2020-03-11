@@ -51,6 +51,8 @@ tf.flags.DEFINE_float("gamma", 0.1, "Margin parameter for loss")
 tf.flags.DEFINE_string("np_atom_loss_type", 'p_dist', "Loss type for non-preferred atom loss.")
 tf.flags.DEFINE_float("np_atom_loss_factor", 0.1, "Loss weight for non-preferred atom loss")
 tf.flags.DEFINE_integer("num_atom_samples", 1, "Number of non-preferred atoms to sample each batch.")
+tf.flags.DEFINE_bool("shared_encoder", True, "Shared language model embedding "
+                                             "encoder or different for generator and discriminator")
 
 tf.flags.DEFINE_integer("vocab_size", 1726933, "Number of unique concepts+relations")
 tf.flags.DEFINE_integer("embedding_size", 50, "embedding size")

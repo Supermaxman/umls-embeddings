@@ -17,11 +17,11 @@ def embed():
   parser.add_argument('--relid2txt', default='/home/max/data/artifacts/i2b2/2010/new_data/relid2txt_basic.json')
   parser.add_argument('--ace_path', default='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-gan-joint-ace-20')
   parser.add_argument('--out_file', default='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-gan-joint-ace-20-rel-embeddings.npz')
+  parser.add_argument('--vocab_file', default='/users/max/data/models/bert/biobert_v1.1_pubmed/vocab.txt')
   parser.add_argument('--embedding_size', default=100)
   config = parser.parse_args()
 
-  vocab_file = '/shared/hltdir4/disk1/team/data/models/bert/uncased_L-24_H-1024_A-16/vocab.txt'
-  vocab = hgt.load_vocab(vocab_file)
+  vocab = hgt.load_vocab(config.vocab_file)
   tokenizer = hgt.WordpieceTokenizer(vocab)
   nlp = spacy.load('en_core_sci_sm', disable=['tagger', 'parser', 'ner', 'textcat'])
 
@@ -33,7 +33,7 @@ def embed():
     tokens.append('[CLS]')
     token_ids.append(vocab['[CLS]'])
     for w_t in doc:
-      wpt_tokens = tokenizer.tokenize(w_t.string.lower())
+      wpt_tokens = tokenizer.tokenize(w_t.string)
       for wpt_t in wpt_tokens:
         tokens.append(wpt_t)
         token_ids.append(vocab[wpt_t])

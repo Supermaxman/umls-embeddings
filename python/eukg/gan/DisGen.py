@@ -11,7 +11,8 @@ class DisGen(BaseModel):
     super().__init__(config, dis_embedding_model, data_generator)
     self.dis_embedding_model = dis_embedding_model
     self.gen_embedding_model = gen_embedding_model
-    self.num_samples = config.num_generator_samples
+
+    self.num_atom_samples = config.num_atom_samples
     self.gan_mode = False
 
     # dataset2: s, r, o, ns, no
@@ -27,6 +28,8 @@ class DisGen(BaseModel):
     self.data_provider = data_generator
     self.ace_model = ace_model
     self.lm_encoder_size = config.lm_encoder_size
+    self.has_atom_samples = self.num_atom_samples > 0
+    self.shared_encoder = config.shared_encoder
 
   def build_test(self):
     self.build_test_concepts()
@@ -103,13 +106,6 @@ class DisGen(BaseModel):
     self.nsamples = tf.shape(g_e_neg_subj)[1]
     uniform_sampls = tf.random.uniform([self.bsize, 1], maxval=tf.cast(self.nsamples, tf.int64), dtype=tf.int64)
     d_e_neg_subj, d_e_neg_obj, d_e_pos_subj, d_e_pos_obj, d_e_s_subj, d_e_s_obj = self._un_flatten_dis(self.d_e_concepts, uniform_sampls)
-
-    print(f'd_e_neg_subj:{d_e_neg_subj[0].get_shape()}')
-    print(f'd_e_neg_obj:{d_e_neg_obj[0].get_shape()}')
-    print(f'd_e_pos_subj:{d_e_pos_subj[0].get_shape()}')
-    print(f'd_e_pos_obj:{d_e_pos_obj[0].get_shape()}')
-    print(f'd_e_s_subj:{d_e_s_subj[0].get_shape()}')
-    print(f'd_e_s_obj:{d_e_s_obj[0].get_shape()}')
 
     self.concept_embeddings = self.d_e_concepts
     self.relation_embeddings = self.d_e_rels
@@ -207,37 +203,39 @@ class DisGen(BaseModel):
       self.d_active_percent = tf.reduce_mean(tf.to_float(-self.d_margin < self.gamma))
 
       self.d_accuracy = tf.reduce_mean(tf.to_float(tf.equal(self.d_predictions, 0)))
+      if self.has_atom_samples:
+        if self.np_atom_loss_type == 'p_dist':
+          def np_atom_loss(p_emb, np_emb):
+            p_emb = tf.expand_dims(tf.stop_gradient(tf.concat(p_emb, axis=-1)), axis=1)
+            np_emb = tf.concat(np_emb, axis=-1)
+            # [bsize, s_nsample, e_dim]
+            p_np_diff = p_emb - np_emb
+            # [bsize, s_nsample]
+            pd_loss = tf.reduce_sum(p_np_diff * p_np_diff, axis=-1)
+            # [bsize]
+            pd_loss = tf.reduce_mean(pd_loss, axis=-1)
+            pd_loss = tf.reduce_mean(pd_loss, axis=-1)
+            return pd_loss
+        elif self.np_atom_loss_type == 'p_dist_symmetric':
+          def np_atom_loss(p_emb, np_emb):
+            p_emb = tf.expand_dims(tf.concat(p_emb, axis=-1), axis=1)
+            np_emb = tf.concat(np_emb, axis=-1)
+            # [bsize, s_nsample, e_dim]
+            p_np_diff = p_emb - np_emb
+            # [bsize, s_nsample]
+            pd_loss = tf.reduce_sum(p_np_diff * p_np_diff, axis=-1)
+            # [bsize]
+            pd_loss = tf.reduce_mean(pd_loss, axis=-1)
+            pd_loss = tf.reduce_mean(pd_loss, axis=-1)
+            return pd_loss
+        else:
+          raise ValueError(f'Unknown non-primary atom loss type: {self.np_atom_loss_type}')
 
-      if self.np_atom_loss_type == 'p_dist':
-        def np_atom_loss(p_emb, np_emb):
-          p_emb = tf.expand_dims(tf.stop_gradient(tf.concat(p_emb, axis=-1)), axis=1)
-          np_emb = tf.concat(np_emb, axis=-1)
-          # [bsize, s_nsample, e_dim]
-          p_np_diff = p_emb - np_emb
-          # [bsize, s_nsample]
-          pd_loss = tf.reduce_sum(p_np_diff * p_np_diff, axis=-1)
-          # [bsize]
-          pd_loss = tf.reduce_mean(pd_loss, axis=-1)
-          pd_loss = tf.reduce_mean(pd_loss, axis=-1)
-          return pd_loss
-      elif self.np_atom_loss_type == 'p_dist_symmetric':
-        def np_atom_loss(p_emb, np_emb):
-          p_emb = tf.expand_dims(tf.concat(p_emb, axis=-1), axis=1)
-          np_emb = tf.concat(np_emb, axis=-1)
-          # [bsize, s_nsample, e_dim]
-          p_np_diff = p_emb - np_emb
-          # [bsize, s_nsample]
-          pd_loss = tf.reduce_sum(p_np_diff * p_np_diff, axis=-1)
-          # [bsize]
-          pd_loss = tf.reduce_mean(pd_loss, axis=-1)
-          pd_loss = tf.reduce_mean(pd_loss, axis=-1)
-          return pd_loss
+        p_dist_subj_loss = np_atom_loss(d_e_pos_subj, d_e_s_subj)
+        p_dist_obj_loss = np_atom_loss(d_e_pos_obj, d_e_s_obj)
+        self.np_loss = self.np_atom_loss_factor * (p_dist_subj_loss + p_dist_obj_loss)
       else:
-        raise ValueError(f'Unknown non-primary atom loss type: {self.np_atom_loss_type}')
-
-      p_dist_subj_loss = np_atom_loss(d_e_pos_subj, d_e_s_subj)
-      p_dist_obj_loss = np_atom_loss(d_e_pos_obj, d_e_s_obj)
-      self.np_loss = self.np_atom_loss_factor * (p_dist_subj_loss + p_dist_obj_loss)
+        self.np_loss = tf.zeros(shape=[], dtype=tf.float32)
 
     summary += [
       tf.summary.scalar('dis_loss', self.d_loss),
@@ -335,65 +333,72 @@ class DisGen(BaseModel):
     return b_nsubjs_embs, b_nobjs_embs
 
   def _build_embeddings(self):
-    self.data_generator.create_iterator()
+    batch = self.data_generator.create_iterator()
 
-    self.subjs_emb = self.data_generator.subjs_emb
-    self.rels_emb = self.data_generator.rels_emb
-    self.objs_emb = self.data_generator.objs_emb
+    self.subjs_emb = batch['b_subj_emb']
+    self.objs_emb = batch['b_objs_emb']
+    self.rels_emb = batch['b_rels_emb']
 
-    self.s_subjs_emb = self.data_generator.s_subjs_emb
-    self.s_objs_emb = self.data_generator.s_objs_emb
+    self.subjs_lengths = batch['b_subj_lengths']
+    self.objs_lengths = batch['b_objs_lengths']
+    self.rels_lengths = batch['b_rels_lengths']
 
-    self.subjs_lengths = self.data_generator.subjs_lengths
-    self.rels_lengths = self.data_generator.rels_lengths
-    self.objs_lengths = self.data_generator.objs_lengths
-
-    self.s_subjs_lengths = self.data_generator.s_subjs_lengths
-    self.s_objs_lengths = self.data_generator.s_objs_lengths
+    self.s_subjs_emb = batch['b_s_subj_embs']
+    self.s_objs_emb = batch['b_s_objs_embs']
+    self.s_subjs_lengths = batch['b_s_subj_lengths']
+    self.s_objs_lengths = batch['b_s_objs_lengths']
 
     self.bsize = tf.shape(self.subjs_emb)[0]
     self.seq_len = tf.shape(self.subjs_emb)[1]
-    self.s_nsamples = tf.shape(self.s_subjs_emb)[1]
-    self.total_s_size = self.bsize * self.s_nsamples
+    concept_tensors = [self.subjs_emb, self.objs_emb]
+    concept_length_tensors = [self.subjs_lengths, self.objs_lengths]
+    if self.has_atom_samples:
+      self.total_s_size = self.bsize * self.num_atom_samples
 
-    s_subjs_flat = tf.reshape(
-      self.s_subjs_emb,
-      [self.total_s_size, self.seq_len, self.lm_encoder_size], name='s_subjs_flat'
-    )
-    s_objs_flat = tf.reshape(
-      self.s_objs_emb,
-      [self.total_s_size, self.seq_len, self.lm_encoder_size], name='s_objs_flat'
-    )
-    s_subjs_lengths_flat = tf.reshape(self.s_subjs_lengths, [self.total_s_size], name='s_subjs_lengths_flat')
-    s_objs_lengths_flat = tf.reshape(self.s_objs_lengths, [self.total_s_size], name='s_objs_lengths_flat')
+      s_subjs_flat = tf.reshape(
+        self.s_subjs_emb,
+        [self.total_s_size, self.seq_len, self.lm_encoder_size], name='s_subjs_flat'
+      )
+      s_objs_flat = tf.reshape(
+        self.s_objs_emb,
+        [self.total_s_size, self.seq_len, self.lm_encoder_size], name='s_objs_flat'
+      )
+      s_subjs_lengths_flat = tf.reshape(self.s_subjs_lengths, [self.total_s_size], name='s_subjs_lengths_flat')
+      s_objs_lengths_flat = tf.reshape(self.s_objs_lengths, [self.total_s_size], name='s_objs_lengths_flat')
 
+      concept_tensors += [s_subjs_flat, s_objs_flat]
+      concept_length_tensors += [s_subjs_lengths_flat, s_objs_lengths_flat]
     # [bsize * num_samples + bsize * num_samples + b_size + b_size + 2 * b_size * num_atom_samples, enc_size]
     concept_embs = tf.concat(
-      [self.subjs_emb,
-       self.objs_emb,
-       s_subjs_flat,
-       s_objs_flat],
+      concept_tensors,
       axis=0,
       name='concept_flat_embs'
     )
     concept_lengths = tf.concat(
-      [self.subjs_lengths,
-       self.objs_lengths,
-       s_subjs_lengths_flat,
-       s_objs_lengths_flat],
+      concept_length_tensors,
       axis=0,
       name='concept_flat_lengths'
     )
 
-    concept_encodes = self.ace_model.encode(concept_embs, concept_lengths, 'concept')
-    rel_encodes = self.ace_model.encode(self.rels_emb, self.rels_lengths, 'rel')
+    if self.shared_encoder:
+      concept_encodes = self.ace_model.encode(concept_embs, concept_lengths, 'concept')
+      rel_encodes = self.ace_model.encode(self.rels_emb, self.rels_lengths, 'rel')
+      g_concept_encodes = concept_encodes
+      d_concept_encodes = concept_encodes
+      g_rel_encodes = rel_encodes
+      d_rel_encodes = rel_encodes
+    else:
+      g_concept_encodes = self.ace_model.encode(concept_embs, concept_lengths, 'concept', 'gen')
+      d_concept_encodes = self.ace_model.encode(concept_embs, concept_lengths, 'concept', 'dis')
+      g_rel_encodes = self.ace_model.encode(self.rels_emb, self.rels_lengths, 'rel', 'gen')
+      d_rel_encodes = self.ace_model.encode(self.rels_emb, self.rels_lengths, 'rel', 'dis')
 
-    self.g_e_concepts = self.gen_embedding_model.embed(concept_encodes, 'concept')
+    self.g_e_concepts = self.gen_embedding_model.embed(g_concept_encodes, 'concept')
     # TODO can be more efficient, not all concept dis embeddings are needed, only gen sampled and [0] for random.
-    self.d_e_concepts = self.dis_embedding_model.embed(concept_encodes, 'concept')
+    self.d_e_concepts = self.dis_embedding_model.embed(d_concept_encodes, 'concept')
 
-    self.g_e_rels = self.gen_embedding_model.embed(rel_encodes, 'rel')
-    self.d_e_rels = self.dis_embedding_model.embed(rel_encodes, 'rel')
+    self.g_e_rels = self.gen_embedding_model.embed(g_rel_encodes, 'rel')
+    self.d_e_rels = self.dis_embedding_model.embed(d_rel_encodes, 'rel')
 
   def _un_flatten_gen(self, e_concepts):
     with tf.variable_scope('emb_indexing'):
@@ -406,18 +411,22 @@ class DisGen(BaseModel):
       # bsize
       e_pos_obj = e_concepts[self.bsize:s_subj_start]
 
-      # first bsize * num_samples
-      e_s_subj = tf.reshape(
-        e_concepts[s_subj_start:s_subj_start + self.total_s_size],
-        [self.bsize, self.s_nsamples, emb_size],
-        name='e_s_subj'
-      )
-      # second bsize * num_samples
-      e_s_obj = tf.reshape(
-        e_concepts[s_subj_start + self.total_s_size:],
-        [self.bsize, self.s_nsamples, emb_size],
-        name='e_s_obj'
-      )
+      if self.has_atom_samples:
+        # first bsize * num_samples
+        e_s_subj = tf.reshape(
+          e_concepts[s_subj_start:s_subj_start + self.total_s_size],
+          [self.bsize, self.num_atom_samples, emb_size],
+          name='e_s_subj'
+        )
+        # second bsize * num_samples
+        e_s_obj = tf.reshape(
+          e_concepts[s_subj_start + self.total_s_size:],
+          [self.bsize, self.num_atom_samples, emb_size],
+          name='e_s_obj'
+        )
+      else:
+        e_s_subj = None
+        e_s_obj = None
 
       e_neg_subj, e_neg_obj = self._get_neg_samples(e_pos_subj, e_pos_obj)
     return e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj, e_s_subj, e_s_obj
@@ -558,36 +567,39 @@ class DisGenGan(DisGen):
       # self.d_train_op = d_optimizer.minimize(self.d_loss, name='d_train_op')
       self.d_active_percent = tf.reduce_mean(tf.to_float(-self.d_margin < self.gamma))
 
-      if self.np_atom_loss_type == 'p_dist':
-        def np_atom_loss(p_emb, np_emb):
-          p_emb = tf.expand_dims(tf.stop_gradient(tf.concat(p_emb, axis=-1)), axis=1)
-          np_emb = tf.concat(np_emb, axis=-1)
-          # [bsize, s_nsample, e_dim]
-          p_np_diff = p_emb - np_emb
-          # [bsize, s_nsample]
-          pd_loss = tf.reduce_sum(p_np_diff * p_np_diff, axis=-1)
-          # [bsize]
-          pd_loss = tf.reduce_mean(pd_loss, axis=-1)
-          pd_loss = tf.reduce_mean(pd_loss, axis=-1)
-          return pd_loss
-      elif self.np_atom_loss_type == 'p_dist_symmetric':
-        def np_atom_loss(p_emb, np_emb):
-          p_emb = tf.expand_dims(tf.concat(p_emb, axis=-1), axis=1)
-          np_emb = tf.concat(np_emb, axis=-1)
-          # [bsize, s_nsample, e_dim]
-          p_np_diff = p_emb - np_emb
-          # [bsize, s_nsample]
-          pd_loss = tf.reduce_sum(p_np_diff * p_np_diff, axis=-1)
-          # [bsize]
-          pd_loss = tf.reduce_mean(pd_loss, axis=-1)
-          pd_loss = tf.reduce_mean(pd_loss, axis=-1)
-          return pd_loss
-      else:
-        raise ValueError(f'Unknown non-primary atom loss type: {self.np_atom_loss_type}')
+      if self.has_atom_samples:
+        if self.np_atom_loss_type == 'p_dist':
+          def np_atom_loss(p_emb, np_emb):
+            p_emb = tf.expand_dims(tf.stop_gradient(tf.concat(p_emb, axis=-1)), axis=1)
+            np_emb = tf.concat(np_emb, axis=-1)
+            # [bsize, s_nsample, e_dim]
+            p_np_diff = p_emb - np_emb
+            # [bsize, s_nsample]
+            pd_loss = tf.reduce_sum(p_np_diff * p_np_diff, axis=-1)
+            # [bsize]
+            pd_loss = tf.reduce_mean(pd_loss, axis=-1)
+            pd_loss = tf.reduce_mean(pd_loss, axis=-1)
+            return pd_loss
+        elif self.np_atom_loss_type == 'p_dist_symmetric':
+          def np_atom_loss(p_emb, np_emb):
+            p_emb = tf.expand_dims(tf.concat(p_emb, axis=-1), axis=1)
+            np_emb = tf.concat(np_emb, axis=-1)
+            # [bsize, s_nsample, e_dim]
+            p_np_diff = p_emb - np_emb
+            # [bsize, s_nsample]
+            pd_loss = tf.reduce_sum(p_np_diff * p_np_diff, axis=-1)
+            # [bsize]
+            pd_loss = tf.reduce_mean(pd_loss, axis=-1)
+            pd_loss = tf.reduce_mean(pd_loss, axis=-1)
+            return pd_loss
+        else:
+          raise ValueError(f'Unknown non-primary atom loss type: {self.np_atom_loss_type}')
 
-      p_dist_subj_loss = np_atom_loss(d_e_pos_subj, d_e_s_subj)
-      p_dist_obj_loss = np_atom_loss(d_e_pos_obj, d_e_s_obj)
-      self.np_loss = self.np_atom_loss_factor * (p_dist_subj_loss + p_dist_obj_loss)
+        p_dist_subj_loss = np_atom_loss(d_e_pos_subj, d_e_s_subj)
+        p_dist_obj_loss = np_atom_loss(d_e_pos_obj, d_e_s_obj)
+        self.np_loss = self.np_atom_loss_factor * (p_dist_subj_loss + p_dist_obj_loss)
+      else:
+        self.np_loss = tf.zeros(shape=[], dtype=tf.float32)
 
 
     summary += [

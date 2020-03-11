@@ -122,7 +122,7 @@ def load_rel_mapping(filepath):
   return rel_mapping
 
 
-def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
+def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file, bert_config, encoder_checkpoint):
   # TODO completely restructure way this data is generated.
   # TODO first generate triples, then
   # TODO create file structure with kept atoms, definitions, contexts, etc.
@@ -346,8 +346,6 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
 
   gpu_config = tf.ConfigProto()
   gpu_config.gpu_options.allow_growth = True
-  bert_config = '/users/max/data/models/bert/biobert_v1.1_pubmed/bert_config.json'
-  encoder_checkpoint = '/users/max/data/models/bert/biobert_v1.1_pubmed/bert_model.ckpt'
   with tf.Graph().as_default(), tf.Session(config=gpu_config) as session:
     print('Loading bert...')
     lm = LanguageModel.BertLanguageModel(
@@ -513,15 +511,16 @@ def main():
                       help='Data folder.')
   parser.add_argument('--seed', default=1337,
                       help='Random seed.')
-
+  parser.add_argument('--vocab_file', default='/users/max/data/models/bert/biobert_v1.1_pubmed/vocab.txt')
+  parser.add_argument('--bert_config', default='/users/max/data/models/bert/biobert_v1.1_pubmed/bert_config.json')
+  parser.add_argument('--encoder_checkpoint', default='/users/max/data/models/bert/biobert_v1.1_pubmed/bert_model.ckpt')
   args = parser.parse_args()
   seed = args.seed
   random.seed(seed)
   np.random.seed(seed)
 
-  vocab_file = '/users/max/data/models/bert/biobert_v1.1_pubmed/vocab.txt'
   # Previously MRCONSO.RRF, changed to MRREL.RRF
-  metathesaurus_triples(args.umls_dir, args.output, args.data_folder, vocab_file)
+  metathesaurus_triples(args.umls_dir, args.output, args.data_folder, args.vocab_file, args.bert_config, args.encoder_checkpoint)
 
 
 if __name__ == "__main__":

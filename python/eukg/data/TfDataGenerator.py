@@ -26,6 +26,7 @@ class TfDataGenerator:
 
     self.lm_encoder_size = lm_encoder_size
     self.num_atom_samples = num_atom_samples
+    self.has_atom_samples = self.num_atom_samples > 0
     self.num_workers = num_workers
     self.buffer_size = buffer_size
 
@@ -61,6 +62,7 @@ class TfDataGenerator:
     concept_features = {
       'lm_embeddings': tf.io.VarLenFeature(tf.float32),
       'token_lengths': tf.io.VarLenFeature(tf.int64),
+      'token_ids': tf.io.VarLenFeature(tf.int64),
       'p_atom_idx': tf.io.FixedLenFeature([], tf.int64),
       'nrof_atoms': tf.io.FixedLenFeature([], tf.int64),
       'concept_token_pad': tf.io.FixedLenFeature([], tf.int64),
@@ -69,6 +71,7 @@ class TfDataGenerator:
     }
     rt_features = {
       'lm_embedding': tf.io.VarLenFeature(tf.float32),
+      'token_ids': tf.io.VarLenFeature(tf.int64),
       'token_length': tf.io.FixedLenFeature([], tf.int64),
       'entity_id': tf.io.FixedLenFeature([], tf.int64)
     }
@@ -205,6 +208,10 @@ class TfDataGenerator:
         [max_atom_count],
         name='obj_ex_token_lengths'
       )
+      # TODO include these in the future
+      del subj_ex['token_ids']
+      del rt_ex['token_ids']
+      del obj_ex['token_ids']
       # everything should be padded to the same shape by here, so only
       # remaining padding needs to be done by tf dataset.padded_batch
       return subj_ex, rt_ex, obj_ex
@@ -252,11 +259,11 @@ class TfDataGenerator:
         b_obj_p_idxs,
         self.num_atom_samples
       )
-
+      # TODO not sure this is even necessary anymore
       b_subj_emb.set_shape([None, None, self.lm_encoder_size])
-      b_s_subj_embs.set_shape([None, self.num_atom_samples, None, self.lm_encoder_size])
+      b_s_subj_embs.set_shape([None, max(self.num_atom_samples, 1), None, self.lm_encoder_size])
       b_objs_emb.set_shape([None, None, self.lm_encoder_size])
-      b_s_objs_embs.set_shape([None, self.num_atom_samples, None, self.lm_encoder_size])
+      b_s_objs_embs.set_shape([None, max(self.num_atom_samples, 1), None, self.lm_encoder_size])
       b_rels_emb.set_shape([None, None, self.lm_encoder_size])
 
       b_data = {
@@ -280,30 +287,10 @@ class TfDataGenerator:
       #   b_subj_lengths, b_rels_lengths, b_objs_lengths, b_nsubjs_lengths, b_nobjs_lengths
       return b_data
 
-    # Shuffling is done every epoch, no need to do it here
-    # dataset = dataset.shuffle(
-    #   buffer_size=10240
-    # )
-
-    # dataset = dataset.apply(
-    #   tf.data.experimental.map_and_batch(
-    #     parse_example,
-    #     self.batch_size,
-    #     num_parallel_batches=self.num_workers
-    #   )
-    # )
-    # dataset = dataset.map(
-    #   map_func=parse_example,
-    #   num_parallel_calls=self.num_workers
-    # )
-
     dataset = dataset.map(
       map_func=parse_single_example,
       num_parallel_calls=self.num_workers
     )
-    # dataset = dataset.batch(
-    #   batch_size=self.batch_size
-    # )
     dataset = dataset.padded_batch(
       batch_size=self.batch_size,
       padded_shapes=get_padding_values()
@@ -311,13 +298,6 @@ class TfDataGenerator:
     dataset = dataset.map(
       map_func=parse_batch_example
     )
-    # dataset = dataset.apply(
-    #   tf.data.experimental.prefetch_to_device(
-    #     device='gpu:0',
-    #     buffer_size=self.buffer_size
-    #   )
-    # )
-    #
     dataset = dataset.prefetch(
       buffer_size=self.buffer_size
     )
@@ -328,17 +308,7 @@ class TfDataGenerator:
 
     batch = iterator.get_next()
 
-    self.subjs_emb = batch['b_subj_emb']
-    self.s_subjs_emb = batch['b_s_subj_embs']
-    self.objs_emb = batch['b_objs_emb']
-    self.s_objs_emb = batch['b_s_objs_embs']
-    self.rels_emb = batch['b_rels_emb']
-
-    self.subjs_lengths = batch['b_subj_lengths']
-    self.s_subjs_lengths = batch['b_s_subj_lengths']
-    self.objs_lengths = batch['b_objs_lengths']
-    self.s_objs_lengths = batch['b_s_objs_lengths']
-    self.rels_lengths = batch['b_rels_lengths']
+    return batch
 
 
 class TfTestDataGenerator:
@@ -635,30 +605,24 @@ class TfEvalDataGenerator:
     self.b_or_rels = rels
 
 
-
 def sample_non_primary(embs, lengths, a_counts, p_idxs, k):
-  print('sample_non_primary')
-  print(f'embs: {embs.get_shape()}')
-  print(f'lengths: {lengths.get_shape()}')
-  print(f'a_counts: {a_counts.get_shape()}')
-  print(f'p_idxs: {p_idxs.get_shape()}')
 
-  # TODO validate indexing
   p_embs = tf.gather(
     embs,
     tf.expand_dims(p_idxs, axis=-1),
     batch_dims=1,
     axis=1
   )[:, 0]
-  print(f'p_embs: {p_embs.get_shape()}')
-  # TODO validate indexing
+
   p_lengths = tf.gather(
     lengths,
     tf.expand_dims(p_idxs, axis=-1),
     batch_dims=1,
     axis=1
   )[:, 0]
-  print(f'p_lengths: {p_lengths.get_shape()}')
+  if k <= 0:
+    print(f'WARNING: NOT USING NON-PRIMARY SAMPLING')
+    return p_embs, p_lengths, tf.expand_dims(p_embs, axis=1), tf.expand_dims(p_lengths, axis=1)
 
   # [bsize, num_atoms]
   # will be 1 for primary atom
@@ -724,6 +688,4 @@ def sample_non_primary(embs, lengths, a_counts, p_idxs, k):
   )
   print(f's_lengths: {s_lengths.get_shape()}')
 
-  print(f'WARNING: NOT USING NON-PRIMARY SAMPLING')
-  # return p_embs, p_lengths, s_embs, s_lengths
-  return p_embs, p_lengths, tf.expand_dims(p_embs, axis=1), tf.expand_dims(p_lengths, axis=1)
+  return p_embs, p_lengths, s_embs, s_lengths

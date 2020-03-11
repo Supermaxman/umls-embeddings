@@ -1,0 +1,12 @@
+Saving 10246928 unique triples to /media/mdrive/umls-embeddings-ext.
+3210457 concepts spanning 325 relations
+created train/test splits (10146928/100000)
+saved train set
+saved test set
+Saving dicts...
+Done!
+sizes: mean=15.72, 95p=34, min=3, max=1621
+p_sizes: mean=15.69, 95p=32, min=3, max=1621
+s_sizes: mean=15.76, 95p=36, min=3, max=1561
+s_counts: mean=1.11, 95p=4, min=0, max=566
+atom_count: 7753235
