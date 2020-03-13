@@ -103,6 +103,7 @@ tf.flags.DEFINE_bool("gpu_memory_growth", True, "Allow gpu memory growth.")
 tf.flags.DEFINE_integer("nrof_queued_batches", 20, "Number of batches to queue up in another thread.")
 tf.flags.DEFINE_integer("nrof_queued_workers", 1, "Number of workers to queue up batches in another thread.")
 tf.flags.DEFINE_string("baseline_type", "avg_prev_batch", "Type of baseline for policy gradient update.")
+tf.flags.DEFINE_string("reward_type", "neg_energy", "Type of reward for policy gradient update.")
 tf.flags.DEFINE_float("baseline_momentum", 0.9, "Momentum of baseline for policy gradient update.")
 
 

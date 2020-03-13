@@ -194,7 +194,6 @@ class DisGen(BaseModel):
     with tf.variable_scope("dis_loss"):
       self.d_predictions = tf.argmin(
         tf.stack([self.d_pos_energy, self.d_neg_energy], axis=1), axis=1, output_type=tf.int32)
-      self.d_reward = tf.reduce_mean(self.d_neg_energy, name='reward')
       # loss
       self.d_margin = self.d_pos_energy - self.d_neg_energy
       print(self.d_margin.get_shape())
@@ -490,6 +489,7 @@ class DisGenGan(DisGen):
       name='baseline'
     )
     self.baseline_type = config.baseline_type
+    self.reward_type = config.reward_type
     self.baseline_momentum = config.baseline_momentum
 
   def build(self):
@@ -557,7 +557,6 @@ class DisGenGan(DisGen):
         tf.stack([self.d_pos_energy, self.d_neg_energy], axis=1), axis=1, output_type=tf.int32)
       self.d_predictions_uniform = tf.argmin(
         tf.stack([self.d_pos_energy, self.neg_energy_uniform], axis=1), axis=1, output_type=tf.int32)
-      self.d_reward = tf.identity(-self.d_neg_energy, name='reward')
       # loss
       # loss wants high neg energy and low pos energy
       self.d_margin = self.d_pos_energy - self.d_neg_energy
@@ -566,6 +565,13 @@ class DisGenGan(DisGen):
       self.d_accuracy_uniform = tf.reduce_mean(tf.to_float(tf.equal(self.d_predictions_uniform, 0)))
       # self.d_train_op = d_optimizer.minimize(self.d_loss, name='d_train_op')
       self.d_active_percent = tf.reduce_mean(tf.to_float(-self.d_margin < self.gamma))
+
+      if self.reward_type == 'neg_energy':
+        self.d_reward = tf.identity(-self.d_neg_energy, name='reward')
+      elif self.reward_type == 'neg_margin':
+        self.d_reward = tf.identity(self.d_margin, name='reward')
+      else:
+        raise ValueError(f'Unknown reward type: {self.reward_type}')
 
       if self.has_atom_samples:
         if self.np_atom_loss_type == 'p_dist':
