@@ -27,6 +27,7 @@ class DisGen(BaseModel):
     self.data_provider = data_generator
     self.ace_model = ace_model
     self.lm_encoder_size = config.lm_encoder_size
+    self.shared_encoder = config.shared_encoder
 
   def build_test(self):
     self.build_test_concepts()
