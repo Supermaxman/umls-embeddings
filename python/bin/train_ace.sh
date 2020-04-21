@@ -369,6 +369,7 @@ python -m python.eukg.train \
 --batch_size=128 \
 --val_batch_size=128 \
 --num_epochs=100 \
+--reward_type=neg_margin \
 --baseline_type=avg_prev_batch_momentum \
 --baseline_momentum=0.9 \
 --data_dir=/users/max/data/artifacts/umls-embeddings \

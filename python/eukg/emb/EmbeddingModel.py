@@ -395,7 +395,7 @@ class DistMultACE(BaseModel):
       self.energy_activation = tf.nn.tanh
     elif config.energy_activation == 'sigmoid':
       self.energy_activation = tf.nn.sigmoid
-    elif config.energy_activation is None:
+    elif config.energy_activation is None or config.energy_activation == 'none':
       self.energy_activation = lambda x: x
     else:
       raise Exception('Unrecognized activation: %s' % config.energy_activation)
