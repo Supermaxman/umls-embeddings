@@ -48,8 +48,8 @@ tf.flags.DEFINE_float("decay_rate", 0.96, "LR decay rate")
 tf.flags.DEFINE_float("momentum", 0.9, "Momentum")
 tf.flags.DEFINE_float("gamma", 0.1, "Margin parameter for loss")
 tf.flags.DEFINE_integer("vocab_size", 1726933, "Number of unique concepts+relations")
-tf.flags.DEFINE_integer("embedding_size", 50, "embedding size")
-tf.flags.DEFINE_integer("energy_norm_ord", 1,
+tf.flags.DEFINE_integer("embedding_size", 100, "embedding size")
+tf.flags.DEFINE_integer("energy_norm_ord", 2,
                         "Order of the normalization function used to quantify difference between h+r and t")
 tf.flags.DEFINE_integer("max_concepts_per_type", 1000, "Maximum number of concepts to average for semtype loss")
 tf.flags.DEFINE_integer("num_generator_samples", 100, "Number of negative samples for each generator example")
@@ -57,18 +57,18 @@ tf.flags.DEFINE_string("p_init", "zeros",
                        "Projection vectors initializer: [zeros, xavier, uniform]. Uniform is in [-.1,.1]")
 
 # semnet params
-tf.flags.DEFINE_bool("no_semantic_network", False, "Do not add semantic network loss to the graph?")
+tf.flags.DEFINE_bool("no_semantic_network", True, "Do not add semantic network loss to the graph?")
 tf.flags.DEFINE_float("semnet_alignment_param", 0.5, "Parameter to control semantic network loss")
 tf.flags.DEFINE_float("semnet_energy_param", 0.5, "Parameter to control semantic network loss")
 tf.flags.DEFINE_bool("sn_eval", False, "Train this model with subset of sn to evaluate the SN embeddings?")
 
 # distmult params
 tf.flags.DEFINE_float("regularization_parameter", 1e-2, "Regularization term weight")
-tf.flags.DEFINE_string("energy_activation", 'sigmoid',
-                       "Energy activation function [None, tanh, relu, sigmoid]")
+tf.flags.DEFINE_string("energy_activation", 'none',
+                       "Energy activation function [none, tanh, relu, sigmoid]")
 
 
-tf.flags.DEFINE_bool("ace_model", False, "Train Atom Concept Embedding model where embeddings are a learned function"
+tf.flags.DEFINE_bool("ace_model", True, "Train Atom Concept Embedding model where embeddings are a learned function"
                                         "of the atoms and relation tokens.")
 
 tf.flags.DEFINE_string("encoder_checkpoint",
@@ -76,17 +76,17 @@ tf.flags.DEFINE_string("encoder_checkpoint",
                        "Checkpoint path for embedding encoder network. Start with bert pre-trained.")
 
 
-tf.flags.DEFINE_string("bert_config", '/users/max/data/models/bert/ncbi_pubmed_mimic_uncased_base/bert_config.json',
+tf.flags.DEFINE_string("bert_config", '/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_config.json',
                        "Config path for pre-trained bert model.")
 tf.flags.DEFINE_string("bert_vocab", '/users/max/data/models/bert/uncased_L-12_H-768_A-12/vocab.txt',
                        "Vocab path for pre-trained bert model.")
 tf.flags.DEFINE_integer("lm_encoder_size", 768, "Language model encoding size.")
-tf.flags.DEFINE_integer("num_workers", 2, "Number of workers for dataset feeding.")
-tf.flags.DEFINE_integer("buffer_size", 128, "Size of dataset feeding buffer.")
+tf.flags.DEFINE_integer("num_workers", 6, "Number of workers for dataset feeding.")
+tf.flags.DEFINE_integer("buffer_size", 1, "Size of dataset feeding buffer.")
 
 
 tf.flags.DEFINE_integer("encoder_rnn_layers", 1, "Number of layers of encoder rnn.")
-tf.flags.DEFINE_integer("encoder_rnn_size", 64, "Size of encoder rnn.")
+tf.flags.DEFINE_integer("encoder_rnn_size", 512, "Size of encoder rnn.")
 tf.flags.DEFINE_string("encoder_rnn_type", 'lstm', "Encoder rnn type [gru, lstm].")
 
 tf.flags.DEFINE_bool("train_bert", True, "Jointly train bert encoder.")
@@ -97,6 +97,7 @@ tf.flags.DEFINE_bool("gpu_memory_growth", True, "Allow gpu memory growth.")
 tf.flags.DEFINE_integer("nrof_queued_batches", 20, "Number of batches to queue up in another thread.")
 tf.flags.DEFINE_integer("nrof_queued_workers", 1, "Number of workers to queue up batches in another thread.")
 tf.flags.DEFINE_string("baseline_type", "avg_prev_batch", "Type of baseline for policy gradient update.")
+tf.flags.DEFINE_string("reward_type", "neg_energy", "Type of reward for policy gradient update.")
 tf.flags.DEFINE_float("baseline_momentum", 0.9, "Momentum of baseline for policy gradient update.")
 
 

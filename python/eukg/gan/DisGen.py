@@ -406,6 +406,7 @@ class DisGenGan(DisGen):
       name='baseline'
     )
     self.baseline_type = config.baseline_type
+    self.reward_type = config.reward_type
     self.baseline_momentum = config.baseline_momentum
 
   def build(self):
@@ -424,7 +425,7 @@ class DisGenGan(DisGen):
     self.relation_embeddings = self.d_e_rels
 
     # [batch_size, num_samples]
-    with tf.variable_scope("gen_energy"):
+    with tf.variable_scope("gen_energies"):
       self.g_sampl_energies = self.gen_embedding_model.energy(
         g_e_neg_subj,
         tf.expand_dims(self.g_e_rels, axis=1),
@@ -443,7 +444,7 @@ class DisGenGan(DisGen):
     # This gets the negative subj and obj sampled from the generator along with the positive subj and obj
     d_e_neg_subj, d_e_neg_obj, d_e_pos_subj, d_e_pos_obj = self._un_flatten_dis(self.d_e_concepts, self.g_sampls)
 
-    with tf.variable_scope('dis_energy'):
+    with tf.variable_scope('dis_energies'):
       self.d_pos_energy = self.dis_embedding_model.energy(
         d_e_pos_subj,
         self.d_e_rels,
@@ -471,7 +472,7 @@ class DisGenGan(DisGen):
       self.d_avg_pos_energy = tf.reduce_mean(self.d_pos_energy)
       self.d_avg_neg_energy = tf.reduce_mean(self.d_neg_energy)
 
-    with tf.variable_scope("dis_loss"):
+    with tf.variable_scope("dis_losses"):
       self.d_predictions = tf.argmin(
         tf.stack([self.d_pos_energy, self.d_neg_energy], axis=1), axis=1, output_type=tf.int32)
       self.d_predictions_uniform = tf.argmin(
@@ -479,7 +480,12 @@ class DisGenGan(DisGen):
       # TODO double check this is correct with REINFORCE
       # TODO also double check this shouldn't be negative here
       #
-      self.d_reward = tf.identity(-self.d_neg_energy, name='reward')
+      if self.reward_type == 'neg_energy':
+        self.d_reward = tf.identity(-self.d_neg_energy, name='reward')
+      elif self.reward_type == 'neg_margin':
+        self.d_reward = tf.identity(self.d_margin, name='reward')
+      else:
+        raise ValueError(f'Unknown reward type: {self.reward_type}')
       # loss
       # loss wants high neg energy and low pos energy
       self.d_margin = self.d_pos_energy - self.d_neg_energy
@@ -493,12 +499,12 @@ class DisGenGan(DisGen):
       tf.summary.scalar('dis_loss', self.d_loss),
       tf.summary.scalar('dis_avg_margin', self.d_avg_pos_energy - self.d_avg_neg_energy),
       tf.summary.scalar('dis_margin', tf.reduce_mean(self.d_margin)),
-      tf.summary.scalar('dis_accuracy', self.d_accuracy_uniform),
+      tf.summary.scalar('dis_uniform_accuracy', self.d_accuracy_uniform),
       tf.summary.scalar('dis_gen_accuracy', self.d_accuracy),
       tf.summary.scalar('dis_active_percent', self.d_active_percent)
     ]
 
-    with tf.variable_scope("gen_loss"):
+    with tf.variable_scope("gen_losses"):
       # TODO determine if this is a good baseline method
       self.discounted_reward = tf.stop_gradient(self.d_reward - self.baseline)
       self.avg_reward = tf.reduce_mean(self.d_reward)
@@ -519,7 +525,7 @@ class DisGenGan(DisGen):
       # g_loss = -tf.reduce_sum(tf.log(self.g_probabilities))
       # we want to maximize -f(neg) * log(p(neg)) so we minimize -[-f(neg) * log(p(neg))]
       g_loss = -tf.log(self.g_probabilities)
-      avg_g_loss = tf.reduce_mean(g_loss)
+      avg_g_prob_loss = tf.reduce_mean(g_loss)
       self.g_loss = tf.reduce_mean(self.discounted_reward * g_loss)
       self.g_avg_prob = tf.reduce_mean(self.g_probabilities)
 
@@ -541,7 +547,7 @@ class DisGenGan(DisGen):
       name='shared_train_op'
     )
 
-    with tf.variable_scope('gen_loss'):
+    with tf.variable_scope('gen_baseline'):
       with tf.control_dependencies([self.train_op]):
         # TODO determine if this is a good baseline method, maybe running mean or something
         # TODO use baseline_type to change to running avg, etc.
@@ -563,7 +569,8 @@ class DisGenGan(DisGen):
       name='train_op'
     )
     summary += [
-      tf.summary.scalar('gen_loss', avg_g_loss),
+      tf.summary.scalar('gen_avg_prob_loss', avg_g_prob_loss),
+      tf.summary.scalar('gen_loss', self.g_loss),
       tf.summary.scalar('gen_avg_sampled_prob', self.g_avg_prob),
       tf.summary.scalar('gen_discounted_reward', self.avg_discounted_reward),
       tf.summary.scalar('gen_reward', self.avg_reward),
