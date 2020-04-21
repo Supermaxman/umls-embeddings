@@ -908,3 +908,338 @@ python -m python.eukg.train \
 --num_workers=6 \
 --buffer_size=1 \
 --load=False
+
+CUDA_VISIBLE_DEVICES=6 python -m python.eukg.train \
+--mode=gan-joint \
+--model=transd-distmult \
+--run_name=transd-dm-gan-joint-cake-ext-cased-sep-7-remote \
+--pre_run_name=transd-dm-disgen-cake-ext-cased-sep-4-remote \
+--ace_model \
+--bert_config='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_config.json' \
+--bert_vocab='/home/maw150130/models/bert/biobert_v1.1_pubmed/vocab.txt' \
+--encoder_checkpoint='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_model.ckpt' \
+--energy_activation='none' \
+--shared_encoder=False \
+--num_atom_samples=0 \
+--no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--encoder_rnn_type=lstm \
+--embedding_size=100 \
+--gamma=0.5 \
+--energy_norm_ord=2 \
+--learning_rate=1e-5 \
+--batch_size=64 \
+--val_batch_size=64 \
+--num_epochs=10 \
+--baseline_type=avg_prev_batch_momentum \
+--baseline_momentum=0.99 \
+--reward_type=neg_margin \
+--data_dir=/home/maw150130/umls-embeddings-remote \
+--secondary_data_dir=/home/maw150130/umls-embeddings-remote \
+--model_dir=/home/maw150130/umls-models \
+--summaries_dir=/home/maw150130/logs \
+--num_workers=6 \
+--buffer_size=1 \
+--load=False
+
+
+CUDA_VISIBLE_DEVICES=5 python -m python.eukg.train \
+--mode=gan-joint \
+--model=transd-distmult \
+--run_name=transd-dm-gan-joint-cake-ext-cased-sep-8-remote \
+--ace_model \
+--bert_config='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_config.json' \
+--bert_vocab='/home/maw150130/models/bert/biobert_v1.1_pubmed/vocab.txt' \
+--encoder_checkpoint='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_model.ckpt' \
+--energy_activation='none' \
+--shared_encoder=False \
+--num_atom_samples=0 \
+--no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--encoder_rnn_type=lstm \
+--embedding_size=100 \
+--gamma=0.5 \
+--energy_norm_ord=2 \
+--learning_rate=1e-5 \
+--batch_size=32 \
+--val_batch_size=32 \
+--num_epochs=10 \
+--baseline_type=avg_prev_batch_momentum \
+--baseline_momentum=0.99 \
+--reward_type=neg_margin \
+--data_dir=/home/maw150130/umls-embeddings-remote \
+--secondary_data_dir=/home/maw150130/umls-embeddings-remote \
+--model_dir=/home/maw150130/umls-models \
+--summaries_dir=/home/maw150130/logs \
+--num_workers=6 \
+--buffer_size=1 \
+--load=False
+
+CUDA_VISIBLE_DEVICES=4 python -m python.eukg.train \
+--mode=gan-joint \
+--model=transd-distmult \
+--run_name=transd-dm-gan-joint-cake-ext-cased-sep-9-remote \
+--ace_model \
+--bert_config='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_config.json' \
+--bert_vocab='/home/maw150130/models/bert/biobert_v1.1_pubmed/vocab.txt' \
+--encoder_checkpoint='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_model.ckpt' \
+--energy_activation='none' \
+--shared_encoder=True \
+--num_atom_samples=0 \
+--no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--encoder_rnn_type=lstm \
+--embedding_size=100 \
+--gamma=0.5 \
+--energy_norm_ord=2 \
+--learning_rate=1e-5 \
+--batch_size=32 \
+--val_batch_size=32 \
+--num_epochs=10 \
+--baseline_type=avg_prev_batch_momentum \
+--baseline_momentum=0.99 \
+--reward_type=neg_margin \
+--data_dir=/home/maw150130/umls-embeddings-remote \
+--secondary_data_dir=/home/maw150130/umls-embeddings-remote \
+--model_dir=/home/maw150130/umls-models \
+--summaries_dir=/home/maw150130/logs \
+--num_workers=6 \
+--buffer_size=1 \
+--load=False
+
+CUDA_VISIBLE_DEVICES=3 python -m python.eukg.train \
+--mode=gan-joint \
+--model=transd-distmult \
+--run_name=transd-dm-gan-joint-cake-ext-cased-sep-10-remote \
+--ace_model \
+--bert_config='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_config.json' \
+--bert_vocab='/home/maw150130/models/bert/biobert_v1.1_pubmed/vocab.txt' \
+--encoder_checkpoint='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_model.ckpt' \
+--energy_activation='none' \
+--shared_encoder=False \
+--num_atom_samples=0 \
+--no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--encoder_rnn_type=lstm \
+--embedding_size=100 \
+--gamma=0.5 \
+--energy_norm_ord=2 \
+--learning_rate=1e-5 \
+--batch_size=128 \
+--val_batch_size=128 \
+--num_epochs=10 \
+--baseline_type=avg_prev_batch_momentum \
+--baseline_momentum=0.99 \
+--reward_type=neg_margin \
+--data_dir=/home/maw150130/umls-embeddings-remote \
+--secondary_data_dir=/home/maw150130/umls-embeddings-remote \
+--model_dir=/home/maw150130/umls-models \
+--summaries_dir=/home/maw150130/logs \
+--num_workers=6 \
+--buffer_size=1 \
+--load=False
+
+
+CUDA_VISIBLE_DEVICES=6 python -m python.eukg.train \
+--mode=gan-joint \
+--model=transd-distmult \
+--run_name=transd-dm-gan-joint-cake-ext-cased-sep-11-remote \
+--pre_run_name=transd-dm-disgen-cake-ext-cased-sep-4-remote \
+--ace_model \
+--bert_config='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_config.json' \
+--bert_vocab='/home/maw150130/models/bert/biobert_v1.1_pubmed/vocab.txt' \
+--encoder_checkpoint='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_model.ckpt' \
+--energy_activation='none' \
+--shared_encoder=False \
+--num_atom_samples=0 \
+--no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--encoder_rnn_type=lstm \
+--embedding_size=100 \
+--gamma=0.5 \
+--energy_norm_ord=2 \
+--learning_rate=1e-5 \
+--batch_size=32 \
+--val_batch_size=32 \
+--num_epochs=10 \
+--baseline_type=avg_prev_batch_momentum \
+--baseline_momentum=0.99 \
+--reward_type=neg_margin \
+--data_dir=/home/maw150130/umls-embeddings-remote \
+--secondary_data_dir=/home/maw150130/umls-embeddings-remote \
+--model_dir=/home/maw150130/umls-models \
+--summaries_dir=/home/maw150130/logs \
+--num_workers=6 \
+--buffer_size=1 \
+--load=False
+
+CUDA_VISIBLE_DEVICES=5 python -m python.eukg.train \
+--mode=gan-joint \
+--model=transd-distmult \
+--run_name=transd-dm-gan-joint-cake-ext-cased-sep-12-remote \
+--pre_run_name=transd-dm-disgen-cake-ext-cased-sep-4-remote \
+--ace_model \
+--bert_config='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_config.json' \
+--bert_vocab='/home/maw150130/models/bert/biobert_v1.1_pubmed/vocab.txt' \
+--encoder_checkpoint='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_model.ckpt' \
+--energy_activation='none' \
+--shared_encoder=False \
+--num_atom_samples=0 \
+--no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--encoder_rnn_type=lstm \
+--embedding_size=100 \
+--gamma=0.5 \
+--energy_norm_ord=2 \
+--learning_rate=1e-5 \
+--batch_size=16 \
+--val_batch_size=16 \
+--num_epochs=10 \
+--baseline_type=avg_prev_batch_momentum \
+--baseline_momentum=0.9 \
+--reward_type=neg_margin \
+--data_dir=/home/maw150130/umls-embeddings-remote \
+--secondary_data_dir=/home/maw150130/umls-embeddings-remote \
+--model_dir=/home/maw150130/umls-models \
+--summaries_dir=/home/maw150130/logs \
+--num_workers=6 \
+--buffer_size=1 \
+--load=False
+
+CUDA_VISIBLE_DEVICES=4 python -m python.eukg.train \
+--mode=gan-joint \
+--model=transd-distmult \
+--run_name=transd-dm-gan-joint-cake-ext-cased-sep-13-remote \
+--pre_run_name=transd-dm-disgen-cake-ext-cased-sep-4-remote \
+--ace_model \
+--bert_config='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_config.json' \
+--bert_vocab='/home/maw150130/models/bert/biobert_v1.1_pubmed/vocab.txt' \
+--encoder_checkpoint='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_model.ckpt' \
+--energy_activation='none' \
+--shared_encoder=False \
+--num_atom_samples=0 \
+--no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--encoder_rnn_type=lstm \
+--embedding_size=100 \
+--gamma=0.5 \
+--energy_norm_ord=2 \
+--learning_rate=1e-6 \
+--batch_size=16 \
+--val_batch_size=16 \
+--num_epochs=10 \
+--baseline_type=avg_prev_batch_momentum \
+--baseline_momentum=0.99 \
+--reward_type=neg_margin \
+--data_dir=/home/maw150130/umls-embeddings-remote \
+--secondary_data_dir=/home/maw150130/umls-embeddings-remote \
+--model_dir=/home/maw150130/umls-models \
+--summaries_dir=/home/maw150130/logs \
+--num_workers=6 \
+--buffer_size=1 \
+--load=False
+
+CUDA_VISIBLE_DEVICES=3 python -m python.eukg.train \
+--mode=gan-joint \
+--model=transd-distmult \
+--run_name=transd-dm-gan-joint-cake-ext-cased-sep-14-remote \
+--pre_run_name=transd-dm-disgen-cake-ext-cased-sep-4-remote \
+--ace_model \
+--bert_config='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_config.json' \
+--bert_vocab='/home/maw150130/models/bert/biobert_v1.1_pubmed/vocab.txt' \
+--encoder_checkpoint='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_model.ckpt' \
+--energy_activation='none' \
+--shared_encoder=False \
+--num_atom_samples=0 \
+--no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--encoder_rnn_type=lstm \
+--embedding_size=100 \
+--gamma=0.5 \
+--energy_norm_ord=2 \
+--learning_rate=1e-5 \
+--batch_size=16 \
+--val_batch_size=16 \
+--num_epochs=10 \
+--baseline_type=avg_prev_batch \
+--reward_type=neg_margin \
+--data_dir=/home/maw150130/umls-embeddings-remote \
+--secondary_data_dir=/home/maw150130/umls-embeddings-remote \
+--model_dir=/home/maw150130/umls-models \
+--summaries_dir=/home/maw150130/logs \
+--num_workers=6 \
+--buffer_size=1 \
+--load=False
+
+CUDA_VISIBLE_DEVICES=5 python -m python.eukg.train \
+--mode=disgen \
+--model=transd-distmult \
+--run_name=transd-dm-disgen-cake-ext-cased-sep-15-remote \
+--ace_model \
+--bert_config='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_config.json' \
+--bert_vocab='/home/maw150130/models/bert/biobert_v1.1_pubmed/vocab.txt' \
+--encoder_checkpoint='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_model.ckpt' \
+--energy_activation='none' \
+--shared_encoder=False \
+--num_atom_samples=0 \
+--no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--encoder_rnn_type=lstm \
+--embedding_size=100 \
+--gamma=0.5 \
+--energy_norm_ord=2 \
+--learning_rate=1e-5 \
+--batch_size=16 \
+--val_batch_size=16 \
+--num_epochs=3 \
+--data_dir=/home/maw150130/umls-embeddings-remote \
+--secondary_data_dir=/home/maw150130/umls-embeddings-remote \
+--model_dir=/home/maw150130/umls-models \
+--summaries_dir=/home/maw150130/logs \
+--num_workers=6 \
+--buffer_size=1 \
+--load=True
+
+# 1.69M steps for 15
+CUDA_VISIBLE_DEVICES=6 python -m python.eukg.train \
+--mode=gan-joint \
+--model=transd-distmult \
+--run_name=transd-dm-gan-joint-cake-ext-cased-sep-16-remote \
+--pre_run_name=transd-dm-disgen-cake-ext-cased-sep-15-remote \
+--ace_model \
+--bert_config='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_config.json' \
+--bert_vocab='/home/maw150130/models/bert/biobert_v1.1_pubmed/vocab.txt' \
+--encoder_checkpoint='/home/maw150130/models/bert/biobert_v1.1_pubmed/bert_model.ckpt' \
+--energy_activation='none' \
+--shared_encoder=False \
+--num_atom_samples=0 \
+--no_semantic_network \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--encoder_rnn_type=lstm \
+--embedding_size=100 \
+--gamma=0.5 \
+--energy_norm_ord=2 \
+--learning_rate=1e-5 \
+--batch_size=16 \
+--val_batch_size=16 \
+--num_epochs=10 \
+--baseline_type=avg_prev_batch_momentum \
+--baseline_momentum=0.99 \
+--reward_type=neg_margin \
+--data_dir=/home/maw150130/umls-embeddings-remote \
+--secondary_data_dir=/home/maw150130/umls-embeddings-remote \
+--model_dir=/home/maw150130/umls-models \
+--summaries_dir=/home/maw150130/logs \
+--num_workers=6 \
+--buffer_size=1 \
+--load=True

@@ -27,7 +27,7 @@ def load_ace(ace_path):
     t_lengths = tf.reduce_sum(t_mask, axis=-1)
     t_lm_embs = lm.encode(t_ids, t_lengths)
     checkpoint_utils.init_from_checkpoint(bert_checkpoint)
-    b_enc = ace_model.encode(t_lm_embs, t_lengths, e_type)
+    b_enc = ace_model.encode(t_lm_embs, t_lengths, e_type, 'dis')
     b_embs = d_em.embed(b_enc, e_type)
     checkpoint_utils.init_from_checkpoint(latest_model_checkpoint)
 

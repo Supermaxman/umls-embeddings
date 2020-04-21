@@ -121,12 +121,46 @@ python -m python.eukg.data.embed_rels \
 
 
 python -m python.eukg.data.embed \
-  --ace_path='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-disgen-cake-ext-15' \
+  --ace_path='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-gan-joint-cake-ext-25' \
   --ctxt2id_file='/home/max/data/artifacts/i2b2/2010/new_data/ctxt2id.json' \
-  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-disgen-cake-ext-15-embeddings.npz'
+  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-gan-joint-cake-ext-25-embeddings.npz'
 
 python -m python.eukg.data.embed_rels \
-  --ace_path='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-disgen-cake-ext-15' \
+  --ace_path='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-gan-joint-cake-ext-25' \
   --relid2txt='/home/max/data/artifacts/i2b2/2010/new_data/relid2txt_umls.json' \
-  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-disgen-cake-ext-15-rel-umls-embeddings.npz'
+  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-gan-joint-cake-ext-25-rel-umls-embeddings.npz'
 
+
+
+# 15 cased disgen
+python -m python.eukg.data.embed \
+  --ace_path='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-disgen-cake-ext-cased-sep-15-remote' \
+  --ctxt2id_file='/home/max/data/artifacts/i2b2/2010/new_data/ctxt2id.json' \
+  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-disgen-cake-ext-cased-sep-15-remote-embeddings.npz'
+
+python -m python.eukg.data.embed_rels \
+  --ace_path='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-disgen-cake-ext-cased-sep-15-remote' \
+  --relid2txt='/home/max/data/artifacts/i2b2/2010/new_data/relid2txt_umls.json' \
+  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-disgen-cake-ext-cased-sep-15-remote-rel-umls-embeddings.npz'
+
+# 16 cased gan
+python -m python.eukg.data.embed \
+  --ace_path='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-gan-joint-cake-ext-cased-sep-16-remote' \
+  --ctxt2id_file='/home/max/data/artifacts/i2b2/2010/new_data/ctxt2id.json' \
+  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-gan-joint-cake-ext-cased-sep-16-remote-embeddings.npz'
+
+python -m python.eukg.data.embed_rels \
+  --ace_path='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-gan-joint-cake-ext-cased-sep-16-remote' \
+  --relid2txt='/home/max/data/artifacts/i2b2/2010/new_data/relid2txt_umls.json' \
+  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-gan-joint-cake-ext-cased-sep-16-remote-rel-umls-embeddings.npz'
+
+# 6 cased gan
+python -m python.eukg.data.embed \
+  --ace_path='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-gan-joint-cake-ext-cased-sep-6' \
+  --ctxt2id_file='/home/max/data/artifacts/i2b2/2010/new_data/ctxt2id.json' \
+  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-gan-joint-cake-ext-cased-sep-6-embeddings.npz'
+
+python -m python.eukg.data.embed_rels \
+  --ace_path='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-gan-joint-cake-ext-cased-sep-6' \
+  --relid2txt='/home/max/data/artifacts/i2b2/2010/new_data/relid2txt_umls.json' \
+  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-gan-joint-cake-ext-cased-sep-6-rel-umls-embeddings.npz'
