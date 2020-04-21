@@ -109,7 +109,7 @@ class DisGen(BaseModel):
     self.concept_embeddings = self.d_e_concepts
     self.relation_embeddings = self.d_e_rels
     # [batch_size, num_samples]
-    with tf.variable_scope("gen_energy"):
+    with tf.variable_scope("gen_energies"):
       self.g_sampl_energies = self.gen_embedding_model.energy(
         g_e_neg_subj,
         tf.expand_dims(self.g_e_rels, axis=1),
@@ -123,7 +123,7 @@ class DisGen(BaseModel):
       self.g_avg_pos_energy = tf.reduce_mean(self.g_true_energies)
       self.g_avg_neg_energy = tf.reduce_mean(self.g_sampl_energies)
 
-    with tf.variable_scope("gen_loss"):
+    with tf.variable_scope("gen_losses"):
       # [batch_size]
       sm_numerator = tf.exp(self.g_true_energies)
       # [batch_size]
@@ -164,7 +164,7 @@ class DisGen(BaseModel):
       summary += [
         tf.summary.scalar('gen_reg', reg)
       ]
-    with tf.variable_scope('dis_energy'):
+    with tf.variable_scope('dis_energies'):
       print(f'pos_subj[{d_e_pos_subj[0].get_shape()}], '
             f'rels[{self.d_e_rels[0].get_shape()}], '
             f'pos_obj[{d_e_pos_obj[0].get_shape()}]')
@@ -190,7 +190,7 @@ class DisGen(BaseModel):
       self.d_avg_pos_energy = tf.reduce_mean(self.d_pos_energy)
       self.d_avg_neg_energy = tf.reduce_mean(self.d_neg_energy)
 
-    with tf.variable_scope("dis_loss"):
+    with tf.variable_scope("dis_losses"):
       self.d_predictions = tf.argmin(
         tf.stack([self.d_pos_energy, self.d_neg_energy], axis=1), axis=1, output_type=tf.int32)
       self.d_reward = tf.reduce_mean(self.d_neg_energy, name='reward')
@@ -207,7 +207,7 @@ class DisGen(BaseModel):
       tf.summary.scalar('dis_loss', self.d_loss),
       tf.summary.scalar('dis_avg_margin', self.d_avg_pos_energy - self.d_avg_neg_energy),
       tf.summary.scalar('dis_margin', tf.reduce_mean(self.d_margin)),
-      tf.summary.scalar('dis_accuracy', self.d_accuracy),
+      tf.summary.scalar('dis_uniform_accuracy', self.d_accuracy),
       tf.summary.scalar('dis_active_percent', self.d_active_percent)
     ]
 
@@ -474,6 +474,8 @@ class DisGenGan(DisGen):
       self.d_avg_neg_energy = tf.reduce_mean(self.d_neg_energy)
 
     with tf.variable_scope("dis_losses"):
+      # loss wants high neg energy and low pos energy
+      self.d_margin = self.d_pos_energy - self.d_neg_energy
       self.d_predictions = tf.argmin(
         tf.stack([self.d_pos_energy, self.d_neg_energy], axis=1), axis=1, output_type=tf.int32)
       self.d_predictions_uniform = tf.argmin(
@@ -488,8 +490,6 @@ class DisGenGan(DisGen):
       else:
         raise ValueError(f'Unknown reward type: {self.reward_type}')
       # loss
-      # loss wants high neg energy and low pos energy
-      self.d_margin = self.d_pos_energy - self.d_neg_energy
       self.d_loss = tf.reduce_mean(tf.nn.relu(self.gamma + self.d_margin), name='loss')
       self.d_accuracy = tf.reduce_mean(tf.to_float(tf.equal(self.d_predictions, 0)))
       self.d_accuracy_uniform = tf.reduce_mean(tf.to_float(tf.equal(self.d_predictions_uniform, 0)))
