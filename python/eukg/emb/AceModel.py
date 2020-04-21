@@ -6,13 +6,14 @@ class ACEModel(object):
   def __init__(self, config):
     self.encoder_rnn_layers = config.encoder_rnn_layers
     self.encoder_rnn_size = config.encoder_rnn_size
+    self.shared_encoder = config.shared_encoder
     try:
       self.encoder_rnn_type = config.encoder_rnn_type.lower()
     except AttributeError:
-      print('No encoder rnn specified, defaulting to gru')
-      self.encoder_rnn_type = 'gru'
+      print('No encoder rnn specified, defaulting to lstm')
+      self.encoder_rnn_type = 'lstm'
 
-  def encode(self, encoder_seq_out, token_lengths, emb_type):
+  def encode(self, encoder_seq_out, token_lengths, emb_type, caller=None):
     assert emb_type is not None
 
     max_seq_length = tf.reduce_max(token_lengths)
@@ -21,7 +22,12 @@ class ACEModel(object):
     encoder_seq_out = encoder_seq_out[:, :max_seq_length]
 
     with tf.variable_scope('ace_encoder'):
-      with tf.variable_scope(f'rnn_{emb_type}_encoder', reuse=tf.AUTO_REUSE):
+      if self.shared_encoder:
+        encoder_scope_name = f'rnn_{emb_type}_encoder'
+      else:
+        assert caller is not None
+        encoder_scope_name = f'{caller}_rnn_{emb_type}_encoder'
+      with tf.variable_scope(encoder_scope_name, reuse=tf.AUTO_REUSE):
         encoder_out = rnn_encoder(
           encoder_seq_out,
           token_lengths,
