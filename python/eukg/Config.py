@@ -22,8 +22,8 @@ tf.flags.DEFINE_integer("batches_per_epoch", 1, "Number of batches per training 
 tf.flags.DEFINE_integer("max_batches_per_epoch", None, "Maximum number of batches per training epoch")
 tf.flags.DEFINE_string("embedding_device", "gpu", "Device to do embedding lookups on [gpu, cpu]")
 tf.flags.DEFINE_string("optimizer", "adam", "Optimizer [adam, sgd]")
-tf.flags.DEFINE_string("save_strategy", "epoch", "Save every epoch or saved every"
-                                                 " flags.save_interval seconds [epoch, timed]")
+tf.flags.DEFINE_string("save_strategy", "timed_epoch", "Save every epoch or saved every"
+                                                       " flags.save_interval seconds [epoch, timed, timed_epoch]")
 
 # eval control options
 tf.flags.DEFINE_string("eval_mode", "save", "Evaluation mode: [save, calc]")
@@ -89,6 +89,7 @@ tf.flags.DEFINE_integer("encoder_rnn_layers", 1, "Number of layers of encoder rn
 tf.flags.DEFINE_integer("encoder_rnn_size", 512, "Size of encoder rnn.")
 tf.flags.DEFINE_string("encoder_rnn_type", 'lstm', "Encoder rnn type [gru, lstm].")
 
+
 tf.flags.DEFINE_bool("train_bert", True, "Jointly train bert encoder.")
 tf.flags.DEFINE_bool("shared_encoder", True, "Jointly train ace encoder.")
 tf.flags.DEFINE_integer("seed", 1337, "Random seed.")
@@ -99,6 +100,8 @@ tf.flags.DEFINE_integer("nrof_queued_workers", 1, "Number of workers to queue up
 tf.flags.DEFINE_string("baseline_type", "avg_prev_batch", "Type of baseline for policy gradient update.")
 tf.flags.DEFINE_string("reward_type", "neg_energy", "Type of reward for policy gradient update.")
 tf.flags.DEFINE_float("baseline_momentum", 0.9, "Momentum of baseline for policy gradient update.")
+
+tf.flags.DEFINE_string("dis_loss_type", "gen", "Type of loss for discriminator.")
 
 
 

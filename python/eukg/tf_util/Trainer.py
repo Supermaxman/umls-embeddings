@@ -37,7 +37,10 @@ def train(config, session, model, saver,
   # init summary directories and summary writers
   if not os.path.exists(os.path.join(config['summaries_dir'], 'train')):
     os.makedirs(os.path.join(config['summaries_dir'], 'train'))
-  train_summary_writer = tf.summary.FileWriter(os.path.join(config['summaries_dir'], 'train'))
+  train_summary_writer = tf.summary.FileWriter(
+    os.path.join(config['summaries_dir'], 'train'),
+    graph=tf.get_default_graph()
+  )
   if not os.path.exists(os.path.join(config['summaries_dir'], 'val')):
     os.makedirs(os.path.join(config['summaries_dir'], 'val'))
   val_summary_writer = tf.summary.FileWriter(os.path.join(config['summaries_dir'], 'val'))
@@ -61,7 +64,7 @@ def train(config, session, model, saver,
 def train_epoch(config, session, model, summary_writer, post_step, global_step, saver):
   console_update_interval = config['progress_update_interval']
   pbar = tqdm(total=console_update_interval)
-  start = time.time()
+  last_saved_time = time.time()
   model.data_provider.load_train(session)
 
   profiled = False
@@ -101,7 +104,9 @@ def train_epoch(config, session, model, summary_writer, post_step, global_step, 
         model.progress_update(None, fetched)
         pbar = tqdm(total=console_update_interval)
 
-      saver.save(global_step, Policy.TIMED, seconds_since_last_save=(time.time() - start))
+      saved = saver.save(global_step, Policy.TIMED, seconds_since_last_save=(time.time() - last_saved_time))
+      if saved:
+        last_saved_time = time.time()
       b += 1
   except tf.errors.OutOfRangeError:
     pass

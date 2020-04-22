@@ -408,6 +408,7 @@ class DisGenGan(DisGen):
     )
     self.baseline_type = config.baseline_type
     self.reward_type = config.reward_type
+    self.dis_loss_type = config.dis_loss_type
     self.baseline_momentum = config.baseline_momentum
 
   def build(self):
@@ -489,8 +490,18 @@ class DisGenGan(DisGen):
         self.d_reward = tf.identity(self.d_margin, name='reward')
       else:
         raise ValueError(f'Unknown reward type: {self.reward_type}')
+
       # loss
-      self.d_loss = tf.reduce_mean(tf.nn.relu(self.gamma + self.d_margin), name='loss')
+      if self.dis_loss_type == 'gen':
+        self.d_loss = tf.reduce_mean(tf.nn.relu(self.gamma + self.d_margin), name='d_loss')
+      elif self.dis_loss_type == 'gen_and_uniform':
+        d_gen_loss = tf.reduce_mean(tf.nn.relu(self.gamma + self.d_margin), name='d_gen_loss')
+        d_uniform_margin = self.d_pos_energy - self.d_neg_energy_uniform
+        d_uniform_loss = tf.reduce_mean(tf.nn.relu(self.gamma + d_uniform_margin), name='d_uniform_loss')
+        self.d_loss = tf.identity(d_gen_loss + d_uniform_loss, name='d_loss')
+      else:
+        raise ValueError(f'Unknown dis loss type: {self.dis_loss_type}')
+
       self.d_accuracy = tf.reduce_mean(tf.to_float(tf.equal(self.d_predictions, 0)))
       self.d_accuracy_uniform = tf.reduce_mean(tf.to_float(tf.equal(self.d_predictions_uniform, 0)))
       # self.d_train_op = d_optimizer.minimize(self.d_loss, name='d_train_op')
@@ -548,7 +559,7 @@ class DisGenGan(DisGen):
       name='shared_train_op'
     )
 
-    with tf.variable_scope('gen_baseline'):
+    with tf.variable_scope('gen_baselines'):
       with tf.control_dependencies([self.train_op]):
         # TODO determine if this is a good baseline method, maybe running mean or something
         # TODO use baseline_type to change to running avg, etc.

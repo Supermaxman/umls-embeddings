@@ -379,3 +379,26 @@ python -m python.eukg.train \
 --load=False
 
 
+python -m python.eukg.train \
+--mode=gan-joint \
+--model=transd-distmult \
+--run_name=transd-dm-gan-joint-mod-2 \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--encoder_rnn_type=lstm \
+--embedding_size=100 \
+--gamma=1.0 \
+--learning_rate=1e-5 \
+--batch_size=128 \
+--val_batch_size=128 \
+--num_epochs=100 \
+--dis_loss_type=gen_and_uniform \
+--reward_type=neg_margin \
+--baseline_type=avg_prev_batch_momentum \
+--baseline_momentum=0.9 \
+--data_dir=/users/max/data/artifacts/umls-embeddings \
+--secondary_data_dir=/users/max/data/artifacts/umls-embeddings-compressed \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs \
+--load=False
+
