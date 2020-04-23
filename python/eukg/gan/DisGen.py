@@ -499,6 +499,7 @@ class DisGenGan(DisGen):
         d_uniform_margin = self.d_pos_energy - self.d_neg_energy_uniform
         d_uniform_loss = tf.reduce_mean(tf.nn.relu(self.gamma + d_uniform_margin), name='d_uniform_loss')
         self.d_loss = tf.identity(d_gen_loss + d_uniform_loss, name='d_loss')
+      # TODO better negative sampling loss? Used in RotatE paper.
       else:
         raise ValueError(f'Unknown dis loss type: {self.dis_loss_type}')
 

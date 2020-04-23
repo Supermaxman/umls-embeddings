@@ -176,6 +176,11 @@ def init_model(config, data_generator, ace_model=None, eval=False, test=False, p
         config.embedding_size = config.embedding_size // 2
         d_em = EmbeddingModel.TransDACE(config)
         em = d_em, g_em
+    elif config.model == 'rotate-distmult':
+        g_em = EmbeddingModel.DistMultACE(config)
+        config.embedding_size = config.embedding_size // 2
+        d_em = EmbeddingModel.RotatEACE(config)
+        em = d_em, g_em
     else:
       raise ValueError('Unrecognized model type: %s' % config.model)
 

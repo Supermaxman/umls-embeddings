@@ -1,4 +1,5 @@
 import tensorflow as tf
+import math
 
 from tensorflow.contrib import layers
 
@@ -458,3 +459,81 @@ class DistMultACE(BaseModel):
 
     return embeddings
 
+
+class RotatEACE(BaseModel):
+  def __init__(self, config):
+    BaseModel.__init__(self, config)
+
+  def energy(self, head, rel, tail, norm_ord=1):
+    h_re, h_im = head
+    r, _ = rel
+    t_re, t_im = tail
+
+    # TODO limit range of r values somehow
+    r_range = 1.0
+    r = tf.minimum(r, r_range)
+    r = tf.maximum(r, -r_range)
+    r_phase = r / (r_range / math.pi)
+
+    r_re = tf.cos(r_phase)
+    r_im = tf.sin(r_phase)
+
+    re_score = (h_re * r_re - h_im * r_im) - t_re
+    im_score = (h_re * r_im + h_im * r_re) - t_im
+    h_r_t_energy = tf.concat([re_score, im_score], axis=-1)
+    h_r_t_energy = tf.norm(
+      h_r_t_energy,
+      ord=1,
+      axis=-1,
+      keepdims=False,
+      name='energy'
+    )
+
+    return h_r_t_energy
+
+  def embed(self, input_encodings, emb_type=None):
+
+    ids_shape = tf.shape(input_encodings)
+    feature_size = ids_shape[-1]
+    input_shape = ids_shape[:-1]
+    input_shape_count = input_shape.get_shape().as_list()[0]
+    if input_shape_count > 1:
+      total_flat_size = tf.math.reduce_prod(input_shape)
+      input_encodings = tf.reshape(
+        input_encodings,
+        [total_flat_size, feature_size],
+        name='input_embeddings_flat'
+      )
+
+    with tf.variable_scope('transd_embeddings'):
+      with tf.variable_scope(f'{emb_type}_embeddings', reuse=tf.AUTO_REUSE):
+        embeddings = tf.layers.dense(
+          inputs=input_encodings,
+          units=self.embedding_size,
+          activation=None,
+          name='embeddings'
+        )
+        embeddings_proj = tf.layers.dense(
+          inputs=input_encodings,
+          units=self.embedding_size,
+          activation=None,
+          name='embeddings_proj'
+        )
+
+    if input_shape_count > 1:
+      embeddings = tf.reshape(
+        embeddings,
+        input_shape + [self.embedding_size],
+        'embeddings_reshaped'
+      )
+      embeddings_proj = tf.reshape(
+        embeddings_proj,
+        input_shape + [self.embedding_size],
+        'embeddings_proj_reshaped'
+      )
+
+    return embeddings, embeddings_proj
+
+  def normalize_parameters(self):
+    self.norm_op = tf.no_op()
+    return self.norm_op
