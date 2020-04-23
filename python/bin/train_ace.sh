@@ -430,12 +430,12 @@ python -m python.eukg.train \
 python -m python.eukg.train \
 --mode=gan-joint \
 --model=rotate-distmult \
---run_name=rotate-dm-gan-joint-mod-4 \
+--run_name=rotate-dm-gan-joint-mod-5 \
 --encoder_rnn_layers=1 \
 --encoder_rnn_size=512 \
 --encoder_rnn_type=lstm \
 --embedding_size=100 \
---gamma=1.0 \
+--gamma=3.0 \
 --learning_rate=1e-5 \
 --batch_size=16 \
 --val_batch_size=16 \
@@ -444,6 +444,25 @@ python -m python.eukg.train \
 --reward_type=neg_margin \
 --baseline_type=avg_prev_batch_momentum \
 --baseline_momentum=0.99 \
+--data_dir=/users/max/data/artifacts/umls-embeddings \
+--secondary_data_dir=/users/max/data/artifacts/umls-embeddings-compressed \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs \
+--load=False
+
+python -m python.eukg.train \
+--mode=dis-self \
+--model=rotate \
+--run_name=rotate-dis-self-mod-6 \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--encoder_rnn_type=lstm \
+--embedding_size=100 \
+--gamma=3.0 \
+--learning_rate=1e-5 \
+--batch_size=16 \
+--val_batch_size=16 \
+--num_epochs=100 \
 --data_dir=/users/max/data/artifacts/umls-embeddings \
 --secondary_data_dir=/users/max/data/artifacts/umls-embeddings-compressed \
 --model_dir=/users/max/data/models/umls-embeddings \

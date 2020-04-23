@@ -263,11 +263,17 @@ class DisGen(BaseModel):
       d_rel_encodes = self.ace_model.encode(self.rels_emb, self.rels_lengths, 'rel', 'dis')
 
     self.g_e_concepts = self.gen_embedding_model.embed(g_concept_encodes, 'concept')
-    # TODO can be more efficient, not all concept dis embeddings are needed, only gen sampled and [0] for random.
-    self.d_e_concepts = self.dis_embedding_model.embed(d_concept_encodes, 'concept')
+    if self.gen_embedding_model == self.dis_embedding_model:
+      self.d_e_concepts = self.g_e_concepts
+    else:
+      # TODO can be more efficient, not all concept dis embeddings are needed, only gen sampled and [0] for random.
+      self.d_e_concepts = self.dis_embedding_model.embed(d_concept_encodes, 'concept')
 
     self.g_e_rels = self.gen_embedding_model.embed(g_rel_encodes, 'rel')
-    self.d_e_rels = self.dis_embedding_model.embed(d_rel_encodes, 'rel')
+    if self.gen_embedding_model == self.dis_embedding_model:
+      self.d_e_rels = self.g_e_rels
+    else:
+      self.d_e_rels = self.dis_embedding_model.embed(d_rel_encodes, 'rel')
 
   def _un_flatten_gen(self, e_concepts):
     with tf.variable_scope('emb_indexing'):
@@ -589,6 +595,105 @@ class DisGenGan(DisGen):
       tf.summary.scalar('gen_reward', self.avg_reward),
       tf.summary.scalar('gen_baseline', self.baseline)
     ]
+
+    # summary
+    self.summary = tf.summary.merge(summary)
+
+  def fetches(self, is_training, verbose=False):
+    fetches = [self.summary, self.g_loss, self.d_loss]
+    if verbose:
+      fetches += [self.d_accuracy]
+    if is_training:
+      fetches += [self.train_op]
+    return fetches
+
+  def prepare_feed_dict(self, batch, is_training, **kwargs):
+    return {}
+
+  def progress_update(self, batch, fetched, **kwargs):
+    print('Avg gen loss of last batch: %.4f' % np.average(fetched[1]))
+    print('Avg dis loss of last batch: %.4f' % np.average(fetched[2]))
+    print('Avg dis accuracy of last batch: %.4f' % np.average(fetched[3]))
+
+
+class DisSelfGen(DisGen):
+  def __init__(self, config, dis_embedding_model, data_generator, ace_model):
+    super().__init__(config, dis_embedding_model, dis_embedding_model, data_generator, ace_model)
+    self.dis_loss_type = config.dis_loss_type
+    self.adversarial_temp = config.adversarial_temp
+
+  def build(self):
+    summary = []
+    optimizer = self.optimizer()
+
+    self._build_embeddings()
+
+    d_e_neg_subj, d_e_neg_obj, d_e_pos_subj, d_e_pos_obj = self._un_flatten_gen(self.d_e_concepts)
+
+    self.nsamples = tf.shape(d_e_neg_subj)[1]
+    uniform_sampls = tf.random.uniform([self.bsize, 1], maxval=tf.cast(self.nsamples, tf.int64), dtype=tf.int64)
+    d_e_neg_subj_uniform, d_e_neg_obj_uniform, _, _ = self._un_flatten_dis(self.d_e_concepts, uniform_sampls)
+
+    self.concept_embeddings = self.d_e_concepts
+    self.relation_embeddings = self.d_e_rels
+
+    with tf.variable_scope('dis_energies'):
+      self.d_pos_energy = self.dis_embedding_model.energy(
+        d_e_pos_subj,
+        self.d_e_rels,
+        d_e_pos_obj
+      )
+
+      self.d_neg_energy = self.dis_embedding_model.energy(
+        d_e_neg_subj,
+        tf.expand_dims(self.d_e_rels, axis=1),
+        d_e_neg_obj,
+        norm_ord=self.energy_norm
+      )
+
+      self.d_neg_energy_uniform = self.dis_embedding_model.energy(
+        d_e_neg_subj_uniform,
+        self.d_e_rels,
+        d_e_neg_obj_uniform,
+        norm_ord=self.energy_norm
+      )
+      self.pos_energy = self.d_pos_energy
+      self.neg_energy = self.d_neg_energy
+      self.neg_energy_uniform = self.d_neg_energy_uniform
+      self.d_avg_pos_energy = tf.reduce_mean(self.d_pos_energy)
+      self.d_avg_neg_energy = tf.reduce_mean(self.d_neg_energy)
+
+    with tf.variable_scope("dis_losses"):
+      self.g_probabilities = tf.nn.softmax(self.adversarial_temp * (self.gamma - self.d_neg_energy), axis=-1)
+      self.d_loss = -tf.log_sigmoid(self.gamma - self.d_pos_energy)
+      self.g_loss = -tf.reduce_sum(self.g_probabilities * tf.log_sigmoid(self.d_neg_energy - self.gamma), axis=-1)
+      self.loss = tf.reduce_mean(self.d_loss + self.g_loss)
+
+      # loss wants high neg energy and low pos energy
+      self.d_predictions_uniform = tf.argmin(
+        tf.stack([self.d_pos_energy, self.neg_energy_uniform], axis=1), axis=1, output_type=tf.int32)
+
+      expected_accuracy = tf.reduce_sum(
+        self.g_probabilities * tf.to_float(tf.expand_dims(self.d_pos_energy, axis=-1) < self.d_neg_energy),
+        axis=-1
+      )
+      self.d_accuracy = tf.reduce_mean(expected_accuracy)
+      self.d_accuracy_uniform = tf.reduce_mean(tf.to_float(tf.equal(self.d_predictions_uniform, 0)))
+
+    summary += [
+      tf.summary.scalar('dis_loss', self.d_loss),
+      tf.summary.scalar('dis_avg_margin', self.d_avg_pos_energy - self.d_avg_neg_energy),
+      tf.summary.scalar('dis_accuracy', self.d_accuracy),
+      tf.summary.scalar('dis_uniform_accuracy', self.d_accuracy_uniform),
+      tf.summary.scalar('gen_loss', self.g_loss),
+      tf.summary.scalar('loss', self.loss),
+    ]
+
+    self.train_op = optimizer.minimize(
+      self.loss,
+      global_step=tf.train.get_or_create_global_step(),
+      name='shared_train_op'
+    )
 
     # summary
     self.summary = tf.summary.merge(summary)

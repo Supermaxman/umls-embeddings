@@ -165,6 +165,9 @@ def init_model(config, data_generator, ace_model=None, eval=False, test=False, p
       em = EmbeddingModel.TransDACE(config)
     elif config.model == 'distmult':
       em = EmbeddingModel.DistMultACE(config)
+    elif config.model == 'rotate':
+      config.embedding_size = config.embedding_size // 2
+      em = EmbeddingModel.RotatEACE(config)
     elif config.model == 'transd-distmult':
       if eval:
         g_em = None
@@ -194,6 +197,8 @@ def init_model(config, data_generator, ace_model=None, eval=False, test=False, p
   elif config.mode == 'gan-joint':
     d_em, g_em = em
     model = DisGen.DisGenGan(config, d_em, g_em, data_generator, ace_model)
+  elif config.mode == 'dis-self':
+    model = DisGen.DisSelfGen(config, em, data_generator, ace_model)
   else:
     raise ValueError('Unrecognized mode: %s' % config.mode)
 

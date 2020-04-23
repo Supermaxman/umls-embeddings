@@ -64,6 +64,7 @@ tf.flags.DEFINE_bool("sn_eval", False, "Train this model with subset of sn to ev
 
 # distmult params
 tf.flags.DEFINE_float("regularization_parameter", 1e-2, "Regularization term weight")
+tf.flags.DEFINE_float("adversarial_temp", 1.0, "Adversarial temp for softmax.")
 tf.flags.DEFINE_string("energy_activation", 'none',
                        "Energy activation function [none, tanh, relu, sigmoid]")
 
