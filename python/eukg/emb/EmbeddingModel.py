@@ -470,10 +470,13 @@ class RotatEACE(BaseModel):
     t_re, t_im = tail
 
     # TODO limit range of r values somehow
-    r_range = 1.0
-    r = tf.minimum(r, r_range)
-    r = tf.maximum(r, -r_range)
-    r_phase = r / (r_range / math.pi)
+    # r_range = 1.0
+    # r = tf.minimum(r, r_range)
+    # r = tf.maximum(r, -r_range)
+    # r_phase = r / (r_range / math.pi)
+
+    # (-pi, pi) range
+    r_phase = tf.tanh(r) * math.pi
 
     r_re = tf.cos(r_phase)
     r_im = tf.sin(r_phase)
