@@ -626,13 +626,29 @@ class DisSelfGen(DisGen):
     self.dis_loss_type = config.dis_loss_type
     self.adversarial_temp = config.adversarial_temp
 
+  def _un_flatten_all_dis(self, e_concepts):
+    if isinstance(e_concepts, tuple):
+      e_concepts, e_concepts_proj = e_concepts
+      e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj = self._un_flatten_gen(e_concepts)
+      e_neg_subj_proj, e_neg_obj_proj, e_pos_subj_proj, e_pos_obj_proj = self._un_flatten_gen(e_concepts_proj)
+      e_neg_subj = e_neg_subj, e_neg_subj_proj
+      e_neg_obj = e_neg_obj, e_neg_obj_proj
+      e_pos_subj = e_pos_subj, e_pos_subj_proj
+      e_pos_obj = e_pos_obj, e_pos_obj_proj
+
+    else:
+      e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj = self._un_flatten_gen(e_concepts)
+
+    return e_neg_subj, e_neg_obj, e_pos_subj, e_pos_obj
+
+
   def build(self):
     summary = []
     optimizer = self.optimizer()
 
     self._build_embeddings()
 
-    d_e_neg_subj, d_e_neg_obj, d_e_pos_subj, d_e_pos_obj = self._un_flatten_gen(self.d_e_concepts)
+    d_e_neg_subj, d_e_neg_obj, d_e_pos_subj, d_e_pos_obj = self._un_flatten_all_dis(self.d_e_concepts)
 
     self.nsamples = tf.shape(d_e_neg_subj)[1]
     uniform_sampls = tf.random.uniform([self.bsize, 1], maxval=tf.cast(self.nsamples, tf.int64), dtype=tf.int64)
@@ -650,7 +666,7 @@ class DisSelfGen(DisGen):
 
       self.d_neg_energy = self.dis_embedding_model.energy(
         d_e_neg_subj,
-        tf.expand_dims(self.d_e_rels, axis=1),
+        tf.expand_dims(self.d_e_rels, axis=1) if not isinstance(self.d_e_rels, tuple) else tuple([tf.expand_dims(d_tup, axis=1) for d_tup in self.d_e_rels]),
         d_e_neg_obj,
         norm_ord=self.energy_norm
       )
