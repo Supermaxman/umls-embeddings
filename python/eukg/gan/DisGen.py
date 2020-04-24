@@ -684,7 +684,7 @@ class DisSelfGen(DisGen):
       self.d_avg_neg_energy = tf.reduce_mean(self.d_neg_energy)
 
     with tf.variable_scope("dis_losses"):
-      self.g_probabilities = tf.nn.softmax(self.adversarial_temp * (self.gamma - self.d_neg_energy), axis=-1)
+      self.g_probabilities = tf.stop_gradient(tf.nn.softmax(self.adversarial_temp * (self.gamma - self.d_neg_energy), axis=-1))
       d_loss = -tf.log_sigmoid(self.gamma - self.d_pos_energy)
       g_loss = -tf.reduce_sum(self.g_probabilities * tf.log_sigmoid(self.d_neg_energy - self.gamma), axis=-1)
       self.loss = tf.reduce_mean(d_loss + g_loss)
