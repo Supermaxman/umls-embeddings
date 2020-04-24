@@ -21,7 +21,11 @@ class DisGen(BaseModel):
     self.discounted_reward = tf.placeholder(dtype=tf.float32, shape=[], name="discounted_reward")
     self.gan_loss_sample = tf.placeholder(dtype=tf.int32, shape=[None, 2], name="gan_loss_sample")
 
-    self.d_model, self.g_model = self.model.split('-')
+    if '-' in self.model:
+      self.d_model, self.g_model = self.model.split('-')
+    else:
+      self.d_model = self.model
+      self.g_model = self.model
     # semantic network vars
     self.type_probabilities = None
     self.data_provider = data_generator
