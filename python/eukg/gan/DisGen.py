@@ -701,11 +701,11 @@ class DisSelfGen(DisGen):
       self.d_accuracy_uniform = tf.reduce_mean(tf.to_float(tf.equal(self.d_predictions_uniform, 0)))
 
     summary += [
-      tf.summary.scalar('dis_loss', self.d_loss),
+      tf.summary.scalar('dis_loss', tf.reduce_mean(self.d_loss)),
       tf.summary.scalar('dis_avg_margin', self.d_avg_pos_energy - self.d_avg_neg_energy),
       tf.summary.scalar('dis_accuracy', self.d_accuracy),
       tf.summary.scalar('dis_uniform_accuracy', self.d_accuracy_uniform),
-      tf.summary.scalar('gen_loss', self.g_loss),
+      tf.summary.scalar('gen_loss', tf.reduce_mean(self.g_loss)),
       tf.summary.scalar('loss', self.loss),
     ]
 
