@@ -3,7 +3,7 @@ import sys
 import os
 
 
-def split(subj, rel, obj, data_dir, graph_name='metathesaurus', num_test=100000):
+def split(subj, rel, obj, data_dir, graph_name='metathesaurus', num_test=100000, val_proportion=0.1):
   valid_triples = set()
   for s, r, o in zip(subj, rel, obj):
     valid_triples.add((s, r, o))
@@ -17,17 +17,25 @@ def split(subj, rel, obj, data_dir, graph_name='metathesaurus', num_test=100000)
   print('created train/test splits (%d/%d)' % (len(train_idx), len(test_idx)))
   if not os.path.exists(os.path.join(data_dir, graph_name)):
     os.mkdir(os.path.join(data_dir, graph_name))
+
+  num_val = int(len(train_idx) * val_proportion)
+
+  val_idx = train_idx[:num_val]
+  train_idx = train_idx[num_val:]
+
   np.savez_compressed(os.path.join(data_dir, graph_name, 'train.npz'),
                       subj=subj[train_idx],
                       rel=rel[train_idx],
                       obj=obj[train_idx])
-  print('saved train set')
-
+  np.savez_compressed(os.path.join(data_dir, graph_name, 'val.npz'),
+                      subj=subj[val_idx],
+                      rel=rel[val_idx],
+                      obj=obj[val_idx])
   np.savez_compressed(os.path.join(data_dir, graph_name, 'test.npz'),
                       subj=subj[test_idx],
                       rel=rel[test_idx],
                       obj=obj[test_idx])
-  print('saved test set')
+  return train_idx, val_idx, test_idx
 
 
 def from_train_file(data_dir, graph_name='metathesaurus', num_test=100000):

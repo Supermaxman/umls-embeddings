@@ -8,6 +8,7 @@ from collections import defaultdict
 import random
 
 import hedgedog.nlp.wordpiece_tokenization as hgt
+import tensorflow as tf
 
 from .create_test_set import split
 from . import umls_reader
@@ -15,6 +16,20 @@ from . import umls
 
 import scispacy
 import spacy
+
+
+def _bytes_feature(value):
+  if isinstance(value, type(tf.constant(0))):
+    value = value.numpy() # BytesList won't unpack a string from an EagerTensor.
+  return tf.train.Feature(bytes_list=tf.train.BytesList(value=[value]))
+
+
+def _float_feature(value):
+  return tf.train.Feature(float_list=tf.train.FloatList(value=[value]))
+
+
+def _int64_feature(value):
+  return tf.train.Feature(int64_list=tf.train.Int64List(value=[value]))
 
 
 def is_preferred(x):
@@ -265,49 +280,9 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
   print(f'Read {atom_count} atoms.')
   print(f'{len(concepts)} concepts')
 
-  entity_dir = os.path.join(output_dir, 'entities')
-  if not os.path.exists(entity_dir):
-    os.mkdir(entity_dir)
-  print('Writing relation types to json...')
-  for rui, rt in tqdm(relation_types.items(), desc="writing", total=len(relation_types)):
-    rt_str = rt.to_json()
-    rt_file = os.path.join(entity_dir, f'{rt.rid}.json')
-    with open(rt_file, 'w') as f:
-      f.write(rt_str)
-
-  print('Writing concepts to json...')
-  for cui, c in tqdm(concepts.items(), desc="writing", total=len(concepts)):
-    c_str = c.to_json()
-    c_file = os.path.join(entity_dir, f'{c.cid}.json')
-    with open(c_file, 'w') as f:
-      f.write(c_str)
-
-
-  # token_lengths = np.array([t_l for cid, (t_ids, t_l) in token_data.items()], dtype=np.int32)
-  # min_token_count = np.min(token_lengths)
-  # max_token_count = np.max(token_lengths)
-  # avg_token_count = np.mean(token_lengths)
-  # percentile_token_count = np.percentile(token_lengths, 95)
-  # # 3
-  # print(f'Min token counts: {min_token_count}')
-  # # 1189
-  # print(f'Max token counts: {max_token_count}')
-  # # 13.7
-  # print(f'Avg token counts: {avg_token_count}')
-  # # 27
-  # print(f'95 Percentile token counts: {percentile_token_count}')
-  # pad_count = int(np.ceil(percentile_token_count))
-  # # p_tokens = {}
-  # print('Padding tokens...')
-  # token_ids = np.zeros([len(token_data), pad_count], dtype=np.int32)
-  # for cid, (t_ids, t_l) in token_data.items():
-  #   if t_l > pad_count:
-  #     token_ids[cid] = t_ids[:pad_count]
-  #   elif t_l < pad_count:
-  #     token_ids[cid] = t_ids + [0] * (pad_count - t_l)
-  #   else:
-  #     token_ids[cid] = t_ids
-  # del token_data
+  triples_dir = os.path.join(output_dir, 'triples')
+  if not os.path.exists(triples_dir):
+    os.mkdir(triples_dir)
 
   subjs, rels, objs = zip(*triples)
   snp = np.asarray(subjs, dtype=np.int32)
@@ -320,17 +295,39 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
 
   print(f"Saving {rnp.shape[0]} unique triples to {output_dir}.")
   print(f"{len(concepts)} concepts spanning {len(relations)} relations")
-  split(snp, rnp, onp, output_dir)
+  train_idx, val_idx, test_idx = split(snp, rnp, onp, output_dir)
+
+  def save_triples(idxs, name):
+    print(f'Creating {name} tfrecords...')
+    with tf.io.TFRecordWriter(os.path.join(triples_dir, f'{name}.tfrecords')) as writer:
+      for r_idx, sid, rid, oid in tqdm(zip(idxs, snp[idxs], rnp[idxs], onp[idxs]), total=len(idxs)):
+        subj = id2conc[sid]
+        rt = id2conc[rid]
+        obj = id2conc[oid]
+        features = {
+          'r_idx': _int64_feature(r_idx),
+          'subj_id': _int64_feature(sid),
+          'subj_token_ids': tf.train.Feature(int64_list=tf.train.Int64List(value=subj.atom_tokens[subj.p_atom_idx])),
+          'subj_token_length': _int64_feature(len(subj.atom_tokens[subj.p_atom_idx])),
+          'rt_id': _int64_feature(rid),
+          'rt_token_ids': tf.train.Feature(int64_list=tf.train.Int64List(value=rt.rel_tokens)),
+          'rt_token_length': _int64_feature(len(rt.rel_tokens)),
+          'obj_id': _int64_feature(oid),
+          'obj_token_ids': tf.train.Feature(int64_list=tf.train.Int64List(value=obj.atom_tokens[obj.p_atom_idx])),
+          'obj_token_length': _int64_feature(len(obj.atom_tokens[obj.p_atom_idx])),
+        }
+        example_proto = tf.train.Example(features=tf.train.Features(feature=features))
+        writer.write(example_proto.SerializeToString())
+
+  print('Saving triples...')
+  save_triples(train_idx, 'train')
+  save_triples(val_idx, 'val')
+  save_triples(test_idx, 'test')
+
   print('Saving dicts...')
   with open(os.path.join(output_dir, 'name2id.json'), 'w+') as f:
     json.dump(conc2id, f, indent=2)
 
-  # print('Saving tokens...')
-  # np.savez_compressed(
-  #   os.path.join(output_dir, 'id2tokens.npz'),
-  #   token_ids=token_ids,
-  #   token_lengths=token_lengths
-  # )
   print('Done!')
 
 
