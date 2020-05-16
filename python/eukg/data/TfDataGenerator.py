@@ -106,13 +106,13 @@ class TfDataGenerator:
       example['obj_token_ids'] = tf.pad(
         example['obj_token_ids'],
         paddings=[
-          [0, max_token_length - example['obj_token_ids']]
+          [0, max_token_length - example['obj_token_length']]
         ]
       )
       example['rt_token_ids'] = tf.pad(
         example['rt_token_ids'],
         paddings=[
-          [0, max_token_length - example['rt_token_ids']]
+          [0, max_token_length - example['rt_token_length']]
         ]
       )
       subj_ex = {
