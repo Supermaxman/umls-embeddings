@@ -22,7 +22,7 @@ class TfDataGenerator:
     session.run(
       self.iterator.initializer,
       feed_dict={
-        self.data_filepath: os.path.join(self.data_dir, 'train.tfrecords'),
+        self.data_filepath: os.path.join(self.data_dir, 'triples', 'train.tfrecords'),
       }
     )
 
@@ -30,7 +30,7 @@ class TfDataGenerator:
     session.run(
       self.iterator.initializer,
       feed_dict={
-        self.data_filepath: os.path.join(self.data_dir, 'val.tfrecords'),
+        self.data_filepath: os.path.join(self.data_dir, 'triples', 'val.tfrecords'),
       }
     )
 
@@ -38,7 +38,7 @@ class TfDataGenerator:
     session.run(
       self.iterator.initializer,
       feed_dict={
-        self.data_filepath: os.path.join(self.data_dir, 'test.tfrecords'),
+        self.data_filepath: os.path.join(self.data_dir, 'triples', 'test.tfrecords'),
       }
     )
 
