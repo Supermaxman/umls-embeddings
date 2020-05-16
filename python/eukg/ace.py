@@ -11,7 +11,7 @@ from .tf_util import checkpoint_utils
 
 def load_ace(ace_path):
   config = load_config(os.path.join(ace_path, 'config.json'))
-  bert_checkpoint = '/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_config.json'
+  bert_checkpoint = '/users/max/data/models/bert/uncased_L-12_H-768_A-12/bert_model.ckpt'
   latest_model_checkpoint = tf.train.latest_checkpoint(ace_path)
   lm = LanguageModel.BertLanguageModel(
     bert_config_path=config.bert_config,
