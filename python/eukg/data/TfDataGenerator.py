@@ -86,6 +86,9 @@ class TfDataGenerator:
       example['obj_token_length'] = tf.minimum(example['obj_token_length'], max_token_length_truncate)
       example['rt_token_length'] = tf.minimum(example['rt_token_length'], max_token_length_truncate)
 
+      example['subj_token_ids'] = tf.sparse.to_dense(example['subj_token_ids'])
+      example['obj_token_ids'] = tf.sparse.to_dense(example['obj_token_ids'])
+      example['rt_token_ids'] = tf.sparse.to_dense(example['rt_token_ids'])
       example['subj_token_ids'] = example['subj_token_ids'][:max_token_length_truncate]
       example['obj_token_ids'] = example['obj_token_ids'][:max_token_length_truncate]
       example['rt_token_ids'] = example['rt_token_ids'][:max_token_length_truncate]
