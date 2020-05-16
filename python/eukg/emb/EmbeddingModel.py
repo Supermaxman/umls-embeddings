@@ -484,11 +484,10 @@ class RotatEACE(BaseModel):
     re_score = (h_re * r_re - h_im * r_im) - t_re
     im_score = (h_re * r_im + h_im * r_re) - t_im
     h_r_t_energy = tf.concat([re_score, im_score], axis=-1)
-    h_r_t_energy = tf.norm(
-      h_r_t_energy,
-      ord=1,
+
+    h_r_t_energy = tf.reduce_sum(
+      tf.abs(h_r_t_energy),
       axis=-1,
-      keepdims=False,
       name='energy'
     )
 
