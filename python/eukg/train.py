@@ -43,10 +43,6 @@ def train():
   # load data
   cui2id = data_util.load_cui2id(config.data_dir)
 
-  # TODO move somewhere else
-  config.train_size = 9132236
-  config.val_size = 1014692
-  config.test_size = 100000
   config.val_progress_update_interval = int(math.floor(float(config.val_size) / config.val_batch_size))
   config.batches_per_epoch = int(math.floor(float(config.train_size) / config.batch_size))
 

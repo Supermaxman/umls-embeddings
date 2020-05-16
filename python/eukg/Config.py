@@ -104,6 +104,9 @@ tf.flags.DEFINE_float("baseline_momentum", 0.9, "Momentum of baseline for policy
 
 tf.flags.DEFINE_string("dis_loss_type", "gen", "Type of loss for discriminator.")
 
+tf.flags.DEFINE_integer("train_size", 9132236, "Size of training set.")
+tf.flags.DEFINE_integer("val_size", 1014692, "Size of val set.")
+tf.flags.DEFINE_integer("test_size", 100000, "Size of test set.")
 
 
 flags = tf.flags.FLAGS
