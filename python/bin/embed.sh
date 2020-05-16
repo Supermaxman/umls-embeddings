@@ -106,9 +106,11 @@ python -m python.eukg.data.embed \
   --ctxt2id_file='/home/max/data/artifacts/i2b2/2010/new_data/ctxt2id.json' \
   --ace_path='/users/max/data/models/umls-embeddings/rotate/rotate-dis-self-mod-8' \
   --out_file='/home/max/data/artifacts/i2b2/2010/new_data/rotate-dis-self-mod-8-embeddings.npz' \
+  --embedding_size=256 \
   --batch_size=64
 
 python -m python.eukg.data.embed_rels \
   --relid2txt='/home/max/data/artifacts/i2b2/2010/new_data/relid2txt_umls.json' \
   --ace_path='/users/max/data/models/umls-embeddings/rotate/rotate-dis-self-mod-8' \
-  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/rotate-dis-self-mod-8-rel-umls-embeddings.npz'
+  --out_file='/home/max/data/artifacts/i2b2/2010/new_data/rotate-dis-self-mod-8-rel-umls-embeddings.npz' \
+  --embedding_size=256
