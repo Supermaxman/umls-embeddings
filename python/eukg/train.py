@@ -41,45 +41,25 @@ def train():
   data_util.save_config(config.model_dir, config)
 
   # load data
-  cui2id, data, train_idx, val_idx = data_util.load_metathesaurus_data(config.data_dir, config.val_proportion)
-  config.val_progress_update_interval = int(math.floor(float(len(val_idx)) / config.val_batch_size))
-  config.batches_per_epoch = int(math.floor(float(len(train_idx)) / config.batch_size))
-  if not config.no_semantic_network:
-    type2cuis = data_util.load_semantic_network_data(config.data_dir, data)
-  else:
-    type2cuis = None
+  cui2id = data_util.load_cui2id(config.data_dir)
 
-  # data_generator = DataGenerator.QueuedDataGenerator(
-  #   data, train_idx, val_idx, config, type2cuis,
-  #   nrof_queued_batches=config.nrof_queued_batches,
-  #   nrof_queued_workers=config.nrof_queued_workers
-  # )
+  # TODO move somewhere else
+  config.train_size = 9132236
+  config.val_size = 1014692
+  config.test_size = 100000
+  config.val_progress_update_interval = int(math.floor(float(config.val_size) / config.val_batch_size))
+  config.batches_per_epoch = int(math.floor(float(config.train_size) / config.batch_size))
 
   data_generator = TfDataGenerator.TfDataGenerator(
-    data,
-    train_idx,
-    val_idx,
     config.data_dir,
-    config.secondary_data_dir,
-    config.num_generator_samples,
     config.batch_size,
-    config.num_epochs,
-    config.lm_encoder_size,
     config.num_workers,
     config.buffer_size
   )
 
-  # data_generator = DataGenerator.DataGenerator(
-  #   data, train_idx, val_idx, config, type2cuis
-  # )
-
   # config map
   config_map = config.flag_values_dict()
-  config_map['data'] = data
-  config_map['train_idx'] = train_idx
-  config_map['val_idx'] = val_idx
-  if not config_map['no_semantic_network']:
-    config_map['type2cuis'] = type2cuis
+  config_map['type2cuis'] = None
 
   if config.gpu_memory_growth:
     gpu_config = tf.ConfigProto()
@@ -96,6 +76,9 @@ def train():
 
     model = init_model(config, data_generator, ace_model)
 
+    if config.encoder_checkpoint is not None:
+      checkpoint_utils.init_from_checkpoint(config.encoder_checkpoint)
+
     if config.pre_run_name is not None:
       pre_model_ckpt = tf.train.latest_checkpoint(
         os.path.join(all_models_dir, config.model, config.pre_run_name))
@@ -103,9 +86,6 @@ def train():
 
     tf.global_variables_initializer().run()
     tf.local_variables_initializer().run()
-
-    # if config.ace_model:
-    #   ace_model.initialize_tokens(session)
 
     # init saver
     tf_saver = tf.train.Saver(max_to_keep=10)

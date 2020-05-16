@@ -11,31 +11,18 @@ from collections import defaultdict
 
 
 class TfDataGenerator:
-  def __init__(self, data, train_idx, val_idx, data_dir, secondary_data_dir, num_generator_samples, batch_size,
-               num_epochs, lm_encoder_size, num_workers, buffer_size, test_mode=False):
-    self.data = data
-    self.train_idx = train_idx
-    self.val_idx = val_idx
+  def __init__(self, data_dir, batch_size, num_workers, buffer_size):
     self.data_dir = data_dir
-    self.secondary_data_dir = secondary_data_dir
-    self.num_generator_samples = num_generator_samples
     self.batch_size = batch_size
-    self.num_epochs = num_epochs
 
-    self.test_mode = test_mode
-
-    self.lm_encoder_size = lm_encoder_size
     self.num_workers = num_workers
     self.buffer_size = buffer_size
 
   def load_train(self, session):
-    np.random.shuffle(self.train_idx)
     session.run(
       self.iterator.initializer,
       feed_dict={
-        self.subjs_placeholder: self.data['subj'][self.train_idx],
-        self.rels_placeholder: self.data['rel'][self.train_idx],
-        self.objs_placeholder: self.data['obj'][self.train_idx]
+        self.data_filepath: os.path.join(self.data_dir, 'train.tfrecords'),
       }
     )
 
@@ -43,216 +30,116 @@ class TfDataGenerator:
     session.run(
       self.iterator.initializer,
       feed_dict={
-        self.subjs_placeholder: self.data['subj'][self.val_idx],
-        self.rels_placeholder: self.data['rel'][self.val_idx],
-        self.objs_placeholder: self.data['obj'][self.val_idx]
+        self.data_filepath: os.path.join(self.data_dir, 'val.tfrecords'),
+      }
+    )
+
+  def load_test(self, session):
+    session.run(
+      self.iterator.initializer,
+      feed_dict={
+        self.data_filepath: os.path.join(self.data_dir, 'test.tfrecords'),
       }
     )
 
   def create_iterator(self):
     # Get all concepts which have some relation for negative sampling (these should be dense
 
-    self.subjs_placeholder = tf.placeholder(tf.int32, [None])
-    self.rels_placeholder = tf.placeholder(tf.int32, [None])
-    self.objs_placeholder = tf.placeholder(tf.int32, [None])
+    self.data_filepath = tf.placeholder(tf.string, [])
 
-    dataset = tf.data.Dataset.from_tensor_slices((self.subjs_placeholder, self.rels_placeholder, self.objs_placeholder))
-    lm_embedding_dir = os.path.join(self.secondary_data_dir, 'lm_embeddings')
+    dataset = tf.data.TFRecordDataset(filenames=self.data_filepath)
 
     features = {
-      'lm_embedding': tf.io.VarLenFeature(tf.float32),
-      'lm_embedding_size': tf.io.FixedLenFeature([], tf.int64),
-      # 'token_ids': tf.io.VarLenFeature(tf.int64),
-      'token_length': tf.io.FixedLenFeature([], tf.int64),
-      'entity_id': tf.io.FixedLenFeature([], tf.int64)
+      'r_idx': tf.io.FixedLenFeature([], tf.int64),
+      'subj_id': tf.io.FixedLenFeature([], tf.int64),
+      'subj_token_ids': tf.io.VarLenFeature(tf.int64),
+      'subj_token_length': tf.io.FixedLenFeature([], tf.int64),
+      'rt_id': tf.io.FixedLenFeature([], tf.int64),
+      'rt_token_ids': tf.io.VarLenFeature(tf.int64),
+      'rt_token_length': tf.io.FixedLenFeature([], tf.int64),
+      'obj_id': tf.io.FixedLenFeature([], tf.int64),
+      'obj_token_ids': tf.io.VarLenFeature(tf.int64),
+      'obj_token_length': tf.io.FixedLenFeature([], tf.int64),
     }
 
-    def transform_to_path(x):
-      return tf.strings.join([lm_embedding_dir + '/', tf.strings.as_string(x), '.tfexample'])
-
-    def read_file(file_path):
-      results = tf.io.read_file(file_path)
-      results = tf.io.decode_compressed(results, compression_type='ZLIB')
-      return results
-
-    def parse_batch_example(b_subjs, b_rels, b_objs):
-      # [bsize], [bsize], [bsize]
-      # I am going to utilize already-loaded other batch elements
-      # for each batch's negative samples for efficiency and speed
-
-      # other subjs and objs in batch I can utilize
-      bsize = tf.shape(b_subjs)[0]
-
-      # get total number of concepts
-
-      # convert concept ids to paths and read features
-      # [3 * bsize]
-      b_concept_ids = tf.concat([b_subjs, b_rels, b_objs], axis=0)
-      b_paths = transform_to_path(b_concept_ids)
-
-      # [3 * bsize]
-      b_concepts = tf.map_fn(
-        fn=read_file,
-        elems=b_paths,
-        dtype=tf.string,
-        parallel_iterations=self.num_workers
-      )
-      b_concept_exs = tf.io.parse_example(b_concepts, features=features)
-      b_concept_lengths = tf.reshape(
-        b_concept_exs['token_length'],
-        shape=[3, bsize]
-      )
-      b_max_token_length = tf.cast(tf.reduce_max(b_concept_lengths), tf.int32)
-      b_concept_embs = tf.reshape(
-        tf.sparse_tensor_to_dense(
-          b_concept_exs['lm_embedding'],
-          default_value=0
-        ),
-        shape=[3, bsize, b_max_token_length, self.lm_encoder_size]
-      )
-      # shape [bsize, seq_len, emb_size]
-      b_subj_emb = b_concept_embs[0]
-      b_subj_lengths = b_concept_lengths[0]
-      b_rels_emb = b_concept_embs[1]
-      b_rels_lengths = b_concept_lengths[1]
-      b_objs_emb = b_concept_embs[2]
-      b_objs_lengths = b_concept_lengths[2]
-
-      # need to create tensor of shape [bsize, bsize - 1] where, for each bsize it is only the remaining indices
-      # shape [bsize, bsize, seq_len, emb_size]
-      b_nsubjs_samples_embs = tf.tile(
-        tf.expand_dims(b_subj_emb, axis=0),
-        [bsize, 1, 1, 1]
-      )
-      print(b_nsubjs_samples_embs.get_shape())
-      # shape [bsize, bsize]
-      b_nsubjs_sample_lengths = tf.tile(
-        tf.expand_dims(b_subj_lengths, axis=0),
-        [bsize, 1]
-      )
-      print(b_nsubjs_sample_lengths.get_shape())
-
-      # shape [bsize, bsize, seq_len, emb_size]
-      b_nobjs_samples_embs = tf.tile(
-        tf.expand_dims(b_objs_emb, axis=0),
-        [bsize, 1, 1, 1]
-      )
-      # shape [bsize, bsize]
-      b_nobjs_sample_lengths = tf.tile(
-        tf.expand_dims(b_objs_lengths, axis=0),
-        [bsize, 1]
-      )
-
-      # mask out same batch elements
-      b_sample_mask = tf.logical_not(tf.eye(bsize, dtype=tf.bool))
-      print(b_sample_mask.get_shape())
-
-      # only dropping the equal element in batch, so keep others for samples
-      subj_sample_count = bsize - 1
-      obj_sample_count = bsize - 1
-
-      # utilize boolean mask to get embeddings
-      # shape [bsize, bsize-1, b_max_token_length, lm_encoder_size]
-      b_nsubjs_samples_embs = tf.reshape(
-        tf.boolean_mask(b_nsubjs_samples_embs, b_sample_mask),
-        shape=[bsize, subj_sample_count, b_max_token_length, self.lm_encoder_size]
-      )
-      print(b_nsubjs_samples_embs.get_shape())
-      # shape [bsize, bsize-1]
-      b_nsubjs_sample_lengths = tf.reshape(
-        tf.boolean_mask(b_nsubjs_sample_lengths, b_sample_mask),
-        shape=[bsize, subj_sample_count]
-      )
-      print(b_nsubjs_sample_lengths.get_shape())
-
-      # shape [bsize, bsize-1, b_max_token_length, lm_encoder_size]
-      b_nobjs_samples_embs = tf.reshape(
-        tf.boolean_mask(b_nobjs_samples_embs, b_sample_mask),
-        shape=[bsize, obj_sample_count, b_max_token_length, self.lm_encoder_size]
-      )
-      # shape [bsize, bsize-1]
-      b_nobjs_sample_lengths = tf.reshape(
-        tf.boolean_mask(b_nobjs_sample_lengths, b_sample_mask),
-        shape=[bsize, obj_sample_count]
-      )
-
-      # concat real objs for negative subj samples
-      # shape [bsize,
-      # concatenate
-      # [bsize, subj_sample_count, b_max_token_length, lm_encoder_size]
-      # with
-      # [bsize, obj_sample_count, b_max_token_length, lm_encoder_size]
-      # to get
-      # [bsize, total_sample_count, b_max_token_length, lm_encoder_size]
-      b_nsubjs_embs = tf.concat(
-        [
-          b_nsubjs_samples_embs,
-          # tile to [bsize, obj_sample_count, seq_len, emb_size]
-          tf.tile(
-            # expand to [bsize, 1, seq_len, emb_size]
-            tf.expand_dims(b_subj_emb, axis=1),
-            [1, obj_sample_count, 1, 1]
-          )
-        ],
-        axis=1
-      )
-      print(b_nsubjs_embs.get_shape())
-      b_nsubjs_lengths = tf.concat(
-        [
-          b_nsubjs_sample_lengths,
-          tf.tile(
-            tf.expand_dims(b_subj_lengths, axis=1),
-            [1, obj_sample_count]
-          )
-        ],
-        axis=1
-      )
-      print(b_nsubjs_lengths.get_shape())
-      b_nobjs_embs = tf.concat(
-        [
-          tf.tile(
-            tf.expand_dims(b_objs_emb, axis=1),
-            [1, subj_sample_count, 1, 1]
-          ),
-          b_nobjs_samples_embs
-        ],
-        axis=1
-      )
-      b_nobjs_lengths = tf.concat(
-        [
-          tf.tile(
-            tf.expand_dims(b_objs_lengths, axis=1),
-            [1, subj_sample_count]
-          ),
-          b_nobjs_sample_lengths
-        ],
-        axis=1
-      )
-
-      b_subj_emb.set_shape([None, None, self.lm_encoder_size])
-      b_rels_emb.set_shape([None, None, self.lm_encoder_size])
-      b_objs_emb.set_shape([None, None, self.lm_encoder_size])
-
-      b_data = {
-        'b_subj_emb': b_subj_emb,
-        'b_subj_lengths': b_subj_lengths,
-
-        'b_objs_emb': b_objs_emb,
-        'b_objs_lengths': b_objs_lengths,
-
-        'b_rels_emb': b_rels_emb,
-        'b_rels_lengths': b_rels_lengths
+    def get_padding_values():
+      concept_pad = {
+        'token_ids': [None],
+        'token_length': [],
+        'entity_id': []
       }
+      rel_pad = {
+        'token_ids': [None],
+        'token_length': [],
+        'entity_id': []
+      }
+      return concept_pad, rel_pad, concept_pad
 
+    def parse_single_example(example_proto):
+      example = tf.io.parse_single_example(
+        example_proto,
+        features
+      )
+      # TODO move this somewhere else
+      max_token_length_truncate = 40
+      example['subj_token_length'] = tf.minimum(example['subj_token_length'], max_token_length_truncate)
+      example['obj_token_length'] = tf.minimum(example['obj_token_length'], max_token_length_truncate)
+      example['rt_token_length'] = tf.minimum(example['rt_token_length'], max_token_length_truncate)
 
-      return b_data
+      example['subj_token_ids'] = example['subj_token_ids'][:max_token_length_truncate]
+      example['obj_token_ids'] = example['obj_token_ids'][:max_token_length_truncate]
+      example['rt_token_ids'] = example['rt_token_ids'][:max_token_length_truncate]
 
-    dataset = dataset.batch(
-      batch_size=self.batch_size
-    )
+      max_token_length = example['subj_token_length']
+      max_token_length = tf.maximum(example['obj_token_length'], max_token_length)
+      max_token_length = tf.maximum(example['rt_token_length'], max_token_length)
+
+      example['subj_token_ids'] = tf.pad(
+        example['subj_token_ids'],
+        paddings=[
+          [0, max_token_length - example['subj_token_length']]
+        ]
+      )
+      example['obj_token_ids'] = tf.pad(
+        example['obj_token_ids'],
+        paddings=[
+          [0, max_token_length - example['obj_token_ids']]
+        ]
+      )
+      example['rt_token_ids'] = tf.pad(
+        example['rt_token_ids'],
+        paddings=[
+          [0, max_token_length - example['rt_token_ids']]
+        ]
+      )
+      subj_ex = {
+        'entity_id': example['subj_id'],
+        'token_ids': example['subj_token_ids'],
+        'token_length': example['subj_token_length']
+      }
+      obj_ex = {
+        'entity_id': example['obj_id'],
+        'token_ids': example['obj_token_ids'],
+        'token_length': example['obj_token_length']
+      }
+      rt_ex = {
+        'entity_id': example['rt_id'],
+        'token_ids': example['rt_token_ids'],
+        'token_length': example['rt_token_length']
+      }
+      return subj_ex, rt_ex, obj_ex
+
     dataset = dataset.map(
-      map_func=parse_batch_example,
+      map_func=parse_single_example,
       num_parallel_calls=self.num_workers
+    )
+    dataset = dataset.shuffle(
+      buffer_size=10000,
+      reshuffle_each_iteration=True
+    )
+    dataset = dataset.padded_batch(
+      batch_size=self.batch_size,
+      padded_shapes=get_padding_values()
     )
 
     dataset = dataset.prefetch(
@@ -262,7 +149,7 @@ class TfDataGenerator:
     iterator = dataset.make_initializable_iterator()
 
     self.iterator = iterator
-    # TODO convert this to a dict for easier lookup.
+
     batch = iterator.get_next()
     return batch
 

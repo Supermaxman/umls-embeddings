@@ -37,6 +37,11 @@ def load_metathesaurus_data(data_dir, val_proportion):
   return cui2id, data, train_idx, val_idx
 
 
+def load_cui2id(data_dir):
+  cui2id = json.load(open(os.path.join(data_dir, 'name2id.json')))
+  return cui2id
+
+
 def load_metathesaurus_token_data(data_dir):
   npz = np.load(os.path.join(data_dir, 'id2tokens.npz'))
   data = dict(npz.items())

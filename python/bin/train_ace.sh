@@ -487,3 +487,22 @@ python -m python.eukg.train \
 --model_dir=/users/max/data/models/umls-embeddings \
 --summaries_dir=/shared/hltdir4/disk1/max/logs \
 --load=False
+
+
+python -m python.eukg.train \
+--mode=dis-self \
+--model=rotate \
+--run_name=rotate-dis-self-mod-lm-1 \
+--encoder_rnn_layers=1 \
+--encoder_rnn_size=512 \
+--encoder_rnn_type=lstm \
+--embedding_size=256 \
+--gamma=24.0 \
+--learning_rate=1e-5 \
+--batch_size=64 \
+--val_batch_size=64 \
+--num_epochs=100 \
+--data_dir=/users/max/data/artifacts/umls-embeddings-lm \
+--model_dir=/users/max/data/models/umls-embeddings \
+--summaries_dir=/shared/hltdir4/disk1/max/logs \
+--load=False

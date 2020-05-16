@@ -21,6 +21,7 @@ class BaseModel(Trainable):
     :type data_generator: DataGenerator.DataGenerator
     """
     Trainable.__init__(self)
+    self.config = config
     self.model = config.model
     self.embedding_model = embedding_model
     self.data_generator = data_generator

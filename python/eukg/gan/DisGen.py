@@ -5,6 +5,9 @@ from .Discriminator import BaseModel
 from ..emb import Smoothing
 from ..data import DataGenerator
 
+from ..emb import LanguageModel
+from ..tf_util import checkpoint_utils
+
 
 class DisGen(BaseModel):
   def __init__(self, config, dis_embedding_model, gen_embedding_model, data_generator, ace_model):
@@ -228,18 +231,38 @@ class DisGen(BaseModel):
     self.summary = tf.summary.merge(summary)
 
   def _build_embeddings(self):
-    batch = self.data_generator.create_iterator()
+    subj_ex, rt_ex, obj_ex = self.data_generator.create_iterator()
+    self.bsize = tf.shape(subj_ex['token_ids'])[0]
+    self.seq_len = tf.shape(subj_ex['token_ids'])[1]
 
-    self.subjs_emb = batch['b_subj_emb']
-    self.rels_emb = batch['b_rels_emb']
-    self.objs_emb = batch['b_objs_emb']
+    lm_tokens = tf.concat(
+      [subj_ex['token_ids'], rt_ex['token_ids'], obj_ex['token_ids']],
+      axis=0,
+      name='lm_tokens'
+    )
+    lm_token_lengths = tf.concat(
+      [subj_ex['token_length'], rt_ex['token_length'], obj_ex['token_length']],
+      axis=0,
+      name='lm_tokens'
+    )
+    lm = LanguageModel.BertLanguageModel(
+      bert_config_path=self.config.bert_config,
+      train_bert=False
+    )
+    # [3*bsize, seq_len, lm_emb_size]
+    lm_embeddings = lm.encode(lm_tokens, lm_token_lengths)
+    subj_ex['lm_embeddings'] = lm_embeddings[:self.bsize]
+    rt_ex['lm_embeddings'] = lm_embeddings[self.bsize:2*self.bsize]
+    obj_ex['lm_embeddings'] = lm_embeddings[2*self.bsize:]
 
-    self.subjs_lengths = batch['b_subj_lengths']
-    self.rels_lengths = batch['b_rels_lengths']
-    self.objs_lengths = batch['b_objs_lengths']
+    self.subjs_emb = subj_ex['lm_embeddings']
+    self.rels_emb = rt_ex['lm_embeddings']
+    self.objs_emb = obj_ex['lm_embeddings']
 
-    self.bsize = tf.shape(self.subjs_emb)[0]
-    self.seq_len = tf.shape(self.subjs_emb)[1]
+    self.subjs_lengths = subj_ex['token_length']
+    self.rels_lengths = rt_ex['token_length']
+    self.objs_lengths = obj_ex['token_length']
+
     concept_tensors = [self.subjs_emb, self.objs_emb]
     concept_length_tensors = [self.subjs_lengths, self.objs_lengths]
     concept_embs = tf.concat(
