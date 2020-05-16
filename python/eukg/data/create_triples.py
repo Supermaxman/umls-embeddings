@@ -290,20 +290,18 @@ def metathesaurus_triples(umls_dir, output_dir, data_folder, vocab_file):
   onp = np.asarray(objs, dtype=np.int32)
 
   id2conc = {v: k for k, v in conc2id.items()}
-  concepts = [id2conc[i] for i in np.unique(np.concatenate((subjs, objs)))]
-  relations = [id2conc[i] for i in set(rels)]
 
   print(f"Saving {rnp.shape[0]} unique triples to {output_dir}.")
-  print(f"{len(concepts)} concepts spanning {len(relations)} relations")
+  print(f"{len(concepts)} concepts spanning {len(relation_types)} relation types")
   train_idx, val_idx, test_idx = split(snp, rnp, onp, output_dir)
 
   def save_triples(idxs, name):
     print(f'Creating {name} tfrecords...')
     with tf.io.TFRecordWriter(os.path.join(triples_dir, f'{name}.tfrecords')) as writer:
       for r_idx, sid, rid, oid in tqdm(zip(idxs, snp[idxs], rnp[idxs], onp[idxs]), total=len(idxs)):
-        subj = id2conc[sid]
-        rt = id2conc[rid]
-        obj = id2conc[oid]
+        subj = concepts[id2conc[sid]]
+        rt = relation_types[id2conc[rid]]
+        obj = concepts[id2conc[oid]]
         features = {
           'r_idx': _int64_feature(r_idx),
           'subj_id': _int64_feature(sid),
