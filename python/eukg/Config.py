@@ -91,7 +91,7 @@ tf.flags.DEFINE_integer("encoder_rnn_size", 512, "Size of encoder rnn.")
 tf.flags.DEFINE_string("encoder_rnn_type", 'lstm', "Encoder rnn type [gru, lstm].")
 
 
-tf.flags.DEFINE_bool("train_bert", True, "Jointly train bert encoder.")
+tf.flags.DEFINE_bool("train_lm", False, "Allow language model to be trained.")
 tf.flags.DEFINE_bool("shared_encoder", True, "Jointly train ace encoder.")
 tf.flags.DEFINE_integer("seed", 1337, "Random seed.")
 

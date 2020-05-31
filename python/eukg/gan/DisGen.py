@@ -235,19 +235,23 @@ class DisGen(BaseModel):
     self.bsize = tf.shape(subj_ex['token_ids'])[0]
     self.seq_len = tf.shape(subj_ex['token_ids'])[1]
 
+    self.subjs_lengths = subj_ex['token_length']
+    self.rels_lengths = rt_ex['token_length']
+    self.objs_lengths = obj_ex['token_length']
+
     lm_tokens = tf.concat(
       [subj_ex['token_ids'], rt_ex['token_ids'], obj_ex['token_ids']],
       axis=0,
       name='lm_tokens'
     )
     lm_token_lengths = tf.concat(
-      [subj_ex['token_length'], rt_ex['token_length'], obj_ex['token_length']],
+      [self.subjs_lengths, self.rels_lengths, self.objs_lengths],
       axis=0,
       name='lm_tokens'
     )
-    lm = LanguageModel.BertLanguageModel(
+    lm = LanguageModel.BertWPTModel(
       bert_config_path=self.config.bert_config,
-      train_bert=False
+      train=self.config.train_lm
     )
     # [3*bsize, seq_len, lm_emb_size]
     lm_embeddings = lm.encode(lm_tokens, lm_token_lengths)
@@ -258,10 +262,6 @@ class DisGen(BaseModel):
     self.subjs_emb = subj_ex['lm_embeddings']
     self.rels_emb = rt_ex['lm_embeddings']
     self.objs_emb = obj_ex['lm_embeddings']
-
-    self.subjs_lengths = subj_ex['token_length']
-    self.rels_lengths = rt_ex['token_length']
-    self.objs_lengths = obj_ex['token_length']
 
     concept_tensors = [self.subjs_emb, self.objs_emb]
     concept_length_tensors = [self.subjs_lengths, self.objs_lengths]
