@@ -13,9 +13,9 @@ def load_ace(ace_path):
   config = load_config(os.path.join(ace_path, 'config.json'))
   bert_checkpoint = '/users/max/data/models/bert/ncbi_pubmed_mimic_uncased_base/bert_config.json'
   latest_model_checkpoint = tf.train.latest_checkpoint(ace_path)
-  lm = LanguageModel.BertLanguageModel(
+  lm = LanguageModel.BertWPTModel(
     bert_config_path=config.bert_config,
-    train_bert=False
+    train=False
   )
   ace_model = AceModel.ACEModel(config)
   embedding_size = config.embedding_size // 2
