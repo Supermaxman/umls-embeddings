@@ -522,7 +522,7 @@ python -m python.eukg.train \
 --batch_size=64 \
 --val_batch_size=64 \
 --num_epochs=100 \
---data_dir=/users/max/data/artifacts/umls-embeddings \
+--data_dir=/users/max/data/artifacts/umls-embeddings-lm \
 --model_dir=/users/max/data/models/umls-embeddings \
 --summaries_dir=/shared/hltdir4/disk1/max/logs \
 --load=False
