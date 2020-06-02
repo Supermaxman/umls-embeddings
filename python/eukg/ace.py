@@ -20,7 +20,7 @@ def load_ace(ace_path):
   ace_model = AceModel.ACEModel(config)
   embedding_size = config.embedding_size // 2
   config = config._replace(embedding_size=embedding_size)
-  d_em = EmbeddingModel.TransDACE(config)
+  d_em = EmbeddingModel.RotatEACE(config)
 
   def model(t_ids, e_type):
     t_mask = tf.cast(tf.not_equal(t_ids, 0), tf.int32)
