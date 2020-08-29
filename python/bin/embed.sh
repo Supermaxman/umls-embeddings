@@ -116,5 +116,28 @@ python -m python.eukg.data.embed_rels \
   --embedding_size=256
 
 python -m python.eukg.data.embed \
-  --ctxt2id_file='/users/rmm120030/working/kge_ner/info/clef_mentions.json' \
-  --out_file='/users/rmm120030/working/kge_ner/info/clef_mentions.npz'
+  --ctxt2id_file='/users/max/code/extract_COVID19_events_from_Twitter/data/can_not_test_ctxt2id.json' \
+  --out_file='/users/max/code/extract_COVID19_events_from_Twitter/data/can_not_test_embs.npz'
+
+
+# covid19 twitter
+python -m python.eukg.data.embed \
+  --ctxt2id_file='/users/max/code/extract_COVID19_events_from_Twitter/data/can_not_test_ctxt2id.json' \
+  --out_file='/users/max/code/extract_COVID19_events_from_Twitter/data/can_not_test_embs.npz'
+python -m python.eukg.data.embed \
+  --ctxt2id_file='/users/max/code/extract_COVID19_events_from_Twitter/data/death_ctxt2id.json' \
+  --out_file='/users/max/code/extract_COVID19_events_from_Twitter/data/death_embs.npz'
+python -m python.eukg.data.embed \
+  --ctxt2id_file='/users/max/code/extract_COVID19_events_from_Twitter/data/test_negative_ctxt2id.json' \
+  --out_file='/users/max/code/extract_COVID19_events_from_Twitter/data/test_negative_embs.npz'
+python -m python.eukg.data.embed \
+  --ctxt2id_file='/users/max/code/extract_COVID19_events_from_Twitter/data/test_positive_ctxt2id.json' \
+  --out_file='/users/max/code/extract_COVID19_events_from_Twitter/data/test_positive_embs.npz'
+python -m python.eukg.data.embed \
+  --ctxt2id_file='/users/max/code/extract_COVID19_events_from_Twitter/data/cure_and_prevention_ctxt2id.json' \
+  --out_file='/users/max/code/extract_COVID19_events_from_Twitter/data/cure_and_prevention_embs.npz'
+
+/users/max/code/extract_COVID19_events_from_Twitter/data/test_negative_ctxt2id.json
+/users/max/code/extract_COVID19_events_from_Twitter/data/test_positive_ctxt2id.json
+/users/max/code/extract_COVID19_events_from_Twitter/data/cure_and_prevention_ctxt2id.json
+

@@ -5,8 +5,7 @@ import json
 from tqdm import tqdm
 import argparse
 import hedgedog.nlp.wordpiece_tokenization as hgt
-import scispacy
-import spacy
+
 
 from ..ace import load_ace
 
@@ -16,24 +15,22 @@ def embed():
   parser.add_argument('--ctxt2id_file', default='/home/max/data/artifacts/i2b2/2010/new_data/ctxt2id.json')
   parser.add_argument('--ace_path', default='/users/max/data/models/umls-embeddings/transd-distmult/transd-dm-gan-joint-ace-20')
   parser.add_argument('--out_file', default='/home/max/data/artifacts/i2b2/2010/new_data/transd-dm-gan-joint-ace-20-embeddings.npz')
-  parser.add_argument('--embedding_size', default=100)
-  parser.add_argument('--batch_size', default=32)
+  parser.add_argument('--embedding_size', default=100, type=int)
+  parser.add_argument('--batch_size', default=32, type=int)
   config = parser.parse_args()
 
   vocab_file = '/shared/hltdir4/disk1/team/data/models/bert/uncased_L-24_H-1024_A-16/vocab.txt'
   vocab = hgt.load_vocab(vocab_file)
   tokenizer = hgt.WordpieceTokenizer(vocab)
-  nlp = spacy.load('en_core_sci_sm', disable=['tagger', 'parser', 'ner', 'textcat'])
-
   def tokenize(text):
     tokens = []
     token_ids = []
-    doc = nlp(text.strip())
-    # w_tokens = text.strip().lower().split()
+    # TODO simple whitespace tokenize, can do something more complicated later
+    w_tokens = text.strip().lower().split()
     tokens.append('[CLS]')
     token_ids.append(vocab['[CLS]'])
-    for w_t in doc:
-      wpt_tokens = tokenizer.tokenize(w_t.string.lower())
+    for w_t in w_tokens:
+      wpt_tokens = tokenizer.tokenize(w_t)
       for wpt_t in wpt_tokens:
         tokens.append(wpt_t)
         token_ids.append(vocab[wpt_t])
