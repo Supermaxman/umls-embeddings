@@ -114,3 +114,7 @@ python -m python.eukg.data.embed_rels \
   --ace_path='/users/max/data/models/umls-embeddings/rotate/rotate-dis-self-mod-8' \
   --out_file='/home/max/data/artifacts/i2b2/2010/new_data/rotate-dis-self-mod-8-rel-umls-embeddings.npz' \
   --embedding_size=256
+
+python -m python.eukg.data.embed \
+  --ctxt2id_file='/users/rmm120030/working/kge_ner/info/clef_mentions.json' \
+  --out_file='/users/rmm120030/working/kge_ner/info/clef_mentions.npz'
