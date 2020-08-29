@@ -19,7 +19,7 @@ def embed():
   parser.add_argument('--batch_size', default=32, type=int)
   config = parser.parse_args()
 
-  vocab_file = '/shared/hltdir4/disk1/team/data/models/bert/uncased_L-24_H-1024_A-16/vocab.txt'
+  vocab_file = '/shared/hltdir4/disk1/team/data/models/bert/uncased_L-12_H-768_A-12/vocab.txt'
   vocab = hgt.load_vocab(vocab_file)
   tokenizer = hgt.WordpieceTokenizer(vocab)
   def tokenize(text):

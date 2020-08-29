@@ -6,7 +6,10 @@ class ACEModel(object):
   def __init__(self, config):
     self.encoder_rnn_layers = config.encoder_rnn_layers
     self.encoder_rnn_size = config.encoder_rnn_size
-    self.shared_encoder = config.shared_encoder
+    try:
+      self.shared_encoder = config.shared_encoder
+    except:
+      self.shared_encoder = True
     try:
       self.encoder_rnn_type = config.encoder_rnn_type.lower()
     except AttributeError:
