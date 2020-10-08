@@ -1,9 +1,28 @@
-Code for the paper [Adversarial Learning of Knowledge Embeddings for the Unified Medical Language System](http://www.hlt.utdallas.edu/~ramon/papers/amia_cri_2019.pdf) to be presented at the AMIA Informatics Summit 2019.
+## The impact of learning Unified Medical Language System knowledge embeddings in relation extraction from biomedical texts
+Code for the paper 
+[The impact of learning Unified Medical Language System knowledge embeddings in relation extraction from biomedical texts](https://academic.oup.com/jamia/advance-article-abstract/doi/10.1093/jamia/ocaa205/5919217?redirectedFrom=fulltext) 
+published in Journal of the American Medical Informatics Association.
+Please cite:
+```
+@article{10.1093/jamia/ocaa205,
+    author = {Weinzierl, Maxwell A and Maldonado, Ramon and Harabagiu, Sanda M},
+    title = "{The impact of learning Unified Medical Language System knowledge embeddings in relation extraction from biomedical texts}",
+    journal = {Journal of the American Medical Informatics Association},
+    year = {2020},
+    month = {10},
+    issn = {1527-974X},
+    doi = {10.1093/jamia/ocaa205},
+    url = {https://doi.org/10.1093/jamia/ocaa205},
+    note = {ocaa205},
+}
+```
 
-Requires Tensorflow version 1.9
+
+Requires Tensorflow version 1.9. See requirements.txt for details
 
 #### Data Preprocessing:
-1. First download/extract the [UMLS](https://www.nlm.nih.gov/research/umls/licensedcontent/umlsknowledgesources.html). This project assumes the UMLS files are laid out as such:
+First download/extract the [UMLS](https://www.nlm.nih.gov/research/umls/licensedcontent/umlsknowledgesources.html). 
+This project assumes the UMLS files are laid out as such:
     ```
     <UMLS_DIR>/
         META/
@@ -12,36 +31,14 @@ Requires Tensorflow version 1.9
         NET/
             SRSTRE1
     ```
-2. Create Metathesaurus triples
-
-    ```bash
-    python -m eukg.data.create_triples <UMLS_DIR>
-    ```
-   This will create the Metathesaurus train/test triples in data/metathesaurus.
-3. Create Semantic Network Triples
-    ```bash
-    python -m eukg.data.create_triples <UMLS_DIR>
-    ```
+More details coming soon!
 
 #### Training:
-To train the Metathesaurus Discriminator:
-```bash
-python -m eukg.train --mode=disc --model=transd --run_name=transd-disc --no_semantic_network
-```
-To train the both Metathesaurus and Semantic Network Discriminators:
-```bash
-python -m eukg.train --mode=disc --model=transd --run_name=transd-sn-disc
-```
-To train the Metathesaurus Generator:
-```bash
-python -m eukg.train --mode=gen --model=distmult --run_name=dm-gen --no_semantic_network --learning_rate=1e-3
-```
-To train the Metathesaurus and Semantic Network Generators:
-```bash
-python -m eukg.train --mode=gen --model=distmult --run_name=dm-sn-gen --learning_rate=1e-3
-```
-To train the full GAN model:
-```bash
-python -m eukg.train --mode=gan --model=transd --run_name=gan --dis_run_name=transd-sn-disc --gen_run_name=dm-sn-gen
-```
-Note that the GAN model requires a pretrained discriminator and generator
+Coming soon!
+
+#### Embeddings:
+Coming soon!
+
+
+#### Pre-Trained Models:
+Coming soon!
